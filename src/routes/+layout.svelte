@@ -8,9 +8,11 @@
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
+  import { accentService } from "$lib/stores/accent.service.svelte";
 
   let { children }: { children: Snippet } = $props();
 
+  accentService;
   categoriesStore.load();
   settingsStore.load();
   personsStore.load();

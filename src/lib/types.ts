@@ -65,3 +65,12 @@ export interface AppSettings {
 }
 
 export type StockStatus = "out" | "low" | "medium" | "high";
+
+export type AccentColor =
+  | "blue"
+  | "violet"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "teal"
+  | "slate";

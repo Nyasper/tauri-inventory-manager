@@ -6,12 +6,20 @@
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
+  import {
+    accentService,
+    ACCENTS,
+  } from "$lib/stores/accent.service.svelte";
 
   let low = $state("");
   let medium = $state("");
   let newPerson = $state("");
   let editingId = $state<number | null>(null);
   let editName = $state("");
+
+  const selectedAccentLabel = $derived(
+    ACCENTS.find((a) => a.id === accentService.accent)?.label ?? "",
+  );
 
   $effect(() => {
     low = String(settingsStore.settings.stock_low_threshold);
@@ -74,6 +82,27 @@
       <div class="section-action">
         <Button size="sm" onclick={saveThresholds}>Guardar franjas</Button>
       </div>
+    </section>
+
+    <section>
+      <h3>Color de acento</h3>
+      <p class="hint">
+        Personaliza el color de énfasis de toda la aplicación.
+      </p>
+      <div class="accents">
+        {#each ACCENTS as accent (accent.id)}
+          <button
+            type="button"
+            class="swatch"
+            class:active={accentService.accent === accent.id}
+            style="--swatch: {accent.light.primary}"
+            aria-label={accent.label}
+            title={accent.label}
+            onclick={() => accentService.setAccent(accent.id)}
+          ></button>
+        {/each}
+      </div>
+      <p class="selected-accent">Seleccionado: {selectedAccentLabel}</p>
     </section>
 
     <section>
@@ -164,6 +193,40 @@
     margin-top: 0.75rem;
     display: flex;
     justify-content: flex-end;
+  }
+
+  .accents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+
+  .swatch {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+    background: var(--swatch);
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+    transition:
+      transform 0.12s,
+      box-shadow 0.12s;
+  }
+
+  .swatch:hover {
+    transform: scale(1.1);
+  }
+
+  .swatch.active {
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+
+  .selected-accent {
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
   }
 
   .add-row {

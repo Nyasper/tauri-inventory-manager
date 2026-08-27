@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-theme="light">
+<html lang="es" data-theme="light" data-accent="blue">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
@@ -10,6 +10,8 @@
         try {
           var theme = localStorage.getItem("theme") || "light";
           document.documentElement.setAttribute("data-theme", theme);
+          var accent = localStorage.getItem("accent") || "blue";
+          document.documentElement.setAttribute("data-accent", accent);
         } catch (e) {}
       })();
     </script>
