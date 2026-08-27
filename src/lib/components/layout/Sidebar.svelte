@@ -17,7 +17,9 @@
 
 <aside class="sidebar">
   <div class="brand">
-    <span class="brand-icon"><Icon name="box" size={20} /></span>
+    <span class="brand-icon">
+      <img src="/clean-icon.svg" alt="Inventory Manager" />
+    </span>
     <span class="brand-name">Inventory</span>
   </div>
 
@@ -57,8 +59,18 @@
     width: 34px;
     height: 34px;
     border-radius: var(--radius-sm);
-    background: var(--primary);
-    color: #fff;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .brand-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
   }
 
   .brand-name {
