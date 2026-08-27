@@ -1,0 +1,129 @@
+:root {
+  --font-sans:
+    "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    sans-serif;
+
+  /* Theme tokens (light default) */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --surface-3: #e9ecef;
+  --text: #1a1d21;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff4ff;
+  --danger: #ef4444;
+  --danger-soft: #fee2e2;
+  --warning: #f59e0b;
+  --warning-soft: #fef3c7;
+  --success: #22c55e;
+
+  /* Stock states */
+  --stock-out: #9ca3af;
+  --stock-low: #ef4444;
+  --stock-medium: #f59e0b;
+  --stock-high: transparent;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.16);
+  --sidebar-width: 232px;
+}
+
+[data-theme="dark"] {
+  --bg: #111318;
+  --surface: #1a1e26;
+  --surface-2: #222733;
+  --surface-3: #2b313d;
+  --text: #e5e7eb;
+  --text-muted: #9ca3af;
+  --border: #2a303b;
+  --border-strong: #3a4150;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-soft: #1e2a44;
+  --danger: #f87171;
+  --danger-soft: #3b1f22;
+  --warning: #fbbf24;
+  --warning-soft: #3b2f14;
+  --success: #34d399;
+
+  --stock-out: #6b7280;
+  --stock-low: #f87171;
+  --stock-medium: #fbbf24;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

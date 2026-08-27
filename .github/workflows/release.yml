@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    outputs:
+      body: ${{ steps.notes.outputs.body }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Extract changelog
+        id: notes
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          {
+            echo "body<<EOF"
+            bun run scripts/extract-changelog.mjs
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changelog
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: "--bundles deb,rpm"
+            uploadPlainBinary: false
+          - platform: windows-latest
+            args: "--bundles nsis"
+            uploadPlainBinary: false
+          - platform: windows-latest
+            args: "--no-bundle"
+            uploadPlainBinary: true
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Inventory Manager ${{ github.ref_name }}"
+          releaseBody: ${{ needs.changelog.outputs.body }}
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          uploadPlainBinary: ${{ matrix.uploadPlainBinary }}
