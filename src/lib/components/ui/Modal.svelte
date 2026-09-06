@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
   import Icon from "./Icon.svelte";
 
@@ -26,6 +27,7 @@
 <div
   class="overlay"
   role="presentation"
+  transition:fade={{ duration: 160 }}
   onclick={(event) => {
     if (event.target === event.currentTarget) onClose?.();
   }}
@@ -70,7 +72,6 @@
     display: flex;
     flex-direction: column;
     max-height: 84vh;
-    animation: pop 0.16s ease;
   }
 
   .modal-sm {
@@ -81,17 +82,6 @@
   }
   .modal-lg {
     max-width: 720px;
-  }
-
-  @keyframes pop {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
   }
 
   .header {
