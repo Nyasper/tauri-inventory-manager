@@ -1,11 +1,13 @@
 <script lang="ts">
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
+  import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
+  import type { DefaultView } from "$lib/types";
   import {
     accentService,
     ACCENTS,
@@ -16,6 +18,14 @@
   let newPerson = $state("");
   let editingId = $state<number | null>(null);
   let editName = $state("");
+  let defaultView = $state("dashboard");
+
+  const viewOptions: SelectOption[] = [
+    { value: "dashboard", label: "Dashboard" },
+    { value: "products", label: "Productos" },
+    { value: "movements", label: "Movimientos" },
+    { value: "suppliers", label: "Proveedores" },
+  ];
 
   const selectedAccentLabel = $derived(
     ACCENTS.find((a) => a.id === accentService.accent)?.label ?? "",
@@ -25,6 +35,14 @@
     low = String(settingsStore.settings.stock_low_threshold);
     medium = String(settingsStore.settings.stock_medium_threshold);
   });
+
+  $effect(() => {
+    defaultView = settingsStore.settings.default_view;
+  });
+
+  async function saveDefaultView() {
+    await settingsStore.saveDefaultView(defaultView as DefaultView);
+  }
 
   async function saveThresholds() {
     const lowValue = Number(low);
@@ -113,6 +131,18 @@
         {/each}
       </div>
       <p class="selected-accent">Seleccionado: {selectedAccentLabel}</p>
+    </section>
+
+    <section>
+      <h3>Vista por defecto</h3>
+      <p class="hint">
+        Vista que se muestra al abrir la aplicación.
+      </p>
+      <Select
+        bind:value={defaultView}
+        options={viewOptions}
+        onchange={saveDefaultView}
+      />
     </section>
 
     <section>

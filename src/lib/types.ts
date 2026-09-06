@@ -58,9 +58,16 @@ export interface Movement {
   person_name?: string;
 }
 
+export type DefaultView =
+  | "dashboard"
+  | "products"
+  | "movements"
+  | "suppliers";
+
 export interface AppSettings {
   stock_low_threshold: number;
   stock_medium_threshold: number;
+  default_view: DefaultView;
 }
 
 export type StockStatus = "out" | "low" | "medium" | "high";

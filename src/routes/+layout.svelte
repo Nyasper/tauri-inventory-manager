@@ -1,5 +1,8 @@
 <script lang="ts">
   import "../app.css";
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import type { Snippet } from "svelte";
   import Sidebar from "$lib/components/layout/Sidebar.svelte";
   import Header from "$lib/components/layout/Header.svelte";
@@ -10,17 +13,29 @@
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
   import { accentService } from "$lib/stores/accent.service.svelte";
 
+  const VIEW_PATHS: Record<string, string> = {
+    dashboard: "/",
+    products: "/products",
+    movements: "/movements",
+    suppliers: "/suppliers",
+  };
+
   let { children }: { children: Snippet } = $props();
 
   accentService;
   categoriesStore.load();
-  settingsStore.load();
   personsStore.load();
   suppliersStore.load();
 
   function preventContextMenu(event: MouseEvent) {
     event.preventDefault();
   }
+
+  onMount(async () => {
+    await settingsStore.load();
+    const path = VIEW_PATHS[settingsStore.settings.default_view] ?? "/";
+    if (page.url.pathname !== path) goto(path);
+  });
 </script>
 
 <svelte:window oncontextmenu={preventContextMenu} />
