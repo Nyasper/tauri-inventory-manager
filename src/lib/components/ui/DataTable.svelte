@@ -20,8 +20,8 @@
     actions?: Snippet<[any]>;
   } = $props();
 
-  function isRightAligned(id: unknown): boolean {
-    return id === "quantity" || id === "stock";
+  function isRightAligned(column: any): boolean {
+    return column.columnDef.meta?.align === "right";
   }
 </script>
 
@@ -47,7 +47,7 @@
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
         <tr>
           {#each headerGroup.headers as header (header.id)}
-            <th class:num={isRightAligned(header.column.id)}>
+            <th class:num={isRightAligned(header.column)}>
               {#if !header.isPlaceholder && header.column.getCanSort()}
                 <button
                   class="th-sort"
@@ -84,7 +84,7 @@
           onclick={() => onRowClick?.(row.original)}
         >
           {#each row.getAllCells() as cell (cell.id)}
-            <td class:num={isRightAligned(cell.column.id)}>
+            <td class:num={isRightAligned(cell.column)}>
               <FlexRender {cell} />
             </td>
           {/each}

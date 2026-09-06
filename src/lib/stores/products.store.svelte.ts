@@ -9,26 +9,10 @@ class ProductsStore {
   items = $state<Product[]>([]);
   loading = $state(false);
   view = $state<ViewMode>("list");
-  search = $state("");
-  categoryFilter = $state<number | null>(null);
 
   constructor() {
     this.view = this.loadView();
   }
-
-  filtered = $derived.by(() => {
-    const q = this.search.trim().toLowerCase();
-    return this.items.filter((p) => {
-      if (this.categoryFilter !== null && p.category_id !== this.categoryFilter) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q)
-      );
-    });
-  });
 
   async load(): Promise<void> {
     this.loading = true;

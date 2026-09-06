@@ -6,6 +6,7 @@
   import ResolvedImage from "$lib/components/ui/ResolvedImage.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
+  import { receive, send } from "$lib/components/ui/transitions";
 
   let {
     product,
@@ -38,6 +39,8 @@
   class="card"
   role="button"
   tabindex="0"
+  in:receive={{ key: product.id }}
+  out:send={{ key: product.id }}
   onclick={() => onEdit(product)}
   onkeydown={handleKeydown}
 >
