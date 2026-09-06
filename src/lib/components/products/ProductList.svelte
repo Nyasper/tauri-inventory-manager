@@ -31,7 +31,6 @@
     <tr>
       <th></th>
       <th>Nombre</th>
-      <th>Código</th>
       <th>Categoría</th>
       <th class="num">Stock</th>
       <th>Estado</th>
@@ -52,7 +51,6 @@
             </span>
           {/if}
         </td>
-        <td class="muted">{product.code ?? "—"}</td>
         <td class="muted">{product.category_name ?? "—"}</td>
         <td class="num stock-qty">{formatNumber(product.stock)}</td>
         <td><StockBadge status={statusOf(product)} /></td>

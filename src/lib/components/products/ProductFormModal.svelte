@@ -22,7 +22,6 @@
   const initial = untrack(() => product);
 
   let name = $state(initial?.name ?? "");
-  let code = $state(initial?.code ?? "");
   let description = $state(initial?.description ?? "");
   let image = $state<string | null>(initial?.image ?? null);
   let categoryId = $state(
@@ -86,7 +85,6 @@
     const input: ProductInput = {
       id: initial?.id ?? null,
       name: name.trim(),
-      code: code.trim() || null,
       description: description.trim() || null,
       image,
       category_id: categoryId ? Number(categoryId) : null,
@@ -117,12 +115,13 @@
       <div class="span-2">
         <Input label="Nombre" bind:value={name} placeholder="Nombre del producto" />
       </div>
-      <Input label="Código" bind:value={code} placeholder="SKU / referencia" />
-      <Select
-        label="Categoría"
-        bind:value={categoryId}
-        options={categoryOptions}
-      />
+      <div class="span-2">
+        <Select
+          label="Categoría"
+          bind:value={categoryId}
+          options={categoryOptions}
+        />
+      </div>
       <div class="span-2">
         <Textarea
           label="Observaciones"

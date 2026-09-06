@@ -10,7 +10,6 @@ export interface PresentationInput {
 export interface ProductInput {
   id: number | null;
   name: string;
-  code: string | null;
   description: string | null;
   image: string | null;
   category_id: number | null;
@@ -42,10 +41,9 @@ class ProductService {
 
     if (productId) {
       await db.execute(
-        "UPDATE products SET name = ?, code = ?, description = ?, image = ?, category_id = ?, updated_at = datetime('now') WHERE id = ?",
+        "UPDATE products SET name = ?, description = ?, image = ?, category_id = ?, updated_at = datetime('now') WHERE id = ?",
         [
           input.name,
-          input.code,
           input.description,
           input.image,
           input.category_id,
@@ -57,10 +55,9 @@ class ProductService {
       ]);
     } else {
       const result = await db.execute(
-        "INSERT INTO products (name, code, description, image, category_id) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO products (name, description, image, category_id) VALUES (?, ?, ?, ?)",
         [
           input.name,
-          input.code,
           input.description,
           input.image,
           input.category_id,

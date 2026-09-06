@@ -14,7 +14,6 @@ export interface Presentation {
 export interface Product {
   id: number;
   name: string;
-  code: string | null;
   description: string | null;
   image: string | null;
   category_id: number | null;

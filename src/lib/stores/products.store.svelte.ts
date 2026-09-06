@@ -25,7 +25,6 @@ class ProductsStore {
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
-        (p.code ?? "").toLowerCase().includes(q) ||
         (p.description ?? "").toLowerCase().includes(q)
       );
     });

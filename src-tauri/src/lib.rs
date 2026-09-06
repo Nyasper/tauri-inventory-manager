@@ -265,6 +265,12 @@ pub fn run() {
                             sql: SEED_SQL,
                             kind: MigrationKind::Up,
                         },
+                        Migration {
+                            version: 4,
+                            description: "drop_product_code",
+                            sql: "ALTER TABLE products DROP COLUMN code;",
+                            kind: MigrationKind::Up,
+                        },
                     ],
                 )
                 .build(),
