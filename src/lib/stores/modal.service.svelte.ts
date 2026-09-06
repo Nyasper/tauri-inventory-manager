@@ -1,3 +1,4 @@
+import { confirm } from "@tauri-apps/plugin-dialog";
 import type { Component } from "svelte";
 
 type AnyComponent = Component<any, any, any>;
@@ -32,19 +33,7 @@ class ModalService {
   }
 
   async confirm(message: string, title = "¿Estás seguro?"): Promise<boolean> {
-    const { default: ConfirmDialog } = await import(
-      "$lib/components/ui/ConfirmDialog.svelte"
-    );
-    return new Promise<boolean>((resolve) => {
-      this.open(ConfirmDialog, {
-        title,
-        message,
-        onResult: (result: boolean) => {
-          this.closeAll();
-          resolve(result);
-        },
-      });
-    });
+    return confirm(message, { title, kind: "warning" });
   }
 }
 

@@ -42,7 +42,12 @@
 
   async function setDefault(id: number) {
     const person = personsStore.items.find((p) => p.id === id);
-    if (person) await personsStore.update(id, person.name, true);
+    if (!person) return;
+    const ok = await modalService.confirm(
+      `¿Establecer a "${person.name}" como responsable por defecto?`,
+      "Responsable por defecto",
+    );
+    if (ok) await personsStore.update(id, person.name, true);
   }
 
   function startEdit(id: number, name: string) {
@@ -53,9 +58,14 @@
   async function saveEdit() {
     if (editingId === null) return;
     const person = personsStore.items.find((p) => p.id === editingId);
-    if (person) {
-      await personsStore.update(editingId, editName.trim() || person.name, person.is_default);
-    }
+    if (!person) return;
+    const newName = editName.trim() || person.name;
+    const ok = await modalService.confirm(
+      `¿Guardar el nombre "${newName}"?`,
+      "Editar responsable",
+    );
+    if (!ok) return;
+    await personsStore.update(editingId, newName, person.is_default);
     editingId = null;
   }
 

@@ -19,6 +19,14 @@
   let error = $state("");
 
   async function save() {
+    if (initial) {
+      const ok = await modalService.confirm(
+        "¿Guardar los cambios del proveedor?",
+        "Guardar proveedor",
+      );
+      if (!ok) return;
+    }
+
     if (!name.trim()) {
       error = "El nombre es obligatorio.";
       return;

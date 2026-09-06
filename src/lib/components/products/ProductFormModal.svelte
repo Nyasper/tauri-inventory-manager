@@ -61,6 +61,14 @@
   }
 
   async function save() {
+    if (initial) {
+      const ok = await modalService.confirm(
+        "¿Guardar los cambios del producto?",
+        "Guardar producto",
+      );
+      if (!ok) return;
+    }
+
     if (!name.trim()) {
       error = "El nombre es obligatorio.";
       return;
