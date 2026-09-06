@@ -198,6 +198,26 @@ a {
   text-decoration: none;
 }
 
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+}
+
+input[type="number"]::-webkit-inner-spin-button:hover,
+input[type="number"]::-webkit-inner-spin-button:active {
+  background: var(--surface-3);
+}
+
+[data-theme="dark"] input[type="number"]::-webkit-inner-spin-button {
+  filter: invert(1);
+}
+
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
