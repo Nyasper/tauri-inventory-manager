@@ -6,7 +6,8 @@
   import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
 
   const titles: Record<string, string> = {
-    "/": "Productos",
+    "/": "Dashboard",
+    "/products": "Productos",
     "/movements": "Movimientos",
     "/suppliers": "Proveedores",
   };

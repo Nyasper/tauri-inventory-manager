@@ -1,204 +1,380 @@
 <script lang="ts">
-  import type { Product } from "$lib/types";
+  import { goto } from "$app/navigation";
+  import type { Movement, Product } from "$lib/types";
   import { productsStore } from "$lib/stores/products.store.svelte";
-  import { categoriesStore } from "$lib/stores/categories.store.svelte";
-  import { productService } from "$lib/services/product.service";
+  import { movementsStore } from "$lib/stores/movements.store.svelte";
+  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
+  import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
-  import ProductList from "$lib/components/products/ProductList.svelte";
-  import ProductCard from "$lib/components/products/ProductCard.svelte";
+  import { getStockStatus } from "$lib/utils/stock";
+  import { formatNumber, formatDate } from "$lib/utils/format";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Select from "$lib/components/ui/Select.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
+  import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
+  import StockBadge from "$lib/components/ui/StockBadge.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
-  import EmptyState from "$lib/components/ui/EmptyState.svelte";
+  import type { IconName } from "$lib/components/ui/Icon.svelte";
 
   productsStore.load();
+  movementsStore.load();
+  suppliersStore.load();
 
-  let search = $state(productsStore.search);
-  let categoryFilter = $state("");
+  const lowProducts = $derived(
+    productsStore.items
+      .filter((p) => {
+        const status = getStockStatus(
+          p.stock,
+          settingsStore.settings.stock_low_threshold,
+          settingsStore.settings.stock_medium_threshold,
+        );
+        return status === "low" || status === "out";
+      })
+      .slice(0, 5),
+  );
 
-  $effect(() => {
-    productsStore.search = search;
-  });
+  const recentMovements = $derived(movementsStore.items.slice(0, 5));
 
-  $effect(() => {
-    productsStore.categoryFilter = categoryFilter
-      ? Number(categoryFilter)
-      : null;
-  });
-
-  const categoryOptions = $derived([
-    { value: "", label: "Todas las categorías" },
-    ...categoriesStore.items.map((c) => ({
-      value: String(c.id),
-      label: c.name,
-    })),
+  const stats = $derived([
+    {
+      label: "Productos",
+      value: formatNumber(productsStore.items.length),
+      icon: "box" as IconName,
+      tone: "primary",
+      href: "/products",
+    },
+    {
+      label: "Stock bajo / agotado",
+      value: formatNumber(
+        productsStore.items.filter((p) => {
+          const status = getStockStatus(
+            p.stock,
+            settingsStore.settings.stock_low_threshold,
+            settingsStore.settings.stock_medium_threshold,
+          );
+          return status === "low" || status === "out";
+        }).length,
+      ),
+      icon: "alertTriangle" as IconName,
+      tone: "danger",
+      href: "/products",
+    },
+    {
+      label: "Movimientos",
+      value: formatNumber(movementsStore.items.length),
+      icon: "activity" as IconName,
+      tone: "primary",
+      href: "/movements",
+    },
+    {
+      label: "Proveedores",
+      value: formatNumber(suppliersStore.items.length),
+      icon: "truck" as IconName,
+      tone: "primary",
+      href: "/suppliers",
+    },
   ]);
 
-  function openNew() {
+  function openNewProduct() {
     modalService.open(ProductFormModal);
   }
 
-  function openEdit(product: Product) {
-    modalService.open(ProductFormModal, { product });
+  function openNewMovement() {
+    modalService.open(MovementFormModal);
   }
 
-  async function removeProduct(product: Product) {
-    const ok = await modalService.confirm(
-      `¿Eliminar el producto "${product.name}"?`,
-      "Eliminar producto",
-    );
-    if (ok) {
-      await productService.remove(product.id);
-      await productsStore.load();
-    }
+  function openNewSupplier() {
+    modalService.open(SupplierFormModal);
   }
 </script>
 
-<div class="toolbar">
-  <div class="search">
-    <Icon name="search" size={16} />
-    <input
-      class="search-input"
-      placeholder="Buscar productos..."
-      bind:value={search}
-    />
+<div class="dashboard">
+  <section class="stats">
+    {#each stats as stat (stat.label)}
+      <button class="stat-card tone-{stat.tone}" type="button" onclick={() => goto(stat.href)}>
+        <span class="stat-icon"><Icon name={stat.icon} size={20} /></span>
+        <span class="stat-body">
+          <span class="stat-value">{stat.value}</span>
+          <span class="stat-label">{stat.label}</span>
+        </span>
+      </button>
+    {/each}
+  </section>
+
+  <div class="columns">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Stock por agotarse</h2>
+        <button class="link" type="button" onclick={() => goto("/products")}>
+          Ver todos
+        </button>
+      </div>
+
+      {#if lowProducts.length === 0}
+        <p class="empty-note">No hay productos con stock bajo.</p>
+      {:else}
+        <div class="rows">
+          {#each lowProducts as product (product.id)}
+            <button class="row" type="button" onclick={() => goto("/products")}>
+              <span class="row-name" title={product.name}>{product.name}</span>
+              <span class="row-meta">
+                <span class="row-stock">{formatNumber(product.stock)}</span>
+                <StockBadge
+                  status={getStockStatus(
+                    product.stock,
+                    settingsStore.settings.stock_low_threshold,
+                    settingsStore.settings.stock_medium_threshold,
+                  )}
+                />
+              </span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Movimientos recientes</h2>
+        <button class="link" type="button" onclick={() => goto("/movements")}>
+          Ver todos
+        </button>
+      </div>
+
+      {#if recentMovements.length === 0}
+        <p class="empty-note">No hay movimientos registrados.</p>
+      {:else}
+        <div class="rows">
+          {#each recentMovements as movement (movement.id)}
+            <button class="row" type="button" onclick={() => goto("/movements")}>
+              {#if movement.type === "in"}
+                <Badge bg="var(--success)" color="#ffffff">
+                  <Icon name="arrowDown" size={13} /> Entrada
+                </Badge>
+              {:else}
+                <Badge bg="var(--danger)" color="#ffffff">
+                  <Icon name="arrowUp" size={13} /> Salida
+                </Badge>
+              {/if}
+              <span class="row-name" title={movement.product_name ?? "—"}>
+                {movement.product_name ?? "—"}
+              </span>
+              <span class="row-meta">
+                <span class="row-stock">{formatNumber(movement.quantity)}</span>
+                <span class="row-date">{formatDate(movement.created_at)}</span>
+              </span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </section>
   </div>
 
-  <div class="filter">
-    <Select bind:value={categoryFilter} options={categoryOptions} />
-  </div>
-
-  <div class="spacer"></div>
-
-  <div class="view-toggle">
-    <button
-      class="toggle-btn"
-      class:active={productsStore.view === "list"}
-      type="button"
-      aria-label="Vista lista"
-      onclick={() => productsStore.setView("list")}
-    >
-      <Icon name="list" size={16} />
+  <section class="actions">
+    <button class="action" type="button" onclick={openNewProduct}>
+      <Icon name="plus" size={16} />
+      <span>Nuevo producto</span>
     </button>
-    <button
-      class="toggle-btn"
-      class:active={productsStore.view === "grid"}
-      type="button"
-      aria-label="Vista cuadrícula"
-      onclick={() => productsStore.setView("grid")}
-    >
-      <Icon name="grid" size={16} />
+    <button class="action" type="button" onclick={openNewMovement}>
+      <Icon name="swap" size={16} />
+      <span>Registrar movimiento</span>
     </button>
-  </div>
-
-  <Button icon="plus" onclick={openNew}>Nuevo producto</Button>
-</div>
-
-<div class="products">
-  {#if productsStore.items.length === 0 && !productsStore.loading}
-    <EmptyState
-      title="No hay productos"
-      description="Crea tu primer producto para empezar a gestionar el inventario."
-      actionLabel="Nuevo producto"
-      onAction={openNew}
-    />
-  {:else if productsStore.filtered.length === 0}
-    <EmptyState
-      icon="search"
-      title="Sin resultados"
-      description="Ningún producto coincide con la búsqueda o el filtro seleccionado."
-    />
-  {:else if productsStore.view === "grid"}
-    <div class="grid">
-      {#each productsStore.filtered as product (product.id)}
-        <ProductCard
-          {product}
-          onEdit={openEdit}
-          onDelete={removeProduct}
-        />
-      {/each}
-    </div>
-  {:else}
-    <ProductList
-      products={productsStore.filtered}
-      onEdit={openEdit}
-      onDelete={removeProduct}
-    />
-  {/if}
+    <button class="action" type="button" onclick={openNewSupplier}>
+      <Icon name="truck" size={16} />
+      <span>Nuevo proveedor</span>
+    </button>
+  </section>
 </div>
 
 <style>
-  .toolbar {
+  .dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .stat-card {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0 0.75rem;
+    padding: 1rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     background: var(--surface);
-    color: var(--text-muted);
-    width: 260px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color 0.15s,
+      transform 0.15s;
   }
 
-  .search-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    background: transparent;
-    padding: 0.5rem 0;
-    color: var(--text);
+  .stat-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
   }
 
-  .filter {
-    width: 200px;
-  }
-
-  .spacer {
-    flex: 1;
-  }
-
-  .view-toggle {
-    display: flex;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--surface);
-  }
-
-  .toggle-btn {
+  .stat-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-
-  .toggle-btn.active {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
     background: var(--primary-soft);
     color: var(--primary);
+    flex-shrink: 0;
   }
 
-  .products {
+  .tone-danger .stat-icon {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  .stat-body {
     display: flex;
     flex-direction: column;
   }
 
-  .grid {
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .columns {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .panel-head h2 {
+    font-size: 0.9375rem;
+  }
+
+  .link {
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  .rows {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .row:last-child {
+    border-bottom: none;
+  }
+
+  .row:hover .row-name {
+    color: var(--primary);
+  }
+
+  .row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .row-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-shrink: 0;
+  }
+
+  .row-stock {
+    font-weight: 600;
+  }
+
+  .row-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .empty-note {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+
+  .action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
+  }
+
+  .action:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
   }
 </style>

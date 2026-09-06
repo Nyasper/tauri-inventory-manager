@@ -4,7 +4,8 @@
   import type { IconName } from "$lib/components/ui/Icon.svelte";
 
   const nav: { href: string; label: string; icon: IconName }[] = [
-    { href: "/", label: "Productos", icon: "box" },
+    { href: "/", label: "Dashboard", icon: "dashboard" },
+    { href: "/products", label: "Productos", icon: "box" },
     { href: "/movements", label: "Movimientos", icon: "swap" },
     { href: "/suppliers", label: "Proveedores", icon: "truck" },
   ];
