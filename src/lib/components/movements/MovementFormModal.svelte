@@ -140,7 +140,7 @@
 
     <div>
       <label class="field-label" for={qtyId}>Cantidad</label>
-      <input id={qtyId} type="number" min="0" step="any" class="input" bind:value={quantity} />
+      <input id={qtyId} type="number" min="0" step="any" class="input" bind:value={quantity} autocomplete="off" />
     </div>
 
     {#if type === "in"}

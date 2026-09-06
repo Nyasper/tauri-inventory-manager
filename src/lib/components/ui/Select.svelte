@@ -24,7 +24,7 @@
 {#if label}
   <label class="field-label" for={id}>{label}</label>
 {/if}
-<select {id} bind:value {onchange} class="select">
+<select {id} bind:value {onchange} class="select" autocomplete="off">
   {#if placeholder}
     <option value="" disabled>{placeholder}</option>
   {/if}

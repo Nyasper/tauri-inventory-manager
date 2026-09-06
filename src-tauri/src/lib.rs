@@ -1,5 +1,5 @@
 use tauri::{AppHandle, Manager};
-use tauri_plugin_sql::{DbInstances, DbPool, Migration, MigrationKind};
+use tauri_plugin_sql::{DbInstances, DbPool};
 use sqlx::{Pool, Sqlite};
 
 const SCHEMA_SQL: &str = r#"
@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    code TEXT,
     description TEXT,
     image TEXT,
     category_id INTEGER,
@@ -77,6 +76,106 @@ INSERT OR IGNORE INTO categories (name, color) VALUES
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('stock_low_threshold', '5'),
     ('stock_medium_threshold', '20');
+"#;
+
+const SEED_DATA_SQL: &str = r#"
+INSERT OR IGNORE INTO suppliers (name, contact, notes) VALUES
+    ('Distribuidora Norte', 'contacto@norte.com', 'Entregas los lunes'),
+    ('Proveedor Sur', '11-2222-3333', 'Pagos a 30 días'),
+    ('Importadora Central', NULL, 'Pedidos mínimos grandes');
+
+INSERT OR IGNORE INTO responsible_persons (name, is_default) VALUES
+    ('Ana Pérez', 1),
+    ('Carlos Gómez', 0);
+
+INSERT OR IGNORE INTO products (name, description, category_id, stock) VALUES
+    ('Agua Mineral 500ml', 'Agua purificada en botella', 1, 120),
+    ('Café Molido 250g', 'Café de origen', 2, 45),
+    ('Detergente 1L', 'Detergente líquido', 3, 30),
+    ('Jabón de Manos', 'Jabón antibacterial', 4, 3),
+    ('Galletas Variadas', 'Paquete surtido', 2, 8),
+    ('Refresco Cola 2L', 'Refresco de cola', 1, 60);
+
+INSERT OR IGNORE INTO presentations (product_id, name, factor) VALUES
+    (1, 'Botella', 1),
+    (1, 'Six-pack', 6),
+    (1, 'Caja 24u', 24),
+    (2, 'Paquete', 1),
+    (2, 'Display 12u', 12),
+    (3, 'Botella', 1),
+    (3, 'Caja 12u', 12),
+    (4, 'Unidad', 1),
+    (4, 'Pack x6', 6),
+    (5, 'Paquete', 1),
+    (6, 'Botella', 1),
+    (6, 'Caja 6u', 6);
+
+UPDATE products SET base_presentation_id = (
+    SELECT id FROM presentations WHERE product_id = products.id AND name IN ('Botella','Paquete','Unidad') LIMIT 1
+);
+
+INSERT OR IGNORE INTO movements (product_id, type, quantity, presentation_id, presentation_name, base_quantity, supplier_id, responsible_person_id, notes) VALUES
+    (1, 'in', 100, (SELECT id FROM presentations WHERE product_id=1 AND name='Botella'), 'Botella', 100, 1, 1, 'Compra inicial'),
+    (1, 'in', 2, (SELECT id FROM presentations WHERE product_id=1 AND name='Caja 24u'), 'Caja 24u', 48, 1, 1, 'Reposición'),
+    (1, 'out', 30, (SELECT id FROM presentations WHERE product_id=1 AND name='Botella'), 'Botella', 30, NULL, 2, 'Venta mostrador'),
+    (2, 'in', 60, (SELECT id FROM presentations WHERE product_id=2 AND name='Paquete'), 'Paquete', 60, 2, 1, NULL),
+    (2, 'out', 15, (SELECT id FROM presentations WHERE product_id=2 AND name='Paquete'), 'Paquete', 15, NULL, 2, 'Uso interno'),
+    (3, 'in', 40, (SELECT id FROM presentations WHERE product_id=3 AND name='Botella'), 'Botella', 40, 3, 1, NULL),
+    (3, 'out', 10, (SELECT id FROM presentations WHERE product_id=3 AND name='Botella'), 'Botella', 10, NULL, 2, 'Venta'),
+    (4, 'in', 10, (SELECT id FROM presentations WHERE product_id=4 AND name='Unidad'), 'Unidad', 10, 1, 1, NULL),
+    (4, 'out', 7, (SELECT id FROM presentations WHERE product_id=4 AND name='Unidad'), 'Unidad', 7, NULL, 2, 'Consumo'),
+    (5, 'in', 20, (SELECT id FROM presentations WHERE product_id=5 AND name='Paquete'), 'Paquete', 20, 2, 1, NULL),
+    (5, 'out', 12, (SELECT id FROM presentations WHERE product_id=5 AND name='Paquete'), 'Paquete', 12, NULL, 2, 'Venta'),
+    (6, 'in', 70, (SELECT id FROM presentations WHERE product_id=6 AND name='Botella'), 'Botella', 70, 3, 1, NULL),
+    (6, 'out', 10, (SELECT id FROM presentations WHERE product_id=6 AND name='Botella'), 'Botella', 10, NULL, 2, 'Venta');
+
+INSERT OR IGNORE INTO suppliers (name, contact, notes) VALUES
+    ('Limpiezas del Valle', 'ventas@valle.com', 'Especialistas en químicos'),
+    ('Química Industrial SA', NULL, 'Productos a granel'),
+    ('Mayorista Express', '555-1234', 'Entrega en 24h');
+
+INSERT OR IGNORE INTO responsible_persons (name, is_default) VALUES
+    ('Lucía Martín', 0);
+
+INSERT OR IGNORE INTO products (name, description, category_id, stock) VALUES
+    ('Cloro 1L', 'Cloro concentrado para desinfección', 3, 30),
+    ('Suavizante 750ml', 'Suavizante de ropa', 3, 24),
+    ('Esponja Multiusos', 'Esponja abrasiva', 3, 36),
+    ('Limpiador Multi 500ml', 'Limpiador multipropósito', 3, 15),
+    ('Desinfectante 500ml', 'Desinfectante de superficies', 3, 11),
+    ('Shampoo 400ml', 'Shampoo hidratante', 4, 12);
+
+INSERT OR IGNORE INTO presentations (product_id, name, factor) VALUES
+    (7, 'Botella', 1),
+    (7, 'Caja 12u', 12),
+    (8, 'Botella', 1),
+    (8, 'Caja 6u', 6),
+    (9, 'Unidad', 1),
+    (9, 'Pack x10', 10),
+    (10, 'Botella', 1),
+    (10, 'Caja 12u', 12),
+    (11, 'Botella', 1),
+    (11, 'Caja 6u', 6),
+    (12, 'Unidad', 1),
+    (12, 'Pack x4', 4);
+
+INSERT OR IGNORE INTO movements (product_id, type, quantity, presentation_id, presentation_name, base_quantity, supplier_id, responsible_person_id, notes) VALUES
+    (7, 'in', 50, (SELECT id FROM presentations WHERE product_id=7 AND name='Botella'), 'Botella', 50, 4, 1, 'Compra mensual'),
+    (7, 'out', 20, (SELECT id FROM presentations WHERE product_id=7 AND name='Botella'), 'Botella', 20, NULL, 3, 'Uso área común'),
+    (8, 'in', 36, (SELECT id FROM presentations WHERE product_id=8 AND name='Botella'), 'Botella', 36, 5, 1, NULL),
+    (8, 'out', 12, (SELECT id FROM presentations WHERE product_id=8 AND name='Botella'), 'Botella', 12, NULL, 2, 'Venta'),
+    (9, 'in', 100, (SELECT id FROM presentations WHERE product_id=9 AND name='Unidad'), 'Unidad', 100, 6, 1, NULL),
+    (9, 'out', 64, (SELECT id FROM presentations WHERE product_id=9 AND name='Unidad'), 'Unidad', 64, NULL, 2, 'Consumo'),
+    (10, 'in', 40, (SELECT id FROM presentations WHERE product_id=10 AND name='Botella'), 'Botella', 40, 4, 1, NULL),
+    (10, 'out', 25, (SELECT id FROM presentations WHERE product_id=10 AND name='Botella'), 'Botella', 25, NULL, 3, 'Venta'),
+    (11, 'in', 30, (SELECT id FROM presentations WHERE product_id=11 AND name='Botella'), 'Botella', 30, 5, 1, NULL),
+    (11, 'out', 19, (SELECT id FROM presentations WHERE product_id=11 AND name='Botella'), 'Botella', 19, NULL, 2, 'Uso limpieza'),
+    (12, 'in', 30, (SELECT id FROM presentations WHERE product_id=12 AND name='Unidad'), 'Unidad', 30, 6, 1, NULL),
+    (12, 'out', 18, (SELECT id FROM presentations WHERE product_id=12 AND name='Unidad'), 'Unidad', 18, NULL, 3, 'Venta');
+
+UPDATE products SET base_presentation_id = (
+    SELECT id FROM presentations WHERE product_id = products.id AND name IN ('Botella','Paquete','Unidad') LIMIT 1
+) WHERE base_presentation_id IS NULL;
 "#;
 
 #[derive(serde::Deserialize)]
@@ -248,33 +347,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(
-            tauri_plugin_sql::Builder::default()
-                .add_migrations(
-                    "sqlite:app.db",
-                    vec![
-                        Migration {
-                            version: 1,
-                            description: "create_schema",
-                            sql: SCHEMA_SQL,
-                            kind: MigrationKind::Up,
-                        },
-                        Migration {
-                            version: 2,
-                            description: "seed_defaults",
-                            sql: SEED_SQL,
-                            kind: MigrationKind::Up,
-                        },
-                        Migration {
-                            version: 4,
-                            description: "drop_product_code",
-                            sql: "ALTER TABLE products DROP COLUMN code;",
-                            kind: MigrationKind::Up,
-                        },
-                    ],
-                )
-                .build(),
-        )
+        .plugin(tauri_plugin_sql::Builder::default().build())
+        .setup(|app| {
+            init_db(app.handle()).map_err(|e| {
+                eprintln!("failed to initialize database: {e}");
+                e.into()
+            })
+        })
         .invoke_handler(tauri::generate_handler![
             create_movement,
             delete_movement,
@@ -283,4 +362,14 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::block_on(async {
+        let pool = get_pool(app).await?;
+        for sql in [SCHEMA_SQL, SEED_SQL, SEED_DATA_SQL] {
+            sqlx::raw_sql(sql).execute(&pool).await.map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    })
 }

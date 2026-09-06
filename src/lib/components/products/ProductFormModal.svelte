@@ -168,6 +168,7 @@
               step="any"
               class="input"
               bind:value={presentation.factor}
+              autocomplete="off"
             />
           </div>
           <div class="pres-base">

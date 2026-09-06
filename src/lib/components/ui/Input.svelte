@@ -19,7 +19,7 @@
 {#if label}
   <label class="field-label" for={id}>{label}</label>
 {/if}
-<input {id} {type} bind:value {placeholder} {disabled} class="input" />
+<input {id} {type} bind:value {placeholder} {disabled} class="input" autocomplete="off" />
 
 <style>
   .field-label {

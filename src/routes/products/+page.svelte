@@ -63,6 +63,7 @@
       class="search-input"
       placeholder="Buscar productos..."
       bind:value={search}
+      autocomplete="off"
     />
   </div>
 

@@ -172,6 +172,7 @@
                     name="default-person"
                     checked={person.is_default}
                     onchange={() => setDefault(person.id)}
+                    autocomplete="off"
                   />
                   <span>{person.name}</span>
                   {#if person.is_default}

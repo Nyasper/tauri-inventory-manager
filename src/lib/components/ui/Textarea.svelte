@@ -17,7 +17,7 @@
 {#if label}
   <label class="field-label" for={id}>{label}</label>
 {/if}
-<textarea {id} bind:value {placeholder} {rows} class="textarea"></textarea>
+<textarea {id} bind:value {placeholder} {rows} class="textarea" autocomplete="off"></textarea>
 
 <style>
   .field-label {
