@@ -14,8 +14,7 @@
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
-  import ImagePicker from "$lib/components/ui/ImagePicker.svelte";
+  import { Plus, Trash } from "@lucide/svelte";
 
   let { product = null }: { product?: Product | null } = $props();
 
@@ -23,7 +22,6 @@
 
   let name = $state(initial?.name ?? "");
   let description = $state(initial?.description ?? "");
-  let image = $state<string | null>(initial?.image ?? null);
   let categoryId = $state(
     initial?.category_id != null ? String(initial.category_id) : "",
   );
@@ -94,7 +92,6 @@
       id: initial?.id ?? null,
       name: name.trim(),
       description: description.trim() || null,
-      image,
       category_id: categoryId ? Number(categoryId) : null,
       presentations: valid,
     };
@@ -137,15 +134,12 @@
           placeholder="Notas asociadas a este producto"
         />
       </div>
-      <div class="span-2">
-        <ImagePicker bind:value={image} />
-      </div>
     </div>
 
     <section class="presentations">
       <div class="section-head">
         <h3>Presentaciones</h3>
-        <Button size="sm" variant="secondary" icon="plus" onclick={addPresentation}>
+        <Button size="sm" variant="secondary" icon={Plus} onclick={addPresentation}>
           Añadir
         </Button>
       </div>
@@ -185,7 +179,7 @@
             disabled={presentations.length <= 1}
             onclick={() => removePresentation(index)}
           >
-            <Icon name="trash" size={16} />
+            <Trash size={16} />
           </button>
         </div>
       {/each}

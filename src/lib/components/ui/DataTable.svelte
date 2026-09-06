@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FlexRender } from "@tanstack/svelte-table";
   import type { Snippet } from "svelte";
-  import Icon from "./Icon.svelte";
+  import { Search, ChevronUp, ChevronDown } from "@lucide/svelte";
   import { receive, send } from "./transitions";
 
   let {
@@ -28,7 +28,7 @@
 <div class="table-wrap">
   {#if showSearch}
     <div class="search">
-      <Icon name="search" size={16} />
+      <Search size={16} />
       <input
         type="text"
         class="search-input"
@@ -57,11 +57,11 @@
                 >
                   <FlexRender {header} />
                   {#if header.column.getIsSorted() === "asc"}
-                    <Icon name="chevronUp" size={14} />
+                    <ChevronUp size={14} />
                   {:else if header.column.getIsSorted() === "desc"}
-                    <Icon name="chevronDown" size={14} />
+                    <ChevronDown size={14} />
                   {:else}
-                    <span class="sort-idle"><Icon name="chevronDown" size={14} /></span>
+                    <span class="sort-idle"><ChevronDown size={14} /></span>
                   {/if}
                 </button>
               {:else if !header.isPlaceholder}

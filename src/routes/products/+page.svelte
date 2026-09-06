@@ -13,13 +13,13 @@
   import ProductCard from "$lib/components/products/ProductCard.svelte";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
-  import ResolvedImage from "$lib/components/ui/ResolvedImage.svelte";
+  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import { getStockStatus } from "$lib/utils/stock";
   import { formatNumber } from "$lib/utils/format";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { Search, List, LayoutGrid, Plus, Pencil, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   productsStore.load();
@@ -51,13 +51,15 @@
   }
 
   const columns = columnHelper.columns([
-    columnHelper.accessor((p) => p.image, {
-      id: "image",
+    columnHelper.accessor((p) => p.category_icon, {
+      id: "icon",
       header: "",
       enableSorting: false,
+      enableGlobalFilter: false,
       cell: (info) =>
-        renderComponent(ResolvedImage, {
-          src: info.row.original.image,
+        renderComponent(ProductIcon, {
+          icon: info.row.original.category_icon,
+          color: info.row.original.category_color,
           size: 32,
         }),
     }),
@@ -140,7 +142,7 @@
 
 <div class="toolbar">
   <div class="search">
-    <Icon name="search" size={16} />
+    <Search size={16} />
     <input
       class="search-input"
       placeholder="Buscar productos..."
@@ -163,7 +165,7 @@
       aria-label="Vista lista"
       onclick={() => productsStore.setView("list")}
     >
-      <Icon name="list" size={16} />
+      <List size={16} />
     </button>
     <button
       class="toggle-btn"
@@ -172,11 +174,11 @@
       aria-label="Vista cuadrícula"
       onclick={() => productsStore.setView("grid")}
     >
-      <Icon name="grid" size={16} />
+      <LayoutGrid size={16} />
     </button>
   </div>
 
-  <Button icon="plus" onclick={openNew}>Nuevo producto</Button>
+  <Button icon={Plus} onclick={openNew}>Nuevo producto</Button>
 </div>
 
 <div class="products">
@@ -189,7 +191,7 @@
     />
   {:else if filtered.length === 0}
     <EmptyState
-      icon="search"
+      icon={Search}
       title="Sin resultados"
       description="Ningún producto coincide con la búsqueda o el filtro seleccionado."
     />
@@ -221,7 +223,7 @@
               openEdit(product);
             }}
           >
-            <Icon name="edit" size={16} />
+            <Pencil size={16} />
           </button>
           <button
             class="icon-btn danger"
@@ -232,7 +234,7 @@
               removeProduct(product);
             }}
           >
-            <Icon name="trash" size={16} />
+            <Trash size={16} />
           </button>
         </div>
       {/snippet}

@@ -3,9 +3,9 @@
   import { getStockStatus } from "$lib/utils/stock";
   import { formatNumber } from "$lib/utils/format";
   import { settingsStore } from "$lib/stores/settings.store.svelte";
-  import ResolvedImage from "$lib/components/ui/ResolvedImage.svelte";
+  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { Pencil, Trash } from "@lucide/svelte";
   import { receive, send } from "$lib/components/ui/transitions";
 
   let {
@@ -45,7 +45,7 @@
   onkeydown={handleKeydown}
 >
   <div class="card-image">
-    <ResolvedImage src={product.image} size={48} />
+    <ProductIcon icon={product.category_icon} color={product.category_color} size={48} />
   </div>
 
   <div class="card-body">
@@ -72,7 +72,7 @@
           onEdit(product);
         }}
       >
-        <Icon name="edit" size={16} />
+        <Pencil size={16} />
       </button>
       <button
         class="icon-btn danger"
@@ -83,7 +83,7 @@
           onDelete(product);
         }}
       >
-        <Icon name="trash" size={16} />
+        <Trash size={16} />
       </button>
     </div>
   </div>
@@ -119,13 +119,6 @@
     height: 96px;
     border-radius: var(--radius-sm);
     background: var(--surface-2);
-    overflow: hidden;
-  }
-
-  .card-image :global(.thumb) {
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 0;
   }
 
   .card-body {

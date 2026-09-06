@@ -3,8 +3,11 @@
   import Input from "$lib/components/ui/Input.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import IconPicker from "$lib/components/ui/IconPicker.svelte";
+  import { ICONS, type IconName } from "$lib/icons";
+  import { Plus, Pencil, Trash } from "@lucide/svelte";
   import { settingsStore } from "$lib/stores/settings.store.svelte";
+  import { categoriesStore } from "$lib/stores/categories.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
@@ -13,12 +16,31 @@
     ACCENTS,
   } from "$lib/stores/accent.service.svelte";
 
+  const CATEGORY_COLORS = [
+    "#3b82f6",
+    "#22c55e",
+    "#8b5cf6",
+    "#14b8a6",
+    "#64748b",
+    "#f59e0b",
+    "#ef4444",
+    "#e11d48",
+  ];
+
+  interface CatDraft {
+    id: number | null;
+    name: string;
+    color: string;
+    icon: IconName | null;
+  }
+
   let low = $state("");
   let medium = $state("");
   let newPerson = $state("");
   let editingId = $state<number | null>(null);
   let editName = $state("");
   let defaultView = $state("dashboard");
+  let editingCat = $state<CatDraft | null>(null);
 
   const viewOptions: SelectOption[] = [
     { value: "dashboard", label: "Dashboard" },
@@ -49,6 +71,42 @@
     const mediumValue = Number(medium);
     if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue)) return;
     await settingsStore.saveThresholds(lowValue, mediumValue);
+  }
+
+  function startNewCategory() {
+    editingCat = { id: null, name: "", color: CATEGORY_COLORS[0], icon: "box" };
+  }
+
+  function startEditCategory(id: number, name: string, color: string | null, icon: string | null) {
+    editingCat = {
+      id,
+      name,
+      color: color ?? CATEGORY_COLORS[0],
+      icon: icon && icon in ICONS ? (icon as IconName) : null,
+    };
+  }
+
+  async function saveCategory() {
+    if (!editingCat) return;
+    const name = editingCat.name.trim();
+    if (!name) {
+      await modalService.confirm("El nombre de la categoría es obligatorio.", "Categoría");
+      return;
+    }
+    if (editingCat.id === null) {
+      await categoriesStore.create(name, editingCat.color, editingCat.icon);
+    } else {
+      await categoriesStore.update(editingCat.id, name, editingCat.color, editingCat.icon);
+    }
+    editingCat = null;
+  }
+
+  async function removeCategory(id: number, name: string) {
+    const ok = await modalService.confirm(
+      `¿Eliminar la categoría "${name}"? Los productos asociados quedarán sin categoría.`,
+      "Eliminar categoría",
+    );
+    if (ok) await categoriesStore.remove(id);
   }
 
   async function addPerson() {
@@ -146,6 +204,92 @@
     </section>
 
     <section>
+      <h3>Categorías</h3>
+      <p class="hint">
+        Los productos muestran el icono y el color de su categoría.
+      </p>
+
+      {#if editingCat}
+        {@const cat = editingCat}
+        <div class="cat-editor">
+          <Input
+            label="Nombre"
+            placeholder="Nombre de la categoría"
+            bind:value={cat.name}
+          />
+          <span class="field-label">Color</span>
+          <div class="cat-colors">
+            {#each CATEGORY_COLORS as color (color)}
+              <button
+                type="button"
+                class="cat-color"
+                class:active={cat.color === color}
+                style="--swatch: {color}"
+                aria-label={color}
+                onclick={() => (cat.color = color)}
+              ></button>
+            {/each}
+          </div>
+          <IconPicker bind:value={cat.icon} />
+          <div class="cat-editor-actions">
+            <Button variant="secondary" size="sm" onclick={() => (editingCat = null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onclick={saveCategory}>
+              {cat.id === null ? "Crear" : "Guardar"}
+            </Button>
+          </div>
+        </div>
+      {:else}
+        <div class="section-action">
+          <Button size="sm" variant="secondary" icon={Plus} onclick={startNewCategory}>
+            Nueva categoría
+          </Button>
+        </div>
+      {/if}
+
+      {#if categoriesStore.items.length === 0}
+        <p class="empty-note">Sin categorías configuradas.</p>
+      {:else}
+        <ul class="cats">
+          {#each categoriesStore.items as category (category.id)}
+            {@const Icon = category.icon && category.icon in ICONS ? ICONS[category.icon as IconName] : ICONS.box}
+            <li class="cat">
+              <span
+                class="cat-tile"
+                style:background={category.color ?? "var(--surface-2)"}
+                style:color={category.color ? "#ffffff" : "var(--text-muted)"}
+              >
+                <Icon size={16} />
+              </span>
+              <span class="cat-name" title={category.name}>{category.name}</span>
+              <div class="cat-actions">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Editar"
+                  onclick={() =>
+                    startEditCategory(category.id, category.name, category.color, category.icon)
+                  }
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Eliminar"
+                  onclick={() => removeCategory(category.id, category.name)}
+                >
+                  <Trash size={16} />
+                </button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
+
+    <section>
       <h3>Responsables</h3>
       <p class="hint">
         Personas que se pueden asociar a los movimientos de stock.
@@ -153,7 +297,7 @@
 
       <div class="add-row">
         <Input placeholder="Nombre de la persona" bind:value={newPerson} />
-        <Button size="sm" icon="plus" onclick={addPerson}>Añadir</Button>
+        <Button size="sm" icon={Plus} onclick={addPerson}>Añadir</Button>
       </div>
 
       {#if personsStore.items.length === 0}
@@ -187,7 +331,7 @@
                   aria-label="Editar"
                   onclick={() => startEdit(person.id, person.name)}
                 >
-                  <Icon name="edit" size={16} />
+                  <Pencil size={16} />
                 </button>
                 <button
                   class="icon-btn"
@@ -195,7 +339,7 @@
                   aria-label="Eliminar"
                   onclick={() => removePerson(person.id)}
                 >
-                  <Icon name="trash" size={16} />
+                  <Trash size={16} />
                 </button>
               </div>
             </li>
@@ -270,6 +414,102 @@
     font-size: 0.8125rem;
   }
 
+  .cat-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    margin-bottom: 0.75rem;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .cat-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .cat-color {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+    background: var(--swatch);
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+    transition:
+      transform 0.12s,
+      box-shadow 0.12s;
+  }
+
+  .cat-color:hover {
+    transform: scale(1.1);
+  }
+
+  .cat-color.active {
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+
+  .cat-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .cats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .cat {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+
+  .cat-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+
+  .cat-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .cat-actions,
+  .person-actions {
+    display: flex;
+    gap: 0.125rem;
+  }
+
   .add-row {
     display: flex;
     gap: 0.5rem;
@@ -324,11 +564,6 @@
     background: var(--primary-soft);
     padding: 0.0625rem 0.375rem;
     border-radius: 999px;
-  }
-
-  .person-actions {
-    display: flex;
-    gap: 0.125rem;
   }
 
   .icon-btn {

@@ -5,24 +5,25 @@ class CategoryService {
   async list(): Promise<Category[]> {
     const db = await getDb();
     return db.select<Category[]>(
-      "SELECT id, name, color FROM categories ORDER BY name COLLATE NOCASE",
+      "SELECT id, name, color, icon FROM categories ORDER BY name COLLATE NOCASE",
     );
   }
 
-  async create(name: string, color: string | null): Promise<number> {
+  async create(name: string, color: string | null, icon: string | null): Promise<number> {
     const db = await getDb();
     const result = await db.execute(
-      "INSERT INTO categories (name, color) VALUES (?, ?)",
-      [name, color],
+      "INSERT INTO categories (name, color, icon) VALUES (?, ?, ?)",
+      [name, color, icon],
     );
     return result.lastInsertId ?? -1;
   }
 
-  async update(id: number, name: string, color: string | null): Promise<void> {
+  async update(id: number, name: string, color: string | null, icon: string | null): Promise<void> {
     const db = await getDb();
-    await db.execute("UPDATE categories SET name = ?, color = ? WHERE id = ?", [
+    await db.execute("UPDATE categories SET name = ?, color = ?, icon = ? WHERE id = ?", [
       name,
       color,
+      icon,
       id,
     ]);
   }

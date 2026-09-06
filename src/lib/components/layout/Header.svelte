@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { Sun, Moon, Settings } from "@lucide/svelte";
   import { themeService } from "$lib/stores/theme.service.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
@@ -35,7 +35,11 @@
       aria-label="Cambiar tema"
       onclick={() => themeService.toggle()}
     >
-      <Icon name={themeService.isDark ? "sun" : "moon"} size={18} />
+      {#if themeService.isDark}
+        <Sun size={18} />
+      {:else}
+        <Moon size={18} />
+      {/if}
     </button>
     <button
       class="icon-btn"
@@ -43,9 +47,8 @@
       aria-label="Configuración"
       onclick={openSettings}
     >
-      <Icon name="settings" size={18} />
-    </button>
-  </div>
+      <Settings size={18} />
+    </button>  </div>
 </header>
 
 <style>

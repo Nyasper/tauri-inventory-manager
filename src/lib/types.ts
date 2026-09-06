@@ -2,6 +2,7 @@ export interface Category {
   id: number;
   name: string;
   color: string | null;
+  icon: string | null;
 }
 
 export interface Presentation {
@@ -15,7 +16,6 @@ export interface Product {
   id: number;
   name: string;
   description: string | null;
-  image: string | null;
   category_id: number | null;
   base_presentation_id: number | null;
   stock: number;
@@ -23,6 +23,7 @@ export interface Product {
   updated_at: string;
   category_name?: string | null;
   category_color?: string | null;
+  category_icon?: string | null;
   presentations?: Presentation[];
 }
 

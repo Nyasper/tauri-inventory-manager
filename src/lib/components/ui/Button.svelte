@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import Icon from "./Icon.svelte";
-  import type { IconName } from "./Icon.svelte";
+  import type { Component } from "svelte";
+  import type { LucideProps } from "@lucide/svelte";
 
   let {
     children,
@@ -16,7 +16,7 @@
     variant?: "primary" | "secondary" | "ghost" | "danger";
     size?: "sm" | "md";
     type?: "button" | "submit";
-    icon?: IconName;
+    icon?: Component<LucideProps>;
     disabled?: boolean;
     onclick?: (event: MouseEvent) => void;
   } = $props();
@@ -30,7 +30,8 @@
   {onclick}
 >
   {#if icon}
-    <Icon name={icon} size={size === "sm" ? 15 : 16} />
+    {@const Icon = icon}
+    <Icon size={size === "sm" ? 15 : 16} />
   {/if}
   {#if children}
     <span>{@render children()}</span>

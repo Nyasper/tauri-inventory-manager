@@ -6,14 +6,14 @@ const SCHEMA_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    color TEXT
+    color TEXT,
+    icon TEXT
 );
 
 CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     description TEXT,
-    image TEXT,
     category_id INTEGER,
     base_presentation_id INTEGER,
     stock REAL NOT NULL DEFAULT 0,
@@ -66,12 +66,12 @@ CREATE INDEX IF NOT EXISTS idx_movements_product ON movements(product_id);
 "#;
 
 const SEED_SQL: &str = r#"
-INSERT OR IGNORE INTO categories (name, color) VALUES
-    ('Bebidas', '#3b82f6'),
-    ('Alimentos', '#22c55e'),
-    ('Limpieza', '#8b5cf6'),
-    ('Higiene', '#14b8a6'),
-    ('Otros', '#64748b');
+INSERT OR IGNORE INTO categories (name, color, icon) VALUES
+    ('Bebidas', '#3b82f6', 'cup-soda'),
+    ('Alimentos', '#22c55e', 'apple'),
+    ('Limpieza', '#8b5cf6', 'spray-can'),
+    ('Higiene', '#14b8a6', 'droplets'),
+    ('Otros', '#64748b', 'boxes');
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('stock_low_threshold', '5'),
@@ -318,30 +318,6 @@ async fn delete_product(app: AppHandle, id: i64) -> Result<(), String> {
     tx.commit().await.map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-async fn save_product_image(app: AppHandle, source_path: String) -> Result<String, String> {
-    let source = std::path::PathBuf::from(&source_path);
-    if !source.exists() {
-        return Err("Source file does not exist".into());
-    }
-
-    let ext = source
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("png")
-        .to_string();
-    let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
-
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let images_dir = data_dir.join("images");
-    std::fs::create_dir_all(&images_dir).map_err(|e| e.to_string())?;
-
-    let dest = images_dir.join(&filename);
-    std::fs::copy(&source, &dest).map_err(|e| e.to_string())?;
-
-    Ok(format!("images/{}", filename))
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -357,8 +333,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_movement,
             delete_movement,
-            delete_product,
-            save_product_image
+            delete_product
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -367,9 +342,62 @@ pub fn run() {
 fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
     tauri::async_runtime::block_on(async {
         let pool = get_pool(app).await?;
-        for sql in [SCHEMA_SQL, SEED_SQL, SEED_DATA_SQL] {
+        sqlx::raw_sql(SCHEMA_SQL)
+            .execute(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        migrate(&pool).await?;
+        for sql in [SEED_SQL, SEED_DATA_SQL] {
             sqlx::raw_sql(sql).execute(&pool).await.map_err(|e| e.to_string())?;
         }
         Ok(())
     })
+}
+
+async fn migrate(pool: &Pool<Sqlite>) -> Result<(), String> {
+    let has_icon = column_exists(pool, "categories", "icon").await?;
+    if !has_icon {
+        sqlx::raw_sql("ALTER TABLE categories ADD COLUMN icon TEXT")
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    for (name, icon) in [
+        ("Bebidas", "cup-soda"),
+        ("Alimentos", "apple"),
+        ("Limpieza", "spray-can"),
+        ("Higiene", "droplets"),
+        ("Otros", "boxes"),
+    ] {
+        sqlx::query("UPDATE categories SET icon = ? WHERE name = ? AND icon IS NULL")
+            .bind(icon)
+            .bind(name)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    let has_image = column_exists(pool, "products", "image").await?;
+    if has_image {
+        let _ = sqlx::raw_sql("ALTER TABLE products DROP COLUMN image")
+            .execute(pool)
+            .await;
+    }
+
+    Ok(())
+}
+
+async fn column_exists(
+    pool: &Pool<Sqlite>,
+    table: &str,
+    column: &str,
+) -> Result<bool, String> {
+    let rows: Vec<(String,)> =
+        sqlx::query_as("SELECT name FROM pragma_table_info(?)")
+            .bind(table)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    Ok(rows.iter().any(|(name,)| name == column))
 }

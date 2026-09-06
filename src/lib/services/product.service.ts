@@ -11,7 +11,6 @@ export interface ProductInput {
   id: number | null;
   name: string;
   description: string | null;
-  image: string | null;
   category_id: number | null;
   presentations: PresentationInput[];
 }
@@ -20,7 +19,7 @@ class ProductService {
   async list(): Promise<Product[]> {
     const db = await getDb();
     return db.select<Product[]>(
-      `SELECT p.*, c.name AS category_name, c.color AS category_color
+      `SELECT p.*, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ORDER BY p.name COLLATE NOCASE`,
@@ -41,11 +40,10 @@ class ProductService {
 
     if (productId) {
       await db.execute(
-        "UPDATE products SET name = ?, description = ?, image = ?, category_id = ?, updated_at = datetime('now') WHERE id = ?",
+        "UPDATE products SET name = ?, description = ?, category_id = ?, updated_at = datetime('now') WHERE id = ?",
         [
           input.name,
           input.description,
-          input.image,
           input.category_id,
           productId,
         ],
@@ -55,11 +53,10 @@ class ProductService {
       ]);
     } else {
       const result = await db.execute(
-        "INSERT INTO products (name, description, image, category_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO products (name, description, category_id) VALUES (?, ?, ?)",
         [
           input.name,
           input.description,
-          input.image,
           input.category_id,
         ],
       );

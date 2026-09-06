@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
-  import Icon from "./Icon.svelte";
+  import { X } from "@lucide/svelte";
 
   let {
     title,
@@ -36,7 +36,7 @@
     <header class="header">
       <h2>{title}</h2>
       <button class="icon-btn" type="button" aria-label="Cerrar" onclick={onClose}>
-        <Icon name="x" size={18} />
+        <X size={18} />
       </button>
     </header>
     <div class="body">

@@ -6,7 +6,7 @@
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { Plus, Truck, Pencil, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   suppliersStore.load();
@@ -54,12 +54,12 @@
 
 <div class="toolbar">
   <div class="spacer"></div>
-  <Button icon="plus" onclick={openNew}>Nuevo proveedor</Button>
+  <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
 {#if suppliersStore.items.length === 0}
   <EmptyState
-    icon="truck"
+    icon={Truck}
     title="No hay proveedores"
     description="Añade proveedores para asociarlos a las entradas de stock."
     actionLabel="Nuevo proveedor"
@@ -78,7 +78,7 @@
           aria-label="Editar"
           onclick={() => openEdit(supplier)}
         >
-          <Icon name="edit" size={16} />
+          <Pencil size={16} />
         </button>
         <button
           class="icon-btn danger"
@@ -86,7 +86,7 @@
           aria-label="Eliminar"
           onclick={() => removeSupplier(supplier)}
         >
-          <Icon name="trash" size={16} />
+          <Trash size={16} />
         </button>
       </div>
     {/snippet}

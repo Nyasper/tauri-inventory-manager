@@ -11,7 +11,7 @@
   import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { Plus, ArrowLeftRight, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   movementsStore.load();
@@ -107,12 +107,12 @@
 
   <div class="spacer"></div>
 
-  <Button icon="plus" onclick={openNew}>Nuevo movimiento</Button>
+  <Button icon={Plus} onclick={openNew}>Nuevo movimiento</Button>
 </div>
 
 {#if movementsStore.items.length === 0}
   <EmptyState
-    icon="swap"
+    icon={ArrowLeftRight}
     title="No hay movimientos"
     description="Registra entradas y salidas de stock para llevar el control del inventario."
     actionLabel="Nuevo movimiento"
@@ -131,7 +131,7 @@
         aria-label="Eliminar"
         onclick={() => removeMovement(movement)}
       >
-        <Icon name="trash" size={16} />
+        <Trash size={16} />
       </button>
     {/snippet}
   </DataTable>

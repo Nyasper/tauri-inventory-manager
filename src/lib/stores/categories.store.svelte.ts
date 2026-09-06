@@ -8,13 +8,13 @@ class CategoriesStore {
     this.items = await categoryService.list();
   }
 
-  async create(name: string, color: string | null): Promise<void> {
-    await categoryService.create(name, color);
+  async create(name: string, color: string | null, icon: string | null): Promise<void> {
+    await categoryService.create(name, color, icon);
     await this.load();
   }
 
-  async update(id: number, name: string, color: string | null): Promise<void> {
-    await categoryService.update(id, name, color);
+  async update(id: number, name: string, color: string | null, icon: string | null): Promise<void> {
+    await categoryService.update(id, name, color, icon);
     await this.load();
   }
 

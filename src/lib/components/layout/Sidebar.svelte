@@ -1,13 +1,19 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import Icon from "$lib/components/ui/Icon.svelte";
-  import type { IconName } from "$lib/components/ui/Icon.svelte";
+  import type { Component } from "svelte";
+  import type { LucideProps } from "@lucide/svelte";
+  import {
+    Boxes,
+    LayoutDashboard,
+    ArrowLeftRight,
+    Truck,
+  } from "@lucide/svelte";
 
-  const nav: { href: string; label: string; icon: IconName }[] = [
-    { href: "/", label: "Dashboard", icon: "dashboard" },
-    { href: "/products", label: "Productos", icon: "box" },
-    { href: "/movements", label: "Movimientos", icon: "swap" },
-    { href: "/suppliers", label: "Proveedores", icon: "truck" },
+  const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/products", label: "Productos", icon: Boxes },
+    { href: "/movements", label: "Movimientos", icon: ArrowLeftRight },
+    { href: "/suppliers", label: "Proveedores", icon: Truck },
   ];
 
   function isActive(href: string): boolean {
@@ -19,15 +25,16 @@
 <aside class="sidebar">
   <div class="brand">
     <span class="brand-icon">
-      <img src="/clean-icon.svg" alt="Inventory Manager" />
+      <Boxes size={18} />
     </span>
     <span class="brand-name">Inventory</span>
   </div>
 
   <nav class="nav">
     {#each nav as item (item.href)}
+      {@const Icon = item.icon}
       <a href={item.href} class="nav-item" class:active={isActive(item.href)}>
-        <Icon name={item.icon} size={18} />
+        <Icon size={18} />
         <span>{item.label}</span>
       </a>
     {/each}
@@ -60,18 +67,10 @@
     width: 34px;
     height: 34px;
     border-radius: var(--radius-sm);
-    background: #ffffff;
-    border: 1px solid var(--border);
-    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #ffffff;
     flex-shrink: 0;
-  }
-
-  .brand-icon img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    padding: 4px;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.18);
   }
 
   .brand-name {

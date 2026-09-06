@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import type { Movement, Product } from "$lib/types";
+  import type { Component } from "svelte";
+  import type { LucideProps } from "@lucide/svelte";
+  import type { Movement } from "$lib/types";
   import { productsStore } from "$lib/stores/products.store.svelte";
   import { movementsStore } from "$lib/stores/movements.store.svelte";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
@@ -13,8 +15,16 @@
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
-  import type { IconName } from "$lib/components/ui/Icon.svelte";
+  import {
+    Box,
+    TriangleAlert,
+    Activity,
+    Truck,
+    Plus,
+    ArrowLeftRight,
+    ArrowDownToLine,
+    ArrowUpFromLine,
+  } from "@lucide/svelte";
 
   productsStore.load();
   movementsStore.load();
@@ -39,7 +49,7 @@
     {
       label: "Productos",
       value: formatNumber(productsStore.items.length),
-      icon: "box" as IconName,
+      icon: Box as Component<LucideProps>,
       tone: "primary",
       href: "/products",
     },
@@ -55,21 +65,21 @@
           return status === "low" || status === "out";
         }).length,
       ),
-      icon: "alertTriangle" as IconName,
+      icon: TriangleAlert as Component<LucideProps>,
       tone: "danger",
       href: "/products",
     },
     {
       label: "Movimientos",
       value: formatNumber(movementsStore.items.length),
-      icon: "activity" as IconName,
+      icon: Activity as Component<LucideProps>,
       tone: "primary",
       href: "/movements",
     },
     {
       label: "Proveedores",
       value: formatNumber(suppliersStore.items.length),
-      icon: "truck" as IconName,
+      icon: Truck as Component<LucideProps>,
       tone: "primary",
       href: "/suppliers",
     },
@@ -91,8 +101,11 @@
 <div class="dashboard">
   <section class="stats">
     {#each stats as stat (stat.label)}
+      {@const Icon = stat.icon}
       <button class="stat-card tone-{stat.tone}" type="button" onclick={() => goto(stat.href)}>
-        <span class="stat-icon"><Icon name={stat.icon} size={20} /></span>
+        <span class="stat-icon">
+          <Icon size={20} />
+        </span>
         <span class="stat-body">
           <span class="stat-value">{stat.value}</span>
           <span class="stat-label">{stat.label}</span>
@@ -149,11 +162,11 @@
             <button class="row" type="button" onclick={() => goto("/movements")}>
               {#if movement.type === "in"}
                 <Badge bg="var(--success)" color="#ffffff">
-                  <Icon name="arrowDown" size={13} /> Entrada
+                  <ArrowDownToLine size={13} /> Entrada
                 </Badge>
               {:else}
                 <Badge bg="var(--danger)" color="#ffffff">
-                  <Icon name="arrowUp" size={13} /> Salida
+                  <ArrowUpFromLine size={13} /> Salida
                 </Badge>
               {/if}
               <span class="row-name" title={movement.product_name ?? "—"}>
@@ -177,15 +190,15 @@
 
   <section class="actions">
     <button class="action" type="button" onclick={openNewProduct}>
-      <Icon name="plus" size={16} />
+      <Plus size={16} />
       <span>Nuevo producto</span>
     </button>
     <button class="action" type="button" onclick={openNewMovement}>
-      <Icon name="swap" size={16} />
+      <ArrowLeftRight size={16} />
       <span>Registrar movimiento</span>
     </button>
     <button class="action" type="button" onclick={openNewSupplier}>
-      <Icon name="truck" size={16} />
+      <Truck size={16} />
       <span>Nuevo proveedor</span>
     </button>
   </section>
@@ -232,14 +245,16 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radius-sm);
-    background: var(--primary-soft);
+    background: linear-gradient(135deg, var(--primary-soft), transparent);
     color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--border);
     flex-shrink: 0;
   }
 
   .tone-danger .stat-icon {
-    background: var(--danger-soft);
+    background: linear-gradient(135deg, var(--danger-soft), transparent);
     color: var(--danger);
+    box-shadow: inset 0 0 0 1px var(--danger-soft);
   }
 
   .stat-body {

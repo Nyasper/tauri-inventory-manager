@@ -1,27 +1,30 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import Icon from "./Icon.svelte";
-  import type { IconName } from "./Icon.svelte";
+  import type { Component } from "svelte";
+  import type { LucideProps } from "@lucide/svelte";
+  import { Box, Plus } from "@lucide/svelte";
   import Button from "./Button.svelte";
 
-  let {
-    icon = "box",
+let {
+    icon = Box,
     title,
     description,
     actionLabel,
     onAction,
   }: {
-    icon?: IconName;
+    icon?: Component<LucideProps>;
     title: string;
     description?: string;
     actionLabel?: string;
     onAction?: () => void;
   } = $props();
+
+  const Icon = $derived(icon);
 </script>
 
 <div class="empty">
   <div class="empty-icon">
-    <Icon name={icon} size={28} />
+    <Icon size={28} />
   </div>
   <h3>{title}</h3>
   {#if description}
@@ -29,7 +32,7 @@
   {/if}
   {#if actionLabel && onAction}
     <div class="empty-action">
-      <Button icon="plus" onclick={onAction}>{actionLabel}</Button>
+      <Button icon={Plus} onclick={onAction}>{actionLabel}</Button>
     </div>
   {/if}
 </div>
@@ -52,8 +55,9 @@
     width: 60px;
     height: 60px;
     border-radius: 999px;
-    background: var(--surface-2);
-    color: var(--text-muted);
+    background: linear-gradient(135deg, var(--primary-soft), var(--surface-2));
+    color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--border);
     margin-bottom: 0.25rem;
   }
 

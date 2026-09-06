@@ -1,7 +1,7 @@
 <script lang="ts">
   import Modal from "./Modal.svelte";
   import Button from "./Button.svelte";
-  import Icon from "./Icon.svelte";
+  import { TriangleAlert } from "@lucide/svelte";
 
   let {
     title = "Confirmar",
@@ -17,7 +17,7 @@
 <Modal {title} onClose={() => onResult(false)} width="sm">
   <div class="confirm">
     <span class="confirm-icon">
-      <Icon name="alertTriangle" size={22} />
+      <TriangleAlert size={22} />
     </span>
     <p class="message">{message}</p>
   </div>

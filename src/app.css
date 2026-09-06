@@ -153,6 +153,23 @@
   box-sizing: border-box;
 }
 
+.lucide,
+.lucide-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
 html,
 body {
   margin: 0;
