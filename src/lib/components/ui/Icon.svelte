@@ -29,6 +29,8 @@
       '<path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
     activity:
       '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    chevronUp: '<path d="m18 15-6-6-6 6"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
   } as const;
 
   export type IconName = keyof typeof ICON_PATHS;
