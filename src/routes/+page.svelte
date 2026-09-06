@@ -160,6 +160,11 @@
                 {movement.product_name ?? "—"}
               </span>
               <span class="row-meta">
+                {#if movement.person_name}
+                  <span class="row-person" title={movement.person_name}>
+                    {movement.person_name}
+                  </span>
+                {/if}
                 <span class="row-stock">{formatNumber(movement.quantity)}</span>
                 <span class="row-date">{formatDate(movement.created_at)}</span>
               </span>
@@ -339,6 +344,15 @@
 
   .row-stock {
     font-weight: 600;
+  }
+
+  .row-person {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .row-date {
