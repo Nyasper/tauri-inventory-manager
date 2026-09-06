@@ -17,7 +17,13 @@
   settingsStore.load();
   personsStore.load();
   suppliersStore.load();
+
+  function preventContextMenu(event: MouseEvent) {
+    event.preventDefault();
+  }
 </script>
+
+<svelte:window oncontextmenu={preventContextMenu} />
 
 <div class="app">
   <Sidebar />
