@@ -17,6 +17,8 @@ import {
   Boxes,
   Briefcase,
   BriefcaseBusiness,
+  Broom,
+  BroomSparkles,
   Brush,
   Candy,
   ChefHat,
@@ -50,6 +52,7 @@ import {
   List,
   Lollipop,
   Milk,
+  MopSparkles,
   Moon,
   Package,
   PackageOpen,
@@ -76,6 +79,7 @@ import {
   Smartphone,
   Sparkles,
   SprayCan,
+  SoapDispenserDroplet,
   Stethoscope,
   Store,
   Sun,
@@ -84,6 +88,7 @@ import {
   Trash,
   TriangleAlert,
   Truck,
+  Toilet,
   User,
   Users,
   Utensils,
@@ -121,6 +126,11 @@ export type IconName =
   | "chef-hat"
   | "ice-cream-bowl"
   | "spray-can"
+  | "broom"
+  | "broom-sparkles"
+  | "mop-sparkles"
+  | "soap-dispenser-droplet"
+  | "toilet"
   | "brush"
   | "paint-bucket"
   | "droplets"
@@ -217,6 +227,11 @@ export const ICONS: Record<IconName, LucideIcon> = {
   "chef-hat": ChefHat,
   "ice-cream-bowl": IceCreamBowl,
   "spray-can": SprayCan,
+  broom: Broom,
+  "broom-sparkles": BroomSparkles,
+  "mop-sparkles": MopSparkles,
+  "soap-dispenser-droplet": SoapDispenserDroplet,
+  toilet: Toilet,
   brush: Brush,
   "paint-bucket": PaintBucket,
   droplets: Droplets,
@@ -310,6 +325,15 @@ export const ICON_OPTIONS: IconOption[] = [
   { value: "chef-hat", label: "Cocina", group: "Alimentos" },
   { value: "ice-cream-bowl", label: "Helado", group: "Alimentos" },
   { value: "spray-can", label: "Aerosol", group: "Limpieza" },
+  { value: "broom", label: "Escoba", group: "Limpieza" },
+  { value: "broom-sparkles", label: "Barrido", group: "Limpieza" },
+  { value: "mop-sparkles", label: "Mopa", group: "Limpieza" },
+  {
+    value: "soap-dispenser-droplet",
+    label: "Dispensador de jabón",
+    group: "Limpieza",
+  },
+  { value: "toilet", label: "Inodoro", group: "Limpieza" },
   { value: "brush", label: "Cepillo", group: "Limpieza" },
   { value: "paint-bucket", label: "Balde", group: "Limpieza" },
   { value: "droplets", label: "Gotas", group: "Limpieza" },

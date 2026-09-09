@@ -1,5 +1,8 @@
 import type { Supplier } from "$lib/types";
-import { supplierService } from "$lib/services/supplier.service";
+import {
+  supplierService,
+  type SupplierInput,
+} from "$lib/services/supplier.service";
 
 class SuppliersStore {
   items = $state<Supplier[]>([]);
@@ -11,12 +14,12 @@ class SuppliersStore {
     try { this.items = await supplierService.list(); } catch(e) { this.error = String(e); } finally { this.loading = false; }
   }
 
-  async create(data: Omit<Supplier, "id">): Promise<void> {
+  async create(data: SupplierInput): Promise<void> {
     await supplierService.create(data);
     await this.load();
   }
 
-  async update(data: Supplier): Promise<void> {
+  async update(data: SupplierInput & { id: number }): Promise<void> {
     await supplierService.update(data);
     await this.load();
   }

@@ -5,7 +5,7 @@
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import { Pencil, Trash } from "@lucide/svelte";
+  import { History, Pencil, Plus, Trash } from "@lucide/svelte";
   import { receive, send } from "$lib/components/ui/transitions";
 
   let {
@@ -63,19 +63,42 @@
     {/if}
   </div>
 
-  <div class="quick-actions">
-    {#if !product.archived}<button type="button" onclick={(e)=>{e.stopPropagation();onMovement(product);}}>Movimiento</button>{/if}
-    <button type="button" onclick={(e)=>{e.stopPropagation();onHistory(product);}}>Historial</button>
-  </div>
   <div class="card-footer">
     <div class="stock">
       <span class="stock-qty">{formatNumber(product.stock)} {product.base_unit}</span>
       <StockBadge {status} />
     </div>
     <div class="actions">
+      {#if !product.archived}
+        <button
+          class="icon-btn"
+          type="button"
+          title="Registrar movimiento"
+          aria-label={`Registrar movimiento de ${product.name}`}
+          onclick={(e) => {
+            e.stopPropagation();
+            onMovement(product);
+          }}
+        >
+          <Plus size={16} />
+        </button>
+      {/if}
       <button
         class="icon-btn"
         type="button"
+        title="Ver historial"
+        aria-label={`Ver historial de ${product.name}`}
+        onclick={(e) => {
+          e.stopPropagation();
+          onHistory(product);
+        }}
+      >
+        <History size={16} />
+      </button>
+      <button
+        class="icon-btn"
+        type="button"
+        title={product.archived ? "Restaurar" : "Editar"}
         aria-label={product.archived ? "Restaurar" : "Editar"}
         onclick={(e) => {
           e.stopPropagation();
@@ -87,6 +110,7 @@
       <button
         class="icon-btn danger"
         type="button"
+        title="Archivar"
         aria-label="Archivar"
         disabled={!!product.archived}
         onclick={(e) => {
@@ -101,8 +125,6 @@
 </article>
 
 <style>
-  .quick-actions { display:flex; gap:.5rem; }
-  .quick-actions button { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.3rem .6rem; cursor:pointer; }
   .card {
     display: flex;
     flex-direction: column;

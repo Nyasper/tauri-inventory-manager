@@ -21,15 +21,12 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
         )
         .await?;
     sqlx::raw_sql(SCHEMA).execute(&pool).await?;
-    if path.to_string_lossy() != ":memory:" {
-        seed_demo_data(&pool).await?;
-    }
     Ok(pool)
 }
 
-/// Adds a small, coherent demo inventory only to a brand-new database.
-/// The empty-database check makes startup and repeated calls idempotent.
-pub async fn seed_demo_data(db: &Db) -> Result<(), sqlx::Error> {
+/// Loads the same SQL used by `bun run seed` so its integrity is covered by Rust tests.
+#[cfg(test)]
+async fn seed_demo_data(db: &Db) -> Result<(), sqlx::Error> {
     let mut tx = db.begin().await?;
     let product_count: i64 = sqlx::query_scalar("SELECT count(*) FROM products")
         .fetch_one(&mut *tx)
@@ -38,135 +35,9 @@ pub async fn seed_demo_data(db: &Db) -> Result<(), sqlx::Error> {
         tx.rollback().await?;
         return Ok(());
     }
-
-    let categories = [
-        ("Bebidas", "#3b82f6", "cup-soda"),
-        ("Alimentos", "#22c55e", "apple"),
-        ("Limpieza", "#8b5cf6", "spray-can"),
-        ("Higiene", "#14b8a6", "droplets"),
-    ];
-    for (category_name, color, icon) in categories {
-        let (_, key) =
-            name(category_name).map_err(|_| sqlx::Error::Protocol("invalid seed name".into()))?;
-        sqlx::query("INSERT INTO categories(name,name_key,color,icon) VALUES(?,?,?,?)")
-            .bind(category_name)
-            .bind(key)
-            .bind(color)
-            .bind(icon)
-            .execute(&mut *tx)
-            .await?;
-    }
-    let suppliers = [
-        (
-            "Distribuidora Norte",
-            "contacto@norte.com",
-            "Entrega los lunes",
-        ),
-        (
-            "Mayorista Central",
-            "ventas@central.example",
-            "Pedidos desde 12 unidades",
-        ),
-        (
-            "Limpiezas del Valle",
-            "099 123 456",
-            "Productos de limpieza",
-        ),
-    ];
-    for (supplier, contact, notes) in suppliers {
-        let (_, key) =
-            name(supplier).map_err(|_| sqlx::Error::Protocol("invalid seed name".into()))?;
-        sqlx::query("INSERT INTO suppliers(name,name_key,contact,notes) VALUES(?,?,?,?)")
-            .bind(supplier)
-            .bind(key)
-            .bind(contact)
-            .bind(notes)
-            .execute(&mut *tx)
-            .await?;
-    }
-    for (person, is_default) in [
-        ("Ana Pérez", 1_i64),
-        ("Carlos Gómez", 0_i64),
-        ("Lucía Martín", 0_i64),
-    ] {
-        let (_, key) =
-            name(person).map_err(|_| sqlx::Error::Protocol("invalid seed name".into()))?;
-        sqlx::query("INSERT INTO responsible_persons(name,name_key,is_default) VALUES(?,?,?)")
-            .bind(person)
-            .bind(key)
-            .bind(is_default)
-            .execute(&mut *tx)
-            .await?;
-    }
-
-    let products = [
-        ("Agua Mineral 500ml", "Agua purificada en botella", 1_i64),
-        ("Café Molido 250g", "Café de origen", 2),
-        ("Detergente 1L", "Detergente líquido", 3),
-        ("Jabón de Manos", "Jabón antibacterial", 4),
-        ("Galletas Variadas", "Paquete surtido", 2),
-        ("Shampoo 400ml", "Shampoo hidratante", 4),
-    ];
-    for (product, description, category_id) in products {
-        let (_, key) =
-            name(product).map_err(|_| sqlx::Error::Protocol("invalid seed name".into()))?;
-        sqlx::query("INSERT INTO products(name,name_key,description,category_id,base_presentation_id) VALUES(?,?,?,?,-1)")
-            .bind(product).bind(key).bind(description).bind(category_id)
-            .execute(&mut *tx).await?;
-        let product_id = sqlx::query_scalar::<_, i64>("SELECT last_insert_rowid()")
-            .fetch_one(&mut *tx)
-            .await?;
-        let base_name = if product == "Café Molido 250g" || product == "Galletas Variadas" {
-            "Paquete"
-        } else if product == "Jabón de Manos" {
-            "Unidad"
-        } else {
-            "Botella"
-        };
-        let presentations = [(base_name, 1.0_f64), ("Caja x6", 6.0_f64)];
-        for (presentation, factor) in presentations {
-            let (_, presentation_key) = name(presentation)
-                .map_err(|_| sqlx::Error::Protocol("invalid seed name".into()))?;
-            sqlx::query(
-                "INSERT INTO presentations(product_id,name,name_key,factor) VALUES(?,?,?,?)",
-            )
-            .bind(product_id)
-            .bind(presentation)
-            .bind(presentation_key)
-            .bind(factor)
-            .execute(&mut *tx)
-            .await?;
-        }
-        let base_id = sqlx::query_scalar::<_, i64>(
-            "SELECT id FROM presentations WHERE product_id=? AND factor=1",
-        )
-        .bind(product_id)
-        .fetch_one(&mut *tx)
+    sqlx::raw_sql(include_str!("seed.sql"))
+        .execute(&mut *tx)
         .await?;
-        sqlx::query("UPDATE products SET base_presentation_id=? WHERE id=?")
-            .bind(base_id)
-            .bind(product_id)
-            .execute(&mut *tx)
-            .await?;
-        let opening = match product {
-            "Agua Mineral 500ml" => 120.0,
-            "Café Molido 250g" => 45.0,
-            "Detergente 1L" => 30.0,
-            "Jabón de Manos" => 18.0,
-            "Galletas Variadas" => 36.0,
-            _ => 24.0,
-        };
-        sqlx::query("INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
-            .bind(product_id).bind("in").bind(opening).bind(base_id).bind(base_name).bind(product)
-            .bind(1.0_f64).bind(opening).bind(1_i64).bind("Distribuidora Norte")
-            .bind(1_i64).bind("Ana Pérez").bind("Stock inicial de demostración")
-            .execute(&mut *tx).await?;
-        sqlx::query("UPDATE products SET stock=? WHERE id=?")
-            .bind(opening)
-            .bind(product_id)
-            .execute(&mut *tx)
-            .await?;
-    }
     tx.commit().await
 }
 fn error(e: sqlx::Error) -> String {
@@ -947,7 +818,7 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(first_products, 6);
-            assert_eq!(first_movements, 6);
+            assert_eq!(first_movements, 12);
             assert!(sqlx::query("PRAGMA foreign_key_check")
                 .fetch_all(&db)
                 .await

@@ -29,9 +29,10 @@
       header: () => "Nombre",
       cell: (info) => info.getValue<string>(),
     }),
-    columnHelper.accessor("contact", {
+    columnHelper.accessor((supplier) => supplier.contacts.join(" · "), {
+      id: "contacts",
       header: () => "Contacto",
-      cell: (info) => info.getValue<string>() ?? "—",
+      cell: (info) => info.getValue<string>() || "—",
     }),
     columnHelper.accessor("notes", {
       header: () => "Notas",

@@ -12,6 +12,7 @@ Desktop stock/inventory manager built with [Tauri 2](https://tauri.app) and [Sve
 - SQLite persistence with validated Rust commands and read-only frontend queries.
 - Unique normalized product, supplier, category and presentation names.
 - Archive/restore products, suppliers and responsible persons without losing history.
+- Multiple contact lines per supplier.
 - Auditable movement cancellation and inventory adjustments with mandatory reasons.
 - Movement filters and database pagination (25 rows per page).
 
@@ -38,7 +39,9 @@ Windows, with release notes taken from `CHANGELOG.md`.
 
 ## Database and inventory rules
 
-The application uses **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. A coherent demo dataset is inserted once when the new database is empty; subsequent starts never duplicate or overwrite records. To start without demo data, remove the database before launching and disable the seed call in `connect`.
+The application uses **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. A new installation starts without products or movements.
+
+Demo data is opt-in. Close the application and run `bun run seed` to populate the normal local database. The command creates the schema when needed, refuses to alter a database that already contains inventory data, and prints the exact database path. For isolated development or testing, use `bun run seed -- --db ./path/to/inventory.db`.
 
 All writes go through Rust commands and SQLite transactions with foreign keys enabled. Names are normalized with Unicode NFC, lowercase and collapsed whitespace. Accents and ñ remain significant. Names reserved by archived records cannot be reused; restore the existing record instead. Categories and presentation names are also unique (presentations within their product).
 

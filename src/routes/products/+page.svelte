@@ -21,7 +21,15 @@
   import { formatNumber } from "$lib/utils/format";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { Search, List, LayoutGrid, Plus, Pencil, Trash } from "@lucide/svelte";
+  import {
+    Search,
+    List,
+    LayoutGrid,
+    Plus,
+    History,
+    Pencil,
+    Trash,
+  } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   productsStore.load();
@@ -235,13 +243,40 @@
       searchPlaceholder="Buscar productos..."
     >
       {#snippet actions(product)}
-      {#if product.archived}<Button size="sm" onclick={()=>openEdit(product)}>Restaurar</Button>{:else}
-      <Button size="sm" variant="secondary" onclick={()=>modalService.open(MovementFormModal,{initialProductId:String(product.id)})}>Movimiento</Button>
-      <Button size="sm" variant="secondary" onclick={()=>goto(`/movements?product=${product.id}`)}>Historial</Button>
+      {#if product.archived}
+        <Button size="sm" onclick={() => openEdit(product)}>Restaurar</Button>
+      {:else}
         <div class="actions">
           <button
             class="icon-btn"
             type="button"
+            title="Registrar movimiento"
+            aria-label={`Registrar movimiento de ${product.name}`}
+            onclick={(e) => {
+              e.stopPropagation();
+              modalService.open(MovementFormModal, {
+                initialProductId: String(product.id),
+              });
+            }}
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            title="Ver historial"
+            aria-label={`Ver historial de ${product.name}`}
+            onclick={(e) => {
+              e.stopPropagation();
+              goto(`/movements?product=${product.id}`);
+            }}
+          >
+            <History size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            title="Editar"
             aria-label="Editar"
             onclick={(e) => {
               e.stopPropagation();
@@ -253,6 +288,7 @@
           <button
             class="icon-btn danger"
             type="button"
+            title="Archivar"
             aria-label="Archivar"
             onclick={(e) => {
               e.stopPropagation();

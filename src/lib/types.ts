@@ -33,7 +33,7 @@ export interface Supplier {
   archived?: number;
   id: number;
   name: string;
-  contact: string | null;
+  contacts: string[];
   notes: string | null;
 }
 

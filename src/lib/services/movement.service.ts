@@ -25,8 +25,16 @@ class MovementService {
     if (filters.status === "active") clauses.push("cancelled_at IS NULL");
     if (filters.status === "cancelled") clauses.push("cancelled_at IS NOT NULL");
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const count = await db.select<{ total: number }[]>(`SELECT count(*) AS total FROM movements ${where}`, values);
-    const items = await db.select<Movement[]>(`SELECT * FROM movements ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`, [...values, (filters.page ?? 0)*25]);
+    const [count, items] = await Promise.all([
+      db.select<{ total: number }[]>(
+        `SELECT count(*) AS total FROM movements ${where}`,
+        values,
+      ),
+      db.select<Movement[]>(
+        `SELECT * FROM movements ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`,
+        [...values, (filters.page ?? 0) * 25],
+      ),
+    ]);
     return { items, total: count[0].total };
   }
   async list(): Promise<Movement[]> { return (await this.page()).items; }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import DuplicateHint from "$lib/components/ui/DuplicateHint.svelte";
   import { untrack } from "svelte";
+  import { Plus, Trash } from "@lucide/svelte";
   import type { Supplier } from "$lib/types";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
@@ -14,7 +15,9 @@
   const initial = untrack(() => supplier);
 
   let name = $state(initial?.name ?? "");
-  let contact = $state(initial?.contact ?? "");
+  let contacts = $state<string[]>(
+    initial?.contacts.length ? [...initial.contacts] : [""],
+  );
   let notes = $state(initial?.notes ?? "");
   let saving = $state(false);
   let error = $state("");
@@ -31,7 +34,7 @@
     try {
       const data = {
         name: name.trim(),
-        contact: contact.trim() || null,
+        contacts,
         notes: notes.trim() || null,
       };
       if (initial) {
@@ -55,11 +58,39 @@
 >
   <div class="form">
     <Input label="Nombre" bind:value={name} placeholder="Nombre del proveedor" />
-    <Input
-      label="Contacto"
-      bind:value={contact}
-      placeholder="Teléfono, email..."
-    />
+    <section class="contacts">
+      <div class="section-head">
+        <span class="section-label">Contactos</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Plus}
+          onclick={() => (contacts = [...contacts, ""])}
+        >
+          Añadir
+        </Button>
+      </div>
+      {#each contacts as _, index (index)}
+        <div class="contact-row">
+          <Input
+            label={index === 0 ? "Contacto principal" : `Contacto ${index + 1}`}
+            bind:value={contacts[index]}
+            placeholder="Teléfono, email, WhatsApp..."
+          />
+          <button
+            class="remove-contact"
+            type="button"
+            title="Quitar contacto"
+            aria-label={`Quitar contacto ${index + 1}`}
+            disabled={contacts.length === 1}
+            onclick={() =>
+              (contacts = contacts.filter((_, contactIndex) => contactIndex !== index))}
+          >
+            <Trash size={16} />
+          </button>
+        </div>
+      {/each}
+    </section>
     <Textarea label="Notas" bind:value={notes} placeholder="Notas adicionales" />
     {#if error}
       <p class="error" role="alert">{error}</p>
@@ -87,5 +118,48 @@
   .error {
     color: var(--danger);
     font-size: 0.8125rem;
+  }
+
+  .contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .contact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    gap: 0.5rem;
+    align-items: end;
+  }
+
+  .remove-contact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 38px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .remove-contact:hover:not(:disabled) {
+    background: var(--danger-soft);
+    color: var(--danger);
   }
 </style>

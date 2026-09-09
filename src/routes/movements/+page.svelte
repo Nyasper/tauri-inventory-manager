@@ -24,7 +24,9 @@
   const columnHelper = createAppColumnHelper<Movement>();
 
   let typeFilter = $state<"all" | MovementType>("all");
-  let search = $state(""); let productFilter = $state(page.url.searchParams.get("product") ?? "");
+  let searchInput = $state("");
+  let search = $state("");
+  let productFilter = $state(page.url.searchParams.get("product") ?? "");
   let supplierFilter = $state(""); let personFilter = $state(""); let from = $state(""); let to = $state("");
   let status = $state("all"); let currentPage = $state(0);
   let products = $state<{value:string;label:string}[]>([]), suppliers = $state<{value:string;label:string}[]>([]), persons = $state<{value:string;label:string}[]>([]);
@@ -34,9 +36,24 @@
     [products,suppliers,persons] = await Promise.all([options("products"),options("suppliers"),options("responsible_persons")]);
   }
   loadOptions();
+
+  $effect(() => {
+    productFilter = page.url.searchParams.get("product") ?? "";
+  });
+
+  $effect(() => {
+    const value = searchInput;
+    const timer = setTimeout(() => {
+      search = value;
+    }, 200);
+    return () => clearTimeout(timer);
+  });
+
   const query = $derived({search, product:productFilter, supplier:supplierFilter, person:personFilter, from,to,status,type:typeFilter});
   $effect(() => { query; currentPage=0; });
-  $effect(() => { const filters={...query,page:currentPage}; const timer=setTimeout(()=>movementsStore.load(filters),150); return ()=>clearTimeout(timer); });
+  $effect(() => {
+    movementsStore.load({ ...query, page: currentPage });
+  });
 
 
   const columns = columnHelper.columns([
@@ -121,7 +138,15 @@
 </div>
 
 <div class="filter-grid">
-  <label>Buscar<input class="field" bind:value={search} placeholder="Producto, proveedor, notas…" /></label>
+  <label>
+    Buscar
+    <input
+      class="field"
+      bind:value={searchInput}
+      placeholder="Producto, proveedor, notas…"
+      aria-label="Buscar movimientos"
+    />
+  </label>
   <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...products]} /></div>
   <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...suppliers]} /></div>
   <div><Select label="Responsable" bind:value={personFilter} options={[{value:"",label:"Todos"},...persons]} /></div>
@@ -131,7 +156,8 @@
 </div>
 {#if movementsStore.error}
   <p role="alert" class="error">{movementsStore.error}</p><Button onclick={()=>movementsStore.load()}>Reintentar</Button>
-{:else if movementsStore.loading}<p role="status">Cargando movimientos…</p>
+{:else if movementsStore.loading && movementsStore.items.length === 0}
+  <p role="status">Cargando movimientos…</p>
 {:else if movementsStore.items.length === 0}
   <EmptyState
     icon={ArrowLeftRight}
@@ -141,24 +167,29 @@
     onAction={openNew}
   />
 {:else}
-  <DataTable
-    {table}
-    showSearch={false}
-    searchPlaceholder="Buscar movimientos..."
-    emptyText="No hay movimientos que coincidan con el filtro."
-  >
-    {#snippet actions(movement)}
-      <button
-        class="icon-btn danger"
-        type="button"
-        aria-label="Anular movimiento"
-        disabled={!!movement.cancelled_at}
-        onclick={() => removeMovement(movement)}
-      >
-        <Trash size={16} />
-      </button>
-    {/snippet}
-  </DataTable>
+  <div class="table-state" class:updating={movementsStore.loading}>
+    {#if movementsStore.loading}
+      <span class="updating-label" role="status">Actualizando…</span>
+    {/if}
+    <DataTable
+      {table}
+      showSearch={false}
+      searchPlaceholder="Buscar movimientos..."
+      emptyText="No hay movimientos que coincidan con el filtro."
+    >
+      {#snippet actions(movement)}
+        <button
+          class="icon-btn danger"
+          type="button"
+          aria-label="Anular movimiento"
+          disabled={!!movement.cancelled_at}
+          onclick={() => removeMovement(movement)}
+        >
+          <Trash size={16} />
+        </button>
+      {/snippet}
+    </DataTable>
+  </div>
 {/if}
 
 <div class="pagination">
@@ -220,5 +251,28 @@
   .icon-btn.danger:hover {
     background: var(--danger-soft);
     color: var(--danger);
+  }
+
+  .table-state {
+    position: relative;
+    min-height: 120px;
+  }
+
+  .table-state.updating {
+    cursor: progress;
+  }
+
+  .updating-label {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    z-index: 2;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-muted);
+    box-shadow: var(--shadow-sm);
+    font-size: 0.75rem;
   }
 </style>
