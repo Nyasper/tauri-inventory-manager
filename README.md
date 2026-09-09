@@ -38,7 +38,7 @@ Windows, with release notes taken from `CHANGELOG.md`.
 
 ## Database and inventory rules
 
-The application starts with an empty **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. Only default settings are initialized; sample records are never inserted on startup. To develop a different schema, use a fresh disposable database.
+The application uses **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. A coherent demo dataset is inserted once when the new database is empty; subsequent starts never duplicate or overwrite records. To start without demo data, remove the database before launching and disable the seed call in `connect`.
 
 All writes go through Rust commands and SQLite transactions with foreign keys enabled. Names are normalized with Unicode NFC, lowercase and collapsed whitespace. Accents and ñ remain significant. Names reserved by archived records cannot be reused; restore the existing record instead. Categories and presentation names are also unique (presentations within their product).
 
