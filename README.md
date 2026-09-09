@@ -9,7 +9,11 @@ Desktop stock/inventory manager built with [Tauri 2](https://tauri.app) and [Sve
 - List and grid views, search and category filters.
 - Stock status (out/low/medium/high) with configurable thresholds.
 - Light/dark theme persisted in local storage.
-- SQLite persistence via the Tauri SQL plugin.
+- SQLite persistence with validated Rust commands and read-only frontend queries.
+- Unique normalized product, supplier, category and presentation names.
+- Archive/restore products, suppliers and responsible persons without losing history.
+- Auditable movement cancellation and inventory adjustments with mandatory reasons.
+- Movement filters and database pagination (25 rows per page).
 
 ## Development
 
@@ -22,7 +26,8 @@ bun run tauri dev
 
 ```bash
 bun run check      # svelte-check (types + runes)
-cargo check        # from src-tauri
+cargo test --manifest-path src-tauri/Cargo.toml
+bun run build
 ```
 
 ## Release
@@ -30,3 +35,15 @@ cargo check        # from src-tauri
 Tag a version (`v*`) to trigger the GitHub Actions workflow, which builds and
 publishes `.deb`/`.rpm` for Linux and an NSIS installer + portable binary for
 Windows, with release notes taken from `CHANGELOG.md`.
+
+## Database and inventory rules
+
+The application starts with an empty **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. Only default settings are initialized; sample records are never inserted on startup. To develop a different schema, use a fresh disposable database.
+
+All writes go through Rust commands and SQLite transactions with foreign keys enabled. Names are normalized with Unicode NFC, lowercase and collapsed whitespace. Accents and ñ remain significant. Names reserved by archived records cannot be reused; restore the existing record instead. Categories and presentation names are also unique (presentations within their product).
+
+Each product has exactly one base presentation with factor 1. Editing preserves presentation IDs. Used conversion factors and the base presentation cannot change after movements exist. Retired presentations remain available to the historical records. Movement snapshots preserve names and factors at the time of registration.
+
+Stock cannot become negative. Quantities, factors and resulting base quantities support up to six decimal places, with a maximum of 1,000,000,000. Stock updates round to six decimal places to avoid floating-point residue. A product must have zero stock before archiving. Inventory adjustments require a reason. Cancellation retains the original movement, records a reason and reverses stock atomically; it is rejected if the reversal would make stock negative or the product is archived.
+
+The Rust tests cover normalized duplicates, rollback, invalid references and quantities, simultaneous withdrawals, cancellation, historical snapshots, archiving, default responsible persons, decimal stock and repeated initialization. UI validation is checked with Svelte Check and the production build.

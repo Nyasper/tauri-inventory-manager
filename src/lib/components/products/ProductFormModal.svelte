@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DuplicateHint from "$lib/components/ui/DuplicateHint.svelte";
   import { untrack } from "svelte";
   import type { Product } from "$lib/types";
   import {
@@ -29,6 +30,8 @@
     { name: "Unidad", factor: 1 },
   ]);
   let saving = $state(false);
+  let loading = $state(!!initial?.id);
+  let loadFailed = $state(false);
   let error = $state("");
 
   const baseId = $props.id();
@@ -36,9 +39,9 @@
   if (initial?.id) {
     productService.presentations(initial.id).then((rows) => {
       presentations = rows.length
-        ? rows.map((r) => ({ name: r.name, factor: r.factor }))
+        ? rows.map((r) => ({ id: r.id, name: r.name, factor: r.factor }))
         : [{ name: "Unidad", factor: 1 }];
-    });
+    }).catch((e) => { loadFailed = true; error = String(e); }).finally(() => { loading = false; });
   }
 
   const categoryOptions = $derived([
@@ -59,35 +62,21 @@
   }
 
   async function save() {
-    if (initial) {
-      const ok = await modalService.confirm(
-        "¿Guardar los cambios del producto?",
-        "Guardar producto",
-      );
-      if (!ok) return;
-    }
-
+    if (saving || loading || loadFailed) return;
     if (!name.trim()) {
       error = "El nombre es obligatorio.";
       return;
     }
 
-    const valid = presentations
-      .filter((p) => p.name.trim())
-      .map((p) => ({
-        name: p.name.trim(),
-        factor: Number(p.factor) > 0 ? Number(p.factor) : 1,
-      }));
-
-    if (valid.length === 0) {
-      error = "Añade al menos una presentación.";
+    const valid = presentations.map((p) => ({ ...p, name: p.name.trim(), factor: Number(p.factor) }));
+    if (valid.some((p) => !p.name || !Number.isFinite(p.factor) || p.factor <= 0)) {
+      error = "Cada presentación necesita nombre y factor positivo.";
       return;
     }
-
-    if (!valid.some((p) => p.factor === 1)) {
-      valid[0].factor = 1;
+    if (valid.filter((p) => p.factor === 1).length !== 1) {
+      error = "Debe haber exactamente una presentación base con factor 1.";
+      return;
     }
-
     const input: ProductInput = {
       id: initial?.id ?? null,
       name: name.trim(),
@@ -102,8 +91,8 @@
       await productService.save(input);
       await productsStore.load();
       modalService.close();
-    } catch {
-      error = "No se pudo guardar el producto.";
+    } catch (e) {
+      error = String(e);
     } finally {
       saving = false;
     }
@@ -112,10 +101,11 @@
 
 <Modal
   title={initial ? "Editar producto" : "Nuevo producto"}
-  onClose={() => modalService.close()}
+  onClose={() => { if (!saving) modalService.close(); }}
   width="lg"
 >
   <div class="form">
+    {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
     <div class="grid">
       <div class="span-2">
         <Input label="Nombre" bind:value={name} placeholder="Nombre del producto" />
@@ -145,7 +135,7 @@
       </div>
       <p class="hint">
         La presentación con factor 1 es la unidad base en la que se cuenta el
-        stock.
+        stock. Se admiten hasta 6 decimales.
       </p>
 
       {#each presentations as presentation, index (index)}
@@ -158,8 +148,8 @@
             <input
               id="{baseId}-factor-{index}"
               type="number"
-              min="0"
-              step="any"
+              min="0.000001"
+              step="0.000001"
               class="input"
               bind:value={presentation.factor}
               autocomplete="off"
@@ -186,16 +176,17 @@
     </section>
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
+      <DuplicateHint {name} {error} kind="product" currentId={initial?.id} />
     {/if}
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
-    <Button disabled={saving} onclick={save}>
-      {initial ? "Guardar" : "Crear"}
+    <Button disabled={saving || loading || loadFailed} onclick={save}>
+      {saving ? "Guardando…" : initial ? "Guardar" : "Crear"}
     </Button>
   {/snippet}
 </Modal>

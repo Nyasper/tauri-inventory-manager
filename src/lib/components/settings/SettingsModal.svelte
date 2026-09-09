@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { personService } from "$lib/services/person.service";
+  import type { ResponsiblePerson } from "$lib/types";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
@@ -34,6 +36,11 @@
     icon: IconName | null;
   }
 
+  let archivedPersons=$state<ResponsiblePerson[]>([]);
+  let showArchivedPersons=$state(false);
+  async function loadArchivedPersons() { archivedPersons=await personService.list(true); }
+  $effect(()=>{if(showArchivedPersons) loadArchivedPersons();});
+  async function restorePerson(id:number) { await personService.restore(id); await personsStore.load(); await loadArchivedPersons(); }
   let low = $state("");
   let medium = $state("");
   let newPerson = $state("");
@@ -69,7 +76,9 @@
   async function saveThresholds() {
     const lowValue = Number(low);
     const mediumValue = Number(medium);
-    if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue)) return;
+    if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue) || lowValue < 0 || mediumValue <= lowValue) {
+      throw new Error("Los umbrales deben cumplir: 0 ≤ bajo < medio.");
+    }
     await settingsStore.saveThresholds(lowValue, mediumValue);
   }
 
@@ -136,19 +145,14 @@
     const person = personsStore.items.find((p) => p.id === editingId);
     if (!person) return;
     const newName = editName.trim() || person.name;
-    const ok = await modalService.confirm(
-      `¿Guardar el nombre "${newName}"?`,
-      "Editar responsable",
-    );
-    if (!ok) return;
     await personsStore.update(editingId, newName, person.is_default);
     editingId = null;
   }
 
   async function removePerson(id: number) {
     const ok = await modalService.confirm(
-      "¿Eliminar esta persona responsable?",
-      "Eliminar persona",
+      "¿Archivar esta persona responsable? Su historial se conservará.",
+      "Archivar persona",
     );
     if (ok) await personsStore.remove(id);
   }
@@ -156,6 +160,8 @@
 
 <Modal title="Configuración" onClose={() => modalService.close()} width="md">
   <div class="settings">
+    <section><label><input type="checkbox" bind:checked={showArchivedPersons} /> Responsables archivados</label>
+    {#if showArchivedPersons}{#each archivedPersons as person}<p>{person.name} <Button size="sm" variant="secondary" onclick={()=>restorePerson(person.id)}>Restaurar</Button></p>{/each}{#if !archivedPersons.length}<p>No hay responsables archivados.</p>{/if}{/if}</section>
     <section>
       <h3>Franjas de stock</h3>
       <p class="hint">

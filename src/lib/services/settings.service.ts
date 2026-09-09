@@ -1,3 +1,4 @@
+import { invoke } from "$lib/api";
 import type { AppSettings, DefaultView } from "$lib/types";
 import { getDb } from "$lib/db";
 
@@ -23,20 +24,11 @@ class SettingsService {
   }
 
   async setThresholds(low: number, medium: number): Promise<void> {
-    await this.set("stock_low_threshold", String(low));
-    await this.set("stock_medium_threshold", String(medium));
+    await invoke("save_settings", { low, medium });
   }
 
   async setDefaultView(view: DefaultView): Promise<void> {
-    await this.set("default_view", view);
-  }
-
-  private async set(key: string, value: string): Promise<void> {
-    const db = await getDb();
-    await db.execute(
-      "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      [key, value],
-    );
+    await invoke("save_settings", { view });
   }
 
   private num(value: string | undefined, fallback: number): number {

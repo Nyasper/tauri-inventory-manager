@@ -27,7 +27,7 @@
   } from "@lucide/svelte";
 
   productsStore.load();
-  movementsStore.load();
+  movementsStore.load({});
   suppliersStore.load();
 
   const lowProducts = $derived(
@@ -40,6 +40,7 @@
         );
         return status === "low" || status === "out";
       })
+      .sort((a,b)=>a.stock-b.stock)
       .slice(0, 5),
   );
 
@@ -67,11 +68,11 @@
       ),
       icon: TriangleAlert as Component<LucideProps>,
       tone: "danger",
-      href: "/products",
+      href: "/products?stock=low",
     },
     {
       label: "Movimientos",
-      value: formatNumber(movementsStore.items.length),
+      value: formatNumber(movementsStore.total),
       icon: Activity as Component<LucideProps>,
       tone: "primary",
       href: "/movements",
@@ -99,6 +100,8 @@
 </script>
 
 <div class="dashboard">
+  {#if productsStore.loading || movementsStore.loading || suppliersStore.loading}<p role="status">Cargando inventario…</p>{/if}
+  {#if productsStore.error || movementsStore.error || suppliersStore.error}<p class="error" role="alert">No se pudo cargar el inventario.</p><button onclick={()=>{productsStore.load();movementsStore.load({});suppliersStore.load();}}>Reintentar</button>{/if}
   <section class="stats">
     {#each stats as stat (stat.label)}
       {@const Icon = stat.icon}
@@ -118,12 +121,12 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Stock por agotarse</h2>
-        <button class="link" type="button" onclick={() => goto("/products")}>
+        <button class="link" type="button" onclick={() => goto("/products?stock=low")}>
           Ver todos
         </button>
       </div>
 
-      {#if lowProducts.length === 0}
+      {#if lowProducts.length === 0 && !productsStore.loading && !productsStore.error}
         <p class="empty-note">No hay productos con stock bajo.</p>
       {:else}
         <div class="rows">
@@ -131,7 +134,7 @@
             <button class="row" type="button" onclick={() => goto("/products")}>
               <span class="row-name" title={product.name}>{product.name}</span>
               <span class="row-meta">
-                <span class="row-stock">{formatNumber(product.stock)}</span>
+                <span class="row-stock">{formatNumber(product.stock)} {product.base_unit}</span>
                 <StockBadge
                   status={getStockStatus(
                     product.stock,
@@ -154,12 +157,13 @@
         </button>
       </div>
 
-      {#if recentMovements.length === 0}
+      {#if recentMovements.length === 0 && !movementsStore.loading && !movementsStore.error}
         <p class="empty-note">No hay movimientos registrados.</p>
       {:else}
         <div class="rows">
           {#each recentMovements as movement (movement.id)}
-            <button class="row" type="button" onclick={() => goto("/movements")}>
+            <button class="row" type="button" onclick={() => goto(`/movements?product=${movement.product_id}`)}>
+              {#if movement.cancelled_at}<span>Anulado</span>{/if}
               {#if movement.type === "in"}
                 <Badge bg="var(--success)" color="#ffffff">
                   <ArrowDownToLine size={13} /> Entrada
@@ -178,7 +182,7 @@
                     {movement.person_name}
                   </span>
                 {/if}
-                <span class="row-stock">{formatNumber(movement.quantity)}</span>
+                <span class="row-stock">{formatNumber(movement.quantity)} {movement.presentation_name}</span>
                 <span class="row-date">{formatDate(movement.created_at)}</span>
               </span>
             </button>

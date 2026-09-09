@@ -1,6 +1,6 @@
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("es-ES", {
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 6,
   }).format(value);
 }
 

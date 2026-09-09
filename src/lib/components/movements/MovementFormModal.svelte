@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { MovementType } from "$lib/types";
+  import { untrack } from "svelte";
+  import type { Presentation, MovementType } from "$lib/types";
   import { productService } from "$lib/services/product.service";
   import { movementService } from "$lib/services/movement.service";
   import { productsStore } from "$lib/stores/products.store.svelte";
@@ -13,7 +14,12 @@
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
 
-  let productId = $state("");
+  let { initialProductId = "" }: { initialProductId?: string } = $props();
+  let productId = $state(untrack(() => initialProductId));
+  let adjustment = $state(false);
+  let reason = $state("");
+  let presentations = $state<Presentation[]>([]);
+  let loading = $state(false);
   let presentationId = $state("");
   let type = $state<MovementType>("in");
   let quantity = $state("");
@@ -22,6 +28,11 @@
   let notes = $state("");
   let saving = $state(false);
   let error = $state("");
+
+  const selectedProduct = $derived(productsStore.items.find((p) => p.id === Number(productId)));
+  const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
+  const baseQuantity = $derived(Math.round(Number(quantity) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
+  const projected = $derived(Math.round(((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6) / 1e6);
 
   const qtyId = $props.id();
 
@@ -34,16 +45,16 @@
     })),
   );
   const supplierOptions = $derived(
-    suppliersStore.items.map((s) => ({
+    [{value:"",label:"Sin proveedor"}, ...suppliersStore.items.map((s) => ({
       value: String(s.id),
       label: s.name,
-    })),
+    }))],
   );
   const personOptions = $derived(
-    personsStore.items.map((p) => ({
+    [{value:"",label:"Sin responsable"}, ...personsStore.items.map((p) => ({
       value: String(p.id),
       label: p.name,
-    })),
+    }))],
   );
   const typeOptions: SelectOption[] = [
     { value: "in", label: "Entrada" },
@@ -59,27 +70,34 @@
     }
 
     let cancelled = false;
+    loading = true;
+    presentationId = ""; presentations = [];
     productService.presentations(pid).then((rows) => {
       if (cancelled) return;
+      presentations = rows;
       presentationOptions = rows.map((r) => ({
         value: String(r.id),
-        label: r.name,
+        label: `${r.name} (×${r.factor})`,
       }));
       const base = rows.find((r) => r.factor === 1) ?? rows[0];
       presentationId = base ? String(base.id) : "";
-    });
+    }).catch((e) => { if (!cancelled) error = String(e); }).finally(() => { if (!cancelled) loading = false; });
 
     return () => {
       cancelled = true;
     };
   });
 
+  let defaultApplied = false;
   $effect(() => {
     const def = personsStore.defaultPerson;
-    if (def && !personId) personId = String(def.id);
+    if (def && !defaultApplied) { defaultApplied = true; personId = String(def.id); }
   });
 
   async function save() {
+    if (saving || loading) return;
+    if (adjustment && !reason.trim()) { error = "Indica el motivo del ajuste."; return; }
+    if (projected < 0) { error = "Stock insuficiente para esta salida."; return; }
     const pid = productId ? Number(productId) : null;
     const presId = presentationId ? Number(presentationId) : null;
     const qty = Number(quantity);
@@ -104,12 +122,13 @@
         supplier_id: type === "in" && supplierId ? Number(supplierId) : null,
         responsible_person_id: personId ? Number(personId) : null,
         notes: notes.trim() || null,
+        adjustment, reason: adjustment ? reason.trim() : null,
       });
       await movementsStore.load();
       await productsStore.load();
       modalService.close();
-    } catch {
-      error = "No se pudo registrar el movimiento.";
+    } catch (e) {
+      error = String(e);
     } finally {
       saving = false;
     }
@@ -118,10 +137,20 @@
 
 <Modal
   title="Nuevo movimiento"
-  onClose={() => modalService.close()}
+  onClose={() => { if (!saving) modalService.close(); }}
   width="md"
 >
   <div class="form">
+    <label><input type="checkbox" bind:checked={adjustment} /> Ajuste de inventario</label>
+    {#if adjustment}<Textarea label="Motivo del ajuste" bind:value={reason} />{/if}
+    {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
+    {#if selectedProduct && selectedPresentation}
+      <div class="stock-preview" aria-live="polite">
+        <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
+        <p>{Number(quantity) || 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
+        <p>Resultante: <strong class:error={projected < 0}>{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong></p>
+      </div>
+    {/if}
     <Select label="Tipo" bind:value={type} options={typeOptions} />
 
     <Select
@@ -140,7 +169,7 @@
 
     <div>
       <label class="field-label" for={qtyId}>Cantidad</label>
-      <input id={qtyId} type="number" min="0" step="any" class="input" bind:value={quantity} autocomplete="off" />
+      <input id={qtyId} type="number" min="0.000001" step="0.000001" class="input" bind:value={quantity} autocomplete="off" />
     </div>
 
     {#if type === "in"}
@@ -148,7 +177,7 @@
         label="Proveedor"
         bind:value={supplierId}
         options={supplierOptions}
-        placeholder="Sin proveedor"
+
       />
     {/if}
 
@@ -156,7 +185,7 @@
       label="Responsable"
       bind:value={personId}
       options={personOptions}
-      placeholder="Sin responsable"
+
     />
 
     <Textarea
@@ -166,15 +195,15 @@
     />
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
     {/if}
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
-    <Button disabled={saving} onclick={save}>Registrar</Button>
+    <Button disabled={saving || loading} onclick={save}>Registrar</Button>
   {/snippet}
 </Modal>
 

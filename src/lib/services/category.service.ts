@@ -1,3 +1,4 @@
+import { invoke } from "$lib/api";
 import type { Category } from "$lib/types";
 import { getDb } from "$lib/db";
 
@@ -10,31 +11,13 @@ class CategoryService {
   }
 
   async create(name: string, color: string | null, icon: string | null): Promise<number> {
-    const db = await getDb();
-    const result = await db.execute(
-      "INSERT INTO categories (name, color, icon) VALUES (?, ?, ?)",
-      [name, color, icon],
-    );
-    return result.lastInsertId ?? -1;
+    return invoke("save_catalog", { input: { kind: "category", name, color, icon } });
   }
-
   async update(id: number, name: string, color: string | null, icon: string | null): Promise<void> {
-    const db = await getDb();
-    await db.execute("UPDATE categories SET name = ?, color = ?, icon = ? WHERE id = ?", [
-      name,
-      color,
-      icon,
-      id,
-    ]);
+    await invoke("save_catalog", { input: { kind: "category", id, name, color, icon } });
   }
-
   async remove(id: number): Promise<void> {
-    const db = await getDb();
-    await db.execute(
-      "UPDATE products SET category_id = NULL WHERE category_id = ?",
-      [id],
-    );
-    await db.execute("DELETE FROM categories WHERE id = ?", [id]);
+    await invoke("archive_record", { kind: "category", id, restore: false });
   }
 }
 

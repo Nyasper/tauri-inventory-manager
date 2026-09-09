@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { page } from "$app/state";
+  import { goto } from "$app/navigation";
+  import { supplierService } from "$lib/services/supplier.service";
   import type { Supplier } from "$lib/types";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
@@ -10,6 +13,14 @@
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   suppliersStore.load();
+  let archived = $state(false);
+  $effect(()=>{archived=page.url.searchParams.get("archived")==="1";});
+  const targetId=$derived(page.url.searchParams.get("id")); let archivedItems = $state<Supplier[]>([]);
+  let archiveLoading = $state(false); let archiveError = $state("");
+  async function loadArchived() { archiveLoading=true; archiveError=""; try { archivedItems=await supplierService.list(true); } catch(e) { archiveError=String(e); } finally { archiveLoading=false; } }
+  $effect(()=>{ if(archived) loadArchived(); });
+  async function restore(supplier:Supplier) { await supplierService.restore(supplier.id); await loadArchived(); await suppliersStore.load(); }
+  const visible = $derived((archived ? archivedItems : suppliersStore.items).filter(s=>!targetId || s.id===Number(targetId)));
 
   const columnHelper = createAppColumnHelper<Supplier>();
 
@@ -31,7 +42,7 @@
   const table = createAppTable({
     columns,
     get data() {
-      return suppliersStore.items;
+      return visible;
     },
   });
 
@@ -45,19 +56,23 @@
 
   async function removeSupplier(supplier: Supplier) {
     const ok = await modalService.confirm(
-      `¿Eliminar el proveedor "${supplier.name}"?`,
-      "Eliminar proveedor",
+      `¿Archivar el proveedor "${supplier.name}"?`,
+      "Archivar proveedor",
     );
     if (ok) await suppliersStore.remove(supplier.id);
   }
 </script>
 
 <div class="toolbar">
+  {#if targetId}<Button variant="secondary" onclick={()=>goto("/suppliers")}>Ver todos</Button>{/if}
+  <label><input type="checkbox" bind:checked={archived} /> Archivados</label>
   <div class="spacer"></div>
   <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
-{#if suppliersStore.items.length === 0}
+{#if suppliersStore.error || archiveError}<p role="alert" class="error">{suppliersStore.error || archiveError}</p><Button onclick={()=>archived?loadArchived():suppliersStore.load()}>Reintentar</Button>
+{:else if suppliersStore.loading || archiveLoading}<p role="status">Cargando proveedores…</p>
+{:else if visible.length === 0}
   <EmptyState
     icon={Truck}
     title="No hay proveedores"
@@ -71,6 +86,7 @@
     searchPlaceholder="Buscar proveedores..."
   >
     {#snippet actions(supplier)}
+      {#if supplier.archived}<Button size="sm" onclick={()=>restore(supplier)}>Restaurar</Button>{:else}
       <div class="actions">
         <button
           class="icon-btn"
@@ -83,12 +99,13 @@
         <button
           class="icon-btn danger"
           type="button"
-          aria-label="Eliminar"
+          aria-label="Archivar"
           onclick={() => removeSupplier(supplier)}
         >
           <Trash size={16} />
         </button>
       </div>
+      {/if}
     {/snippet}
   </DataTable>
 {/if}

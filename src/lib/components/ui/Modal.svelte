@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
@@ -17,8 +18,24 @@
     width?: "sm" | "md" | "lg";
   } = $props();
 
+  let dialog: HTMLDivElement;
+  const titleId = $props.id();
+  onMount(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    (dialog.querySelector<HTMLElement>("input,select,textarea,button") ?? dialog).focus();
+    return () => previous?.focus();
+  });
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") onClose?.();
+    const dialogs = document.querySelectorAll('[role="dialog"]');
+    if (dialogs[dialogs.length-1] !== dialog) return;
+    if (event.key === "Escape") { event.preventDefault(); onClose?.(); }
+    if (event.key === "Tab") {
+      const items = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(el => el.getClientRects().length);
+      const first = items[0], last = items[items.length-1];
+      if (!first) { event.preventDefault(); dialog.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
   }
 </script>
 
@@ -32,9 +49,9 @@
     if (event.target === event.currentTarget) onClose?.();
   }}
 >
-  <div class="modal modal-{width}" role="dialog" aria-modal="true">
+  <div bind:this={dialog} class="modal modal-{width}" role="dialog" aria-modal="true" aria-labelledby={titleId} tabindex="-1">
     <header class="header">
-      <h2>{title}</h2>
+      <h2 id={titleId}>{title}</h2>
       <button class="icon-btn" type="button" aria-label="Cerrar" onclick={onClose}>
         <X size={18} />
       </button>

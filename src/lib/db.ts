@@ -4,7 +4,7 @@ let dbPromise: Promise<Database> | null = null;
 
 export function getDb(): Promise<Database> {
   if (!dbPromise) {
-    dbPromise = Database.load("sqlite:app.db");
+    dbPromise = Database.load("sqlite:inventory.db").catch((error) => { dbPromise = null; throw error; });
   }
   return dbPromise;
 }

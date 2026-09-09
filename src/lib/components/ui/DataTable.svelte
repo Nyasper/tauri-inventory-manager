@@ -33,6 +33,7 @@
         type="text"
         class="search-input"
         placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
         autocomplete="off"
         value={table.atoms.globalFilter.get() ?? ""}
         oninput={(e) =>
@@ -79,9 +80,11 @@
       {#each table.getRowModel().rows as row (row.id)}
         <tr
           class:clickable={!!onRowClick}
+          tabindex={onRowClick ? 0 : undefined}
+          onkeydown={(event) => { if (onRowClick && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowClick(row.original); } }}
           in:receive={{ key: row.original.id }}
           out:send={{ key: row.original.id }}
-          onclick={() => onRowClick?.(row.original)}
+          onclick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick?.(row.original); }}
         >
           {#each row.getAllCells() as cell (cell.id)}
             <td class:num={isRightAligned(cell.column)}>
@@ -111,6 +114,7 @@
 
 <style>
   .table-wrap {
+    overflow-x: auto;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -214,6 +218,6 @@
   }
 
   .actions-col {
-    width: 80px;
+    min-width: 100px;
   }
 </style>

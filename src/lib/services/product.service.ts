@@ -1,8 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "$lib/api";
 import type { Presentation, Product } from "$lib/types";
 import { getDb } from "$lib/db";
 
 export interface PresentationInput {
+  id?: number;
   name: string;
   factor: number;
 }
@@ -16,76 +17,35 @@ export interface ProductInput {
 }
 
 class ProductService {
-  async list(): Promise<Product[]> {
+  async list(archived = false): Promise<Product[]> {
     const db = await getDb();
     return db.select<Product[]>(
-      `SELECT p.*, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
+      `SELECT p.*, b.name AS base_unit, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
        FROM products p
+       LEFT JOIN presentations b ON b.id = p.base_presentation_id
        LEFT JOIN categories c ON c.id = p.category_id
-       ORDER BY p.name COLLATE NOCASE`,
+       WHERE p.archived = ? ORDER BY p.name COLLATE NOCASE`, [archived ? 1 : 0],
     );
   }
 
   async presentations(productId: number): Promise<Presentation[]> {
     const db = await getDb();
     return db.select<Presentation[]>(
-      "SELECT id, product_id, name, factor FROM presentations WHERE product_id = ? ORDER BY factor ASC",
+      "SELECT id, product_id, name, factor FROM presentations WHERE product_id = ? AND archived=0 ORDER BY factor ASC",
       [productId],
     );
   }
 
   async save(input: ProductInput): Promise<number> {
-    const db = await getDb();
-    let productId = input.id;
+    return invoke<number>("save_product", { input });
+  }
 
-    if (productId) {
-      await db.execute(
-        "UPDATE products SET name = ?, description = ?, category_id = ?, updated_at = datetime('now') WHERE id = ?",
-        [
-          input.name,
-          input.description,
-          input.category_id,
-          productId,
-        ],
-      );
-      await db.execute("DELETE FROM presentations WHERE product_id = ?", [
-        productId,
-      ]);
-    } else {
-      const result = await db.execute(
-        "INSERT INTO products (name, description, category_id) VALUES (?, ?, ?)",
-        [
-          input.name,
-          input.description,
-          input.category_id,
-        ],
-      );
-      productId = result.lastInsertId ?? -1;
-    }
-
-    const ids: number[] = [];
-    for (const p of input.presentations) {
-      const result = await db.execute(
-        "INSERT INTO presentations (product_id, name, factor) VALUES (?, ?, ?)",
-        [productId, p.name, p.factor],
-      );
-      ids.push(result.lastInsertId ?? -1);
-    }
-
-    const baseIndex = input.presentations.findIndex((p) => p.factor === 1);
-    const basePresentationId =
-      ids[baseIndex >= 0 ? baseIndex : 0] ?? null;
-
-    await db.execute(
-      "UPDATE products SET base_presentation_id = ? WHERE id = ?",
-      [basePresentationId, productId],
-    );
-
-    return productId;
+  async restore(id: number): Promise<void> {
+    await invoke("archive_record", { kind: "product", id, restore: true });
   }
 
   async remove(id: number): Promise<void> {
-    await invoke("delete_product", { id });
+    await invoke("archive_record", { kind: "product", id, restore: false });
   }
 }
 

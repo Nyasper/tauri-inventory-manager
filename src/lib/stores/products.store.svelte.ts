@@ -8,6 +8,7 @@ const VIEW_KEY = "viewMode";
 class ProductsStore {
   items = $state<Product[]>([]);
   loading = $state(false);
+  error = $state("");
   view = $state<ViewMode>("list");
 
   constructor() {
@@ -16,9 +17,10 @@ class ProductsStore {
 
   async load(): Promise<void> {
     this.loading = true;
+    this.error = "";
     try {
       this.items = await productService.list();
-    } finally {
+    } catch(e) { this.error = String(e); } finally {
       this.loading = false;
     }
   }

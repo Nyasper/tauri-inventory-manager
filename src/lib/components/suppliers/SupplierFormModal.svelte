@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DuplicateHint from "$lib/components/ui/DuplicateHint.svelte";
   import { untrack } from "svelte";
   import type { Supplier } from "$lib/types";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
@@ -19,14 +20,7 @@
   let error = $state("");
 
   async function save() {
-    if (initial) {
-      const ok = await modalService.confirm(
-        "¿Guardar los cambios del proveedor?",
-        "Guardar proveedor",
-      );
-      if (!ok) return;
-    }
-
+    if (saving) return;
     if (!name.trim()) {
       error = "El nombre es obligatorio.";
       return;
@@ -46,8 +40,8 @@
         await suppliersStore.create(data);
       }
       modalService.close();
-    } catch {
-      error = "No se pudo guardar el proveedor.";
+    } catch (e) {
+      error = String(e);
     } finally {
       saving = false;
     }
@@ -56,7 +50,7 @@
 
 <Modal
   title={initial ? "Editar proveedor" : "Nuevo proveedor"}
-  onClose={() => modalService.close()}
+  onClose={() => { if (!saving) modalService.close(); }}
   width="md"
 >
   <div class="form">
@@ -68,12 +62,13 @@
     />
     <Textarea label="Notas" bind:value={notes} placeholder="Notas adicionales" />
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
+      <DuplicateHint {name} {error} kind="supplier" currentId={initial?.id} />
     {/if}
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
     <Button disabled={saving} onclick={save}>

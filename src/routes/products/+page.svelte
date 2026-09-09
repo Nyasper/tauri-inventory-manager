@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import { page } from "$app/state";
   import { renderComponent } from "@tanstack/svelte-table";
   import type { SortingState } from "@tanstack/svelte-table";
@@ -27,6 +29,15 @@
   const columnHelper = createAppColumnHelper<Product>();
 
   let search = $state("");
+  let archived = $state(false);
+  $effect(()=>{ archived=page.url.searchParams.get("archived")==="1"; }); let archivedItems = $state<Product[]>([]);
+  let archiveLoading = $state(false); let archiveError = $state("");
+  async function loadArchived() { archiveLoading = true; archiveError = ""; try { archivedItems = await productService.list(true); } catch(e) { archiveError = String(e); } finally { archiveLoading = false; } }
+  $effect(() => { if (archived) loadArchived(); });
+  const visible = $derived(archived ? archivedItems : productsStore.items);
+  let stockFilter = $state("");
+  $effect(()=>{stockFilter=page.url.searchParams.get("stock")??"";});
+  const targetId = $derived(page.url.searchParams.get("id"));
   let categoryFilter = $state("");
 
   function statusOf(product: Product) {
@@ -75,7 +86,7 @@
     columnHelper.accessor("stock", {
       header: () => "Stock",
       meta: { align: "right" },
-      cell: (info) => formatNumber(info.getValue<number>()),
+      cell: (info) => `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
     }),
     columnHelper.accessor(statusRank, {
       id: "status",
@@ -89,7 +100,9 @@
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
     const cat = categoryFilter ? Number(categoryFilter) : null;
-    return productsStore.items.filter((p) => {
+    return visible.filter((p) => {
+      if (targetId && p.id !== Number(targetId)) return false;
+      if (stockFilter === "low" && !["low","out"].includes(statusOf(p))) return false;
       if (cat !== null && p.category_id !== cat) return false;
       if (!q) return true;
       return (
@@ -125,13 +138,14 @@
   }
 
   function openEdit(product: Product) {
+    if (product.archived) { productService.restore(product.id).then(async () => { await loadArchived(); await productsStore.load(); }); return; }
     modalService.open(ProductFormModal, { product });
   }
 
   async function removeProduct(product: Product) {
     const ok = await modalService.confirm(
-      `¿Eliminar el producto "${product.name}"?`,
-      "Eliminar producto",
+      `¿Archivar el producto "${product.name}"? Se conservará el historial. El stock debe ser cero.`,
+      "Archivar producto",
     );
     if (ok) {
       await productService.remove(product.id);
@@ -141,18 +155,22 @@
 </script>
 
 <div class="toolbar">
+  <label><input type="checkbox" bind:checked={archived} /> Archivados</label>
+  <label><input type="checkbox" checked={stockFilter==="low"} onchange={(e)=>stockFilter=e.currentTarget.checked?"low":""} /> Stock bajo / agotado</label>
+  {#if targetId}<Button variant="secondary" onclick={()=>goto("/products")}>Ver todos</Button>{/if}
   <div class="search">
     <Search size={16} />
     <input
       class="search-input"
       placeholder="Buscar productos..."
+      aria-label="Buscar productos"
       bind:value={search}
       autocomplete="off"
     />
   </div>
 
   <div class="filter">
-    <Select bind:value={categoryFilter} options={categoryOptions} />
+    <Select label="Categoría" bind:value={categoryFilter} options={categoryOptions} />
   </div>
 
   <div class="spacer"></div>
@@ -182,7 +200,9 @@
 </div>
 
 <div class="products">
-  {#if productsStore.items.length === 0 && !productsStore.loading}
+  {#if productsStore.error || archiveError}<p class="error" role="alert">{productsStore.error || archiveError}</p><Button onclick={()=>archived?loadArchived():productsStore.load()}>Reintentar</Button>
+  {:else if productsStore.loading || archiveLoading}<p role="status">Cargando productos…</p>
+  {:else if visible.length === 0}
     <EmptyState
       title="No hay productos"
       description="Crea tu primer producto para empezar a gestionar el inventario."
@@ -202,6 +222,8 @@
           {product}
           onEdit={openEdit}
           onDelete={removeProduct}
+          onMovement={(p)=>modalService.open(MovementFormModal,{initialProductId:String(p.id)})}
+          onHistory={(p)=>goto(`/movements?product=${p.id}`)}
         />
       {/each}
     </div>
@@ -213,6 +235,9 @@
       searchPlaceholder="Buscar productos..."
     >
       {#snippet actions(product)}
+      {#if product.archived}<Button size="sm" onclick={()=>openEdit(product)}>Restaurar</Button>{:else}
+      <Button size="sm" variant="secondary" onclick={()=>modalService.open(MovementFormModal,{initialProductId:String(product.id)})}>Movimiento</Button>
+      <Button size="sm" variant="secondary" onclick={()=>goto(`/movements?product=${product.id}`)}>Historial</Button>
         <div class="actions">
           <button
             class="icon-btn"
@@ -228,7 +253,7 @@
           <button
             class="icon-btn danger"
             type="button"
-            aria-label="Eliminar"
+            aria-label="Archivar"
             onclick={(e) => {
               e.stopPropagation();
               removeProduct(product);
@@ -237,6 +262,7 @@
             <Trash size={16} />
           </button>
         </div>
+      {/if}
       {/snippet}
     </DataTable>
   {/if}

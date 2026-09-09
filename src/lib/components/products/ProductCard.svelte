@@ -12,10 +12,14 @@
     product,
     onEdit,
     onDelete,
+    onMovement,
+    onHistory,
   }: {
     product: Product;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    onMovement: (product: Product) => void;
+    onHistory: (product: Product) => void;
   } = $props();
 
   const status = $derived(
@@ -27,6 +31,7 @@
   );
 
   function handleKeydown(event: KeyboardEvent) {
+    if (event.target !== event.currentTarget) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onEdit(product);
@@ -50,6 +55,7 @@
 
   <div class="card-body">
     <h3 class="name" title={product.name}>{product.name}</h3>
+    {#if product.archived}<span>Archivado · Pulsa para restaurar</span>{/if}
     {#if product.category_name}
       <span class="category" title={product.category_name}>
         {product.category_name}
@@ -57,16 +63,20 @@
     {/if}
   </div>
 
+  <div class="quick-actions">
+    {#if !product.archived}<button type="button" onclick={(e)=>{e.stopPropagation();onMovement(product);}}>Movimiento</button>{/if}
+    <button type="button" onclick={(e)=>{e.stopPropagation();onHistory(product);}}>Historial</button>
+  </div>
   <div class="card-footer">
     <div class="stock">
-      <span class="stock-qty">{formatNumber(product.stock)}</span>
+      <span class="stock-qty">{formatNumber(product.stock)} {product.base_unit}</span>
       <StockBadge {status} />
     </div>
     <div class="actions">
       <button
         class="icon-btn"
         type="button"
-        aria-label="Editar"
+        aria-label={product.archived ? "Restaurar" : "Editar"}
         onclick={(e) => {
           e.stopPropagation();
           onEdit(product);
@@ -77,7 +87,8 @@
       <button
         class="icon-btn danger"
         type="button"
-        aria-label="Eliminar"
+        aria-label="Archivar"
+        disabled={!!product.archived}
         onclick={(e) => {
           e.stopPropagation();
           onDelete(product);
@@ -90,6 +101,8 @@
 </article>
 
 <style>
+  .quick-actions { display:flex; gap:.5rem; }
+  .quick-actions button { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:.3rem .6rem; cursor:pointer; }
   .card {
     display: flex;
     flex-direction: column;

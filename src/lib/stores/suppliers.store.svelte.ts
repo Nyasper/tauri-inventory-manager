@@ -4,8 +4,11 @@ import { supplierService } from "$lib/services/supplier.service";
 class SuppliersStore {
   items = $state<Supplier[]>([]);
 
+  loading = $state(false);
+  error = $state("");
   async load(): Promise<void> {
-    this.items = await supplierService.list();
+    this.loading = true; this.error = "";
+    try { this.items = await supplierService.list(); } catch(e) { this.error = String(e); } finally { this.loading = false; }
   }
 
   async create(data: Omit<Supplier, "id">): Promise<void> {

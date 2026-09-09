@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../app.css";
+  import { feedback } from "$lib/stores/feedback.svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -27,18 +28,18 @@
   personsStore.load();
   suppliersStore.load();
 
-  function preventContextMenu(event: MouseEvent) {
-    event.preventDefault();
+  function handleError(event: PromiseRejectionEvent) {
+    event.preventDefault(); feedback.error(String(event.reason));
   }
 
   onMount(async () => {
     await settingsStore.load();
     const path = VIEW_PATHS[settingsStore.settings.default_view] ?? "/";
-    if (page.url.pathname !== path) goto(path);
+    if (page.url.pathname === "/" && !page.url.search && path !== "/") goto(path);
   });
 </script>
 
-<svelte:window oncontextmenu={preventContextMenu} />
+<svelte:window onunhandledrejection={handleError} />
 
 <div class="app">
   <Sidebar />
@@ -51,6 +52,7 @@
 </div>
 
 <ModalHost />
+{#if feedback.message}<div class="toast" class:error={feedback.isError} role={feedback.isError ? "alert" : "status"}>{feedback.message}<button aria-label="Cerrar aviso" onclick={()=>feedback.message=""}>×</button></div>{/if}
 
 <style>
   .app {

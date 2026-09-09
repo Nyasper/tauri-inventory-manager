@@ -13,6 +13,8 @@ export interface Presentation {
 }
 
 export interface Product {
+  archived: number;
+  base_unit?: string;
   id: number;
   name: string;
   description: string | null;
@@ -28,6 +30,7 @@ export interface Product {
 }
 
 export interface Supplier {
+  archived?: number;
   id: number;
   name: string;
   contact: string | null;
@@ -43,6 +46,11 @@ export interface ResponsiblePerson {
 export type MovementType = "in" | "out";
 
 export interface Movement {
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  kind: "regular" | "adjustment";
+  reason: string | null;
+  factor: number;
   id: number;
   product_id: number;
   type: MovementType;
