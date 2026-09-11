@@ -107,19 +107,27 @@
       >
         <Pencil size={16} />
       </button>
-      <button
-        class="icon-btn danger"
-        type="button"
-        title="Archivar"
-        aria-label="Archivar"
-        disabled={!!product.archived}
-        onclick={(e) => {
-          e.stopPropagation();
-          onDelete(product);
-        }}
+      <span
+        class="archive-wrap"
+        title={product.archived
+          ? "Archivado"
+          : product.stock > 0
+            ? "El stock debe ser 0. Registra un ajuste antes de archivarlo."
+            : "Archivar"}
       >
-        <Trash size={16} />
-      </button>
+        <button
+          class="icon-btn danger"
+          type="button"
+          aria-label="Archivar"
+          disabled={!!product.archived || product.stock > 0}
+          onclick={(e) => {
+            e.stopPropagation();
+            onDelete(product);
+          }}
+        >
+          <Trash size={16} />
+        </button>
+      </span>
     </div>
   </div>
 </article>
@@ -200,6 +208,10 @@
   .actions {
     display: flex;
     gap: 0.125rem;
+  }
+
+  .archive-wrap {
+    display: inline-flex;
   }
 
   .icon-btn {

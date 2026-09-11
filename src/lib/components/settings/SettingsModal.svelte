@@ -55,6 +55,18 @@
   let editingCat = $state<CatDraft | null>(null);
   let busy = $state(false);
 
+  const thresholdsValid = $derived(
+    Number.isFinite(Number(low)) &&
+      Number.isFinite(Number(medium)) &&
+      Number(low) >= 0 &&
+      Number(low) < Number(medium),
+  );
+  const canAddPerson = $derived(newPerson.trim() !== "" && !busy);
+  const canSaveEdit = $derived(editName.trim() !== "" && !busy);
+  const canSaveCategory = $derived(
+    !!editingCat && editingCat.name.trim() !== "" && !busy,
+  );
+
   const viewOptions: SelectOption[] = [
     { value: "dashboard", label: "Dashboard" },
     { value: "products", label: "Productos" },
@@ -224,8 +236,11 @@
         </div>
       </div>
       <div class="section-action">
-        <Button size="sm" onclick={saveThresholds}>Guardar franjas</Button>
+        <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}>Guardar franjas</Button>
       </div>
+      {#if !thresholdsValid}
+        <p class="validation" role="status">Los umbrales deben cumplir: 0 ≤ bajo &lt; medio.</p>
+      {/if}
     </section>
 
     <section>
@@ -293,7 +308,7 @@
             <Button variant="secondary" size="sm" onclick={() => (editingCat = null)}>
               Cancelar
             </Button>
-            <Button size="sm" onclick={saveCategory}>
+            <Button size="sm" disabled={!canSaveCategory} onclick={saveCategory}>
               {cat.id === null ? "Crear" : "Guardar"}
             </Button>
           </div>
@@ -355,7 +370,7 @@
 
       <div class="add-row">
         <Input placeholder="Nombre de la persona" bind:value={newPerson} />
-        <Button size="sm" icon={Plus} onclick={addPerson}>Añadir</Button>
+        <Button size="sm" icon={Plus} disabled={!canAddPerson} onclick={addPerson}>Añadir</Button>
       </div>
 
       {#if personsStore.items.length === 0}
@@ -366,7 +381,7 @@
             <li class="person">
               {#if editingId === person.id}
                 <Input bind:value={editName} />
-                <Button size="sm" onclick={saveEdit}>Guardar</Button>
+                <Button size="sm" disabled={!canSaveEdit} onclick={saveEdit}>Guardar</Button>
               {:else}
                 <label class="person-main">
                   <input
@@ -682,5 +697,11 @@
   .icon-btn:hover {
     background: var(--surface-2);
     color: var(--text);
+  }
+
+  .validation {
+    margin-top: 0.5rem;
+    color: var(--warning);
+    font-size: 0.8125rem;
   }
 </style>

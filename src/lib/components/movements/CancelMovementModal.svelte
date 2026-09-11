@@ -8,9 +8,9 @@
   import type { Movement } from "$lib/types";
   let { movement }: { movement: Movement } = $props();
   let reason = $state(""); let saving = $state(false); let error = $state("");
+  const canSave = $derived(reason.trim() !== "" && !saving);
   async function save() {
-    if (saving) return;
-    if (!reason.trim()) { error = "Indica el motivo de la anulación."; return; }
+    if (!canSave) return;
     saving = true;
     try { await movementsStore.remove(movement.id, reason); await productsStore.load(); modalService.close(); }
     catch(e) { error = String(e); } finally { saving = false; }
@@ -22,6 +22,6 @@
   {#if error}<p role="alert" class="error">{error}</p>{/if}
   {#snippet footer()}
     <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>Volver</Button>
-    <Button disabled={saving} onclick={save}>{saving ? "Anulando…" : "Anular movimiento"}</Button>
+    <Button disabled={!canSave} onclick={save}>{saving ? "Anulando…" : "Anular movimiento"}</Button>
   {/snippet}
 </Modal>

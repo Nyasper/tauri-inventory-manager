@@ -22,12 +22,11 @@
   let saving = $state(false);
   let error = $state("");
 
+  const validation = $derived(!name.trim() ? "El nombre es obligatorio." : "");
+  const canSave = $derived(validation === "" && !saving);
+
   async function save() {
-    if (saving) return;
-    if (!name.trim()) {
-      error = "El nombre es obligatorio.";
-      return;
-    }
+    if (!canSave) return;
 
     saving = true;
     error = "";
@@ -94,6 +93,9 @@
       {/each}
     </section>
     <Textarea label="Notas" bind:value={notes} placeholder="Notas adicionales" />
+    {#if validation && !saving}
+      <p class="validation" role="status">{validation}</p>
+    {/if}
     {#if error}
       <p class="error" role="alert">{error}</p>
       <DuplicateHint {name} {error} kind="supplier" currentId={initial?.id} />
@@ -104,7 +106,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
-    <Button disabled={saving} onclick={save}>
+    <Button disabled={!canSave} onclick={save}>
       {initial ? "Guardar" : "Crear"}
     </Button>
   {/snippet}
@@ -119,6 +121,11 @@
 
   .error {
     color: var(--danger);
+    font-size: 0.8125rem;
+  }
+
+  .validation {
+    color: var(--warning);
     font-size: 0.8125rem;
   }
 

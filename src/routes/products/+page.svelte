@@ -285,18 +285,25 @@
           >
             <Pencil size={16} />
           </button>
-          <button
-            class="icon-btn danger"
-            type="button"
-            title="Archivar"
-            aria-label="Archivar"
-            onclick={(e) => {
-              e.stopPropagation();
-              removeProduct(product);
-            }}
+          <span
+            class="archive-wrap"
+            title={product.stock > 0
+              ? "El stock debe ser 0. Registra un ajuste antes de archivarlo."
+              : "Archivar"}
           >
-            <Trash size={16} />
-          </button>
+            <button
+              class="icon-btn danger"
+              type="button"
+              aria-label="Archivar"
+              disabled={product.stock > 0}
+              onclick={(e) => {
+                e.stopPropagation();
+                removeProduct(product);
+              }}
+            >
+              <Trash size={16} />
+            </button>
+          </span>
         </div>
       {/if}
       {/snippet}
@@ -380,6 +387,10 @@
   .actions {
     display: flex;
     gap: 0.125rem;
+  }
+
+  .archive-wrap {
+    display: inline-flex;
   }
 
   .icon-btn {
