@@ -9,7 +9,7 @@
   import { movementsStore } from "$lib/stores/movements.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
+  import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -22,7 +22,7 @@
   let loading = $state(false);
   let presentationId = $state("");
   let type = $state<MovementType>("in");
-  let quantity = $state("");
+  let quantity = $state(1);
   let supplierId = $state("");
   let personId = $state("");
   let notes = $state("");
@@ -31,10 +31,40 @@
 
   const selectedProduct = $derived(productsStore.items.find((p) => p.id === Number(productId)));
   const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
-  const baseQuantity = $derived(Math.round(Number(quantity) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
+  const baseQuantity = $derived(Math.round((Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
   const projected = $derived(Math.round(((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6) / 1e6);
 
-  const qtyId = $props.id();
+  const availableUnits = $derived(
+    selectedProduct && selectedPresentation && selectedPresentation.factor > 0
+      ? Math.floor((selectedProduct.stock + 1e-9) / selectedPresentation.factor)
+      : null,
+  );
+  const maxQuantity = $derived(
+    type === "out" && availableUnits !== null ? availableUnits : undefined,
+  );
+
+  const validation = $derived.by(() => {
+    if (loading) return "";
+    if (!productId) return "Selecciona un producto.";
+    if (!presentationId) return "Selecciona una presentación.";
+    if (!Number.isFinite(quantity) || quantity <= 0) return "La cantidad debe ser mayor que cero.";
+    if (type === "out") {
+      if (availableUnits !== null && availableUnits < 1)
+        return `Stock insuficiente: no alcanza para 1 ${selectedPresentation?.name ?? "unidad"}.`;
+      if (projected < 0)
+        return `Stock insuficiente: disponible ${selectedProduct?.stock ?? 0} ${selectedProduct?.base_unit ?? ""}.`;
+    }
+    if (adjustment && !reason.trim()) return "Indica el motivo del ajuste.";
+    return "";
+  });
+
+  const canSave = $derived(validation === "" && !saving);
+
+  $effect(() => {
+    if (maxQuantity !== undefined && maxQuantity >= 1 && quantity > maxQuantity) {
+      quantity = maxQuantity;
+    }
+  });
 
   let presentationOptions = $state<SelectOption[]>([]);
 
@@ -95,21 +125,13 @@
   });
 
   async function save() {
-    if (saving || loading) return;
-    if (adjustment && !reason.trim()) { error = "Indica el motivo del ajuste."; return; }
-    if (projected < 0) { error = "Stock insuficiente para esta salida."; return; }
+    if (saving || loading || validation) return;
     const pid = productId ? Number(productId) : null;
     const presId = presentationId ? Number(presentationId) : null;
-    const qty = Number(quantity);
+    const qty = quantity;
 
-    if (!pid || presId === null) {
-      error = "Selecciona un producto y una presentación.";
-      return;
-    }
-    if (!Number.isFinite(qty) || qty <= 0) {
-      error = "La cantidad debe ser mayor que cero.";
-      return;
-    }
+    if (!pid || presId === null) return;
+    if (!Number.isFinite(qty) || qty <= 0) return;
 
     saving = true;
     error = "";
@@ -147,9 +169,12 @@
     {#if selectedProduct && selectedPresentation}
       <div class="stock-preview" aria-live="polite">
         <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
-        <p>{Number(quantity) || 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
+        <p>{Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
         <p>Resultante: <strong class:error={projected < 0}>{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong></p>
       </div>
+    {/if}
+    {#if validation && !saving}
+      <p class="validation" role="alert">{validation}</p>
     {/if}
     <Select label="Tipo" bind:value={type} options={typeOptions} />
 
@@ -167,10 +192,7 @@
       placeholder="Selecciona una presentación"
     />
 
-    <div>
-      <label class="field-label" for={qtyId}>Cantidad</label>
-      <input id={qtyId} type="number" min="0.000001" step="0.000001" class="input" bind:value={quantity} autocomplete="off" />
-    </div>
+    <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} />
 
     {#if type === "in"}
       <Select
@@ -203,7 +225,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
-    <Button disabled={saving || loading} onclick={save}>Registrar</Button>
+    <Button disabled={!canSave} onclick={save}>Registrar</Button>
   {/snippet}
 </Modal>
 
@@ -214,31 +236,13 @@
     gap: 0.875rem;
   }
 
-  .field-label {
-    display: block;
-    margin-bottom: 0.375rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
-
-  .input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-  }
-
-  .input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-soft);
-  }
-
   .error {
     color: var(--danger);
+    font-size: 0.8125rem;
+  }
+
+  .validation {
+    color: var(--warning);
     font-size: 0.8125rem;
   }
 </style>

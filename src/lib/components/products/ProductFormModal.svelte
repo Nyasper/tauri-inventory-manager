@@ -12,6 +12,7 @@
   import { modalService } from "$lib/stores/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
+  import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -34,8 +35,6 @@
   let loadFailed = $state(false);
   let error = $state("");
 
-  const baseId = $props.id();
-
   if (initial?.id) {
     productService.presentations(initial.id).then((rows) => {
       presentations = rows.length
@@ -51,6 +50,24 @@
       label: c.name,
     })),
   ]);
+
+  const validation = $derived.by(() => {
+    if (loading || loadFailed) return "";
+    if (!name.trim()) return "El nombre es obligatorio.";
+    if (
+      presentations.some(
+        (p) => !p.name.trim() || !Number.isFinite(Number(p.factor)) || Number(p.factor) <= 0,
+      )
+    ) {
+      return "Cada presentación necesita nombre y factor positivo.";
+    }
+    if (presentations.filter((p) => Number(p.factor) === 1).length !== 1) {
+      return "Debe haber exactamente una presentación base con factor 1.";
+    }
+    return "";
+  });
+
+  const canSave = $derived(validation === "" && !saving && !loading && !loadFailed);
 
   function addPresentation() {
     presentations.push({ name: "", factor: 1 });
@@ -144,16 +161,7 @@
             <Input bind:value={presentation.name} placeholder="Ej. Caja, Botella" />
           </div>
           <div class="pres-factor">
-            <label class="field-label" for="{baseId}-factor-{index}">Factor</label>
-            <input
-              id="{baseId}-factor-{index}"
-              type="number"
-              min="0.000001"
-              step="0.000001"
-              class="input"
-              bind:value={presentation.factor}
-              autocomplete="off"
-            />
+            <NumberStepper label="Factor" bind:value={presentation.factor} min={1} />
           </div>
           <div class="pres-base">
             {#if presentation.factor === 1}
@@ -175,6 +183,10 @@
       {/each}
     </section>
 
+    {#if validation && !saving}
+      <p class="validation" role="status">{validation}</p>
+    {/if}
+
     {#if error}
       <p class="error" role="alert">{error}</p>
       <DuplicateHint {name} {error} kind="product" currentId={initial?.id} />
@@ -185,7 +197,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
       Cancelar
     </Button>
-    <Button disabled={saving || loading || loadFailed} onclick={save}>
+    <Button disabled={!canSave} onclick={save}>
       {saving ? "Guardando…" : initial ? "Guardar" : "Crear"}
     </Button>
   {/snippet}
@@ -233,32 +245,9 @@
 
   .pres-row {
     display: grid;
-    grid-template-columns: 1fr 110px 90px 32px;
+    grid-template-columns: 1fr 150px 90px 32px;
     gap: 0.625rem;
     align-items: end;
-  }
-
-  .field-label {
-    display: block;
-    margin-bottom: 0.375rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
-
-  .input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-  }
-
-  .input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-soft);
   }
 
   .pres-base {
@@ -305,6 +294,11 @@
 
   .error {
     color: var(--danger);
+    font-size: 0.8125rem;
+  }
+
+  .validation {
+    color: var(--warning);
     font-size: 0.8125rem;
   }
 </style>
