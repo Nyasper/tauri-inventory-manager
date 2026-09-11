@@ -258,8 +258,10 @@ input[type="number"]::-webkit-inner-spin-button:active {
 .pagination { display:flex; justify-content:flex-end; align-items:center; gap:1rem; margin-top:1rem; }
 .stock-preview { border:1px solid var(--border); padding:1rem; border-radius:var(--radius); background:var(--primary-soft); display:grid; gap:.35rem; }
 .error { color:var(--danger); }
-.toast { position:fixed; bottom:1rem; right:1rem; z-index:2000; max-width:min(500px,90vw); padding:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow-lg); }
-.toast button { margin-left:1rem; background:transparent; border:0; cursor:pointer; }
+.toast { position:fixed; bottom:1rem; right:1rem; z-index:2000; max-width:min(500px,90vw); padding:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow-lg); display:flex; align-items:flex-start; gap:.75rem; }
+.toast-message { flex:1; min-width:0; overflow-wrap:anywhere; line-height:1.45; }
+.toast button { flex-shrink:0; margin:0; padding:0 .25rem; background:transparent; border:0; color:inherit; font-size:1.1rem; line-height:1; cursor:pointer; }
+.toast button:hover { color:var(--text); }
 button:disabled { opacity:.5; cursor:not-allowed; }
 @media (max-width:1050px) { :root { --sidebar-width:190px; } .toolbar { flex-wrap:wrap; } }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
