@@ -1,14 +1,28 @@
 use serde::Deserialize;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    Pool, Row, Sqlite,
+    Connection, Pool, Row, Sqlite, SqliteConnection,
 };
-use std::{path::Path, time::Duration};
-use tauri::State;
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use tauri::{async_runtime::RwLock, AppHandle, Manager, State};
 use unicode_normalization::UnicodeNormalization;
 
 type Db = Pool<Sqlite>;
 const SCHEMA: &str = include_str!("schema.sql");
+
+/// Pool de conexiones conmutable: permite cerrarlo y reabrirlo al restaurar
+/// la base de datos desde un archivo de respaldo.
+pub struct DbState(RwLock<Db>);
+
+impl DbState {
+    pub fn new(pool: Db) -> Self {
+        Self(RwLock::new(pool))
+    }
+}
+
 pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
@@ -102,7 +116,8 @@ pub struct ProductInput {
     presentations: Vec<PresentationInput>,
 }
 #[tauri::command]
-pub async fn save_product(db: State<'_, Db>, input: ProductInput) -> Result<i64, String> {
+pub async fn save_product(db: State<'_, DbState>, input: ProductInput) -> Result<i64, String> {
+    let db = db.0.read().await;
     save_product_db(&db, input).await
 }
 async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, String> {
@@ -236,7 +251,8 @@ pub struct CatalogInput {
     is_default: bool,
 }
 #[tauri::command]
-pub async fn save_catalog(db: State<'_, Db>, input: CatalogInput) -> Result<i64, String> {
+pub async fn save_catalog(db: State<'_, DbState>, input: CatalogInput) -> Result<i64, String> {
+    let db = db.0.read().await;
     save_catalog_db(&db, input).await
 }
 async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, String> {
@@ -259,11 +275,12 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, String> {
 }
 #[tauri::command]
 pub async fn archive_record(
-    db: State<'_, Db>,
+    db: State<'_, DbState>,
     kind: String,
     id: i64,
     restore: bool,
 ) -> Result<(), String> {
+    let db = db.0.read().await;
     archive_record_db(&db, kind, id, restore).await
 }
 async fn archive_record_db(db: &Db, kind: String, id: i64, restore: bool) -> Result<(), String> {
@@ -306,7 +323,8 @@ pub struct MovementInput {
     reason: Option<String>,
 }
 #[tauri::command]
-pub async fn create_movement(db: State<'_, Db>, input: MovementInput) -> Result<(), String> {
+pub async fn create_movement(db: State<'_, DbState>, input: MovementInput) -> Result<(), String> {
+    let db = db.0.read().await;
     create_movement_db(&db, input).await
 }
 async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String> {
@@ -373,7 +391,8 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
     tx.commit().await.map_err(error)
 }
 #[tauri::command]
-pub async fn cancel_movement(db: State<'_, Db>, id: i64, reason: String) -> Result<(), String> {
+pub async fn cancel_movement(db: State<'_, DbState>, id: i64, reason: String) -> Result<(), String> {
+    let db = db.0.read().await;
     cancel_movement_db(&db, id, reason).await
 }
 async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), String> {
@@ -402,11 +421,12 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Stri
 }
 #[tauri::command]
 pub async fn save_settings(
-    db: State<'_, Db>,
+    db: State<'_, DbState>,
     low: Option<f64>,
     medium: Option<f64>,
     view: Option<String>,
 ) -> Result<(), String> {
+    let db = db.0.read().await;
     let mut tx = db.begin().await.map_err(error)?;
     if let (Some(low), Some(medium)) = (low, medium) {
         if !low.is_finite() || !medium.is_finite() || low < 0.0 || medium <= low || medium > 1e9 {
@@ -437,6 +457,157 @@ pub async fn save_settings(
             .map_err(error)?;
     }
     tx.commit().await.map_err(error)
+}
+
+/// Absolute path of the SQLite database file managed by the SQL plugin.
+fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("No se pudo resolver el directorio de configuración: {e}"))?;
+    Ok(dir.join("inventory.db"))
+}
+
+/// Check that a file starts with the SQLite database header.
+fn looks_like_sqlite(path: &Path) -> bool {
+    use std::io::Read;
+    let mut f = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+    let mut header = [0u8; 16];
+    f.read_exact(&mut header).is_ok() && &header == b"SQLite format 3\0"
+}
+
+/// Tables that a valid backup of this application must contain.
+const BACKUP_TABLES: [&str; 7] = [
+    "categories",
+    "suppliers",
+    "responsible_persons",
+    "products",
+    "presentations",
+    "movements",
+    "settings",
+];
+
+/// Validate that `path` is a SQLite database containing this app's tables.
+async fn validate_backup(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Err("El archivo de respaldo no existe.".into());
+    }
+    if !looks_like_sqlite(path) {
+        return Err("El archivo seleccionado no es una base de datos SQLite válida.".into());
+    }
+    let options = SqliteConnectOptions::new().filename(path).read_only(true);
+    let mut conn = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|_| "No se pudo abrir el archivo de respaldo.".to_string())?;
+    let found: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('categories','suppliers','responsible_persons','products','presentations','movements','settings')",
+    )
+    .fetch_one(&mut conn)
+    .await
+    .map_err(|_| "El archivo de respaldo está dañado o no es compatible.".to_string())?;
+    let _ = conn.close().await;
+    if found != BACKUP_TABLES.len() as i64 {
+        return Err("El archivo no parece un respaldo válido de Inventory Manager.".into());
+    }
+    Ok(())
+}
+
+/// Create a consistent snapshot of the live database into `dest`.
+async fn backup_database_db(db: &Db, dest: &Path) -> Result<(), String> {
+    if let Some(parent) = dest.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            return Err("La carpeta seleccionada no existe.".into());
+        }
+    }
+    if dest.exists() {
+        std::fs::remove_file(dest)
+            .map_err(|_| "No se pudo sobrescribir el archivo de respaldo.".to_string())?;
+    }
+    sqlx::query("VACUUM INTO ?")
+        .bind(dest.to_string_lossy().as_ref())
+        .execute(db)
+        .await
+        .map_err(|e| {
+            eprintln!("Backup error: {e}");
+            String::from("No se pudo crear el respaldo.")
+        })?;
+    Ok(())
+}
+
+fn same_file(a: &Path, b: &Path) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
+}
+
+/// Replace the live database at `dest` with the backup at `src`, keeping a
+/// safety copy of the previous data in `safety`.
+async fn restore_database_db(
+    db: &RwLock<Db>,
+    dest: &Path,
+    src: &Path,
+    safety: &Path,
+) -> Result<(), String> {
+    validate_backup(src).await?;
+    if same_file(src, dest) {
+        return Err("Selecciona un archivo distinto de la base de datos actual.".into());
+    }
+    let mut pool = db.write().await;
+    backup_database_db(&pool, safety)
+        .await
+        .map_err(|_| "No se pudo guardar una copia de seguridad antes de restaurar.".to_string())?;
+    pool.close().await;
+    for suffix in ["-wal", "-shm"] {
+        let mut journal = dest.as_os_str().to_os_string();
+        journal.push(suffix);
+        let _ = std::fs::remove_file(journal);
+    }
+    std::fs::copy(src, dest).map_err(|e| format!("No se pudo reemplazar la base de datos: {e}"))?;
+    match connect(dest).await {
+        Ok(reopened) => {
+            *pool = reopened;
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Restore error: {e}");
+            let _ = std::fs::copy(safety, dest);
+            match connect(dest).await {
+                Ok(recovered) => {
+                    *pool = recovered;
+                    Err("No se pudo abrir el respaldo; se restauraron los datos anteriores.".into())
+                }
+                Err(_) => {
+                    Err("No se pudo restaurar la base de datos. Reinicia la aplicación.".into())
+                }
+            }
+        }
+    }
+}
+
+/// Create a backup file of the current database at `dest_path`.
+#[tauri::command]
+pub async fn backup_database(db: State<'_, DbState>, dest_path: String) -> Result<(), String> {
+    let db = db.0.read().await;
+    backup_database_db(&db, Path::new(&dest_path)).await
+}
+
+/// Replace the live database with the backup file at `src_path`.
+#[tauri::command]
+pub async fn restore_database(
+    app: AppHandle,
+    db: State<'_, DbState>,
+    src_path: String,
+) -> Result<(), String> {
+    let dest = db_path(&app)?;
+    let safety = dest
+        .parent()
+        .map(|dir| dir.join("pre-restore-backup.db"))
+        .ok_or("No se pudo resolver el directorio de la base de datos.")?;
+    restore_database_db(&db.0, &dest, Path::new(&src_path), &safety).await
 }
 
 #[cfg(test)]
@@ -846,6 +1017,116 @@ mod tests {
                     .unwrap(),
                 first_movements
             );
+        });
+    }
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("inventory-tests-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+    #[test]
+    fn backup_and_restore_roundtrip_preserves_data() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("roundtrip");
+            let live = dir.join("inventory.db");
+            let backup = dir.join("backup.db");
+            let safety = dir.join("safety.db");
+
+            let db = connect(&live).await.unwrap();
+            let agua = fixture(&db, "Agua").await;
+            create_movement_db(&db, movement(agua, "in", 10.0))
+                .await
+                .unwrap();
+            let state = RwLock::new(db);
+
+            backup_database_db(&*state.read().await, &backup)
+                .await
+                .unwrap();
+
+            {
+                let current = state.read().await;
+                let cafe = fixture(&current, "Café").await;
+                create_movement_db(&current, movement(cafe, "in", 5.0))
+                    .await
+                    .unwrap();
+            }
+
+            restore_database_db(&state, &live, &backup, &safety)
+                .await
+                .unwrap();
+
+            let pool = state.read().await;
+            let names: Vec<String> = sqlx::query_scalar("SELECT name FROM products ORDER BY name")
+                .fetch_all(&*pool)
+                .await
+                .unwrap();
+            assert_eq!(names, vec!["Agua".to_string()]);
+            assert_eq!(stock(&pool, agua.0).await, 10.0);
+            assert!(sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&*pool)
+                .await
+                .unwrap()
+                .is_empty());
+            drop(pool);
+
+            assert!(safety.exists());
+            let safety_db = connect(&safety).await.unwrap();
+            let safety_count: i64 = sqlx::query_scalar("SELECT count(*) FROM products")
+                .fetch_one(&safety_db)
+                .await
+                .unwrap();
+            assert_eq!(safety_count, 2);
+            safety_db.close().await;
+
+            drop(state);
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn restore_rejects_invalid_files_and_keeps_data() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("invalid");
+            let live = dir.join("inventory.db");
+            let backup = dir.join("backup.db");
+            let safety = dir.join("safety.db");
+
+            let db = connect(&live).await.unwrap();
+            fixture(&db, "Agua").await;
+            let state = RwLock::new(db);
+
+            std::fs::write(&backup, b"no es sqlite").unwrap();
+            assert!(restore_database_db(&state, &live, &backup, &safety)
+                .await
+                .is_err());
+            assert!(restore_database_db(&state, &live, &live, &safety)
+                .await
+                .is_err());
+
+            let other = dir.join("other.db");
+            let options = SqliteConnectOptions::new()
+                .filename(&other)
+                .create_if_missing(true);
+            let mut conn = SqliteConnection::connect_with(&options).await.unwrap();
+            sqlx::raw_sql("CREATE TABLE foo(id INTEGER);")
+                .execute(&mut conn)
+                .await
+                .unwrap();
+            conn.close().await.unwrap();
+            assert!(restore_database_db(&state, &live, &other, &safety)
+                .await
+                .is_err());
+            assert!(!safety.exists());
+
+            let pool = state.read().await;
+            let count: i64 = sqlx::query_scalar("SELECT count(*) FROM products")
+                .fetch_one(&*pool)
+                .await
+                .unwrap();
+            assert_eq!(count, 1);
+            drop(pool);
+            drop(state);
+            let _ = std::fs::remove_dir_all(&dir);
         });
     }
 }

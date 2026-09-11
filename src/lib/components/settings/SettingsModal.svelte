@@ -1,5 +1,6 @@
 <script lang="ts">
   import { personService } from "$lib/services/person.service";
+  import { backupService } from "$lib/services/backup.service";
   import type { ResponsiblePerson } from "$lib/types";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
@@ -7,10 +8,14 @@
   import Button from "$lib/components/ui/Button.svelte";
   import IconPicker from "$lib/components/ui/IconPicker.svelte";
   import { ICONS, type IconName } from "$lib/icons";
-  import { Plus, Pencil, Trash } from "@lucide/svelte";
+  import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { categoriesStore } from "$lib/stores/categories.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
+  import { productsStore } from "$lib/stores/products.store.svelte";
+  import { movementsStore } from "$lib/stores/movements.store.svelte";
+  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
+  import { feedback } from "$lib/stores/feedback.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
   import {
@@ -48,6 +53,7 @@
   let editName = $state("");
   let defaultView = $state("dashboard");
   let editingCat = $state<CatDraft | null>(null);
+  let busy = $state(false);
 
   const viewOptions: SelectOption[] = [
     { value: "dashboard", label: "Dashboard" },
@@ -156,12 +162,54 @@
     );
     if (ok) await personsStore.remove(id);
   }
+
+  async function createBackup() {
+    if (busy) return;
+    busy = true;
+    try {
+      const path = await backupService.backup();
+      if (path) feedback.success("Respaldo creado correctamente.");
+    } catch (e) {
+      feedback.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function restoreBackup() {
+    if (busy) return;
+    const path = await backupService.pickRestoreFile();
+    if (!path) return;
+    const ok = await modalService.confirm(
+      "Se reemplazarán todos los datos actuales por los del respaldo seleccionado. Esta acción no se puede deshacer.",
+      "Restaurar respaldo",
+    );
+    if (!ok) return;
+    busy = true;
+    try {
+      await backupService.restore(path);
+      await Promise.all([
+        settingsStore.load(),
+        categoriesStore.load(),
+        personsStore.load(),
+        suppliersStore.load(),
+        productsStore.load(),
+        movementsStore.load(),
+      ]);
+      await loadArchivedPersons();
+      feedback.success("Base de datos restaurada correctamente.");
+    } catch (e) {
+      feedback.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
 <Modal title="Configuración" onClose={() => modalService.close()} width="md">
   <div class="settings">
     <section><label><input type="checkbox" bind:checked={showArchivedPersons} /> Responsables archivados</label>
-    {#if showArchivedPersons}{#each archivedPersons as person}<p>{person.name} <Button size="sm" variant="secondary" onclick={()=>restorePerson(person.id)}>Restaurar</Button></p>{/each}{#if !archivedPersons.length}<p>No hay responsables archivados.</p>{/if}{/if}</section>
+    {#if showArchivedPersons}{#each archivedPersons as person (person.id)}<p>{person.name} <Button size="sm" variant="secondary" onclick={()=>restorePerson(person.id)}>Restaurar</Button></p>{/each}{#if !archivedPersons.length}<p>No hay responsables archivados.</p>{/if}{/if}</section>
     <section>
       <h3>Franjas de stock</h3>
       <p class="hint">
@@ -357,6 +405,37 @@
         </ul>
       {/if}
     </section>
+
+    <section>
+      <h3>Avanzado</h3>
+      <p class="hint">
+        Crea una copia de seguridad de la base de datos o restáurala desde un
+        archivo.
+      </p>
+      <div class="backup-actions">
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={DatabaseBackup}
+          disabled={busy}
+          onclick={createBackup}
+        >
+          Crear respaldo
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Upload}
+          disabled={busy}
+          onclick={restoreBackup}
+        >
+          Restaurar respaldo
+        </Button>
+      </div>
+      {#if busy}
+        <p class="hint backup-busy">Procesando…</p>
+      {/if}
+    </section>
   </div>
 </Modal>
 
@@ -388,6 +467,17 @@
     margin-top: 0.75rem;
     display: flex;
     justify-content: flex-end;
+  }
+
+  .backup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .backup-busy {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
   }
 
   .accents {

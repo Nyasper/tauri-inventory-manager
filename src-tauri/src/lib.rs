@@ -9,7 +9,7 @@ pub fn run() {
         .setup(|app| {
             let path = app.path().app_config_dir()?.join("inventory.db");
             let pool = tauri::async_runtime::block_on(inventory::connect(&path))?;
-            app.manage(pool);
+            app.manage(inventory::DbState::new(pool));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -19,6 +19,8 @@ pub fn run() {
             inventory::create_movement,
             inventory::cancel_movement,
             inventory::save_settings,
+            inventory::backup_database,
+            inventory::restore_database,
         ])
         .run(tauri::generate_context!())
         .expect("No se pudo iniciar la aplicación");

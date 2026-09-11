@@ -8,3 +8,16 @@ export function getDb(): Promise<Database> {
   }
   return dbPromise;
 }
+
+/** Cierra la conexión actual para poder reemplazar el archivo de la base de datos. */
+export async function closeDb(): Promise<void> {
+  const pending = dbPromise;
+  dbPromise = null;
+  if (!pending) return;
+  try {
+    const db = await pending;
+    await db.close();
+  } catch {
+    /* la conexión ya no está disponible */
+  }
+}

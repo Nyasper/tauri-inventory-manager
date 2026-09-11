@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Database backup and restore from a new "Advanced" section in the settings modal, with an automatic safety copy before restoring.
+
 ## [0.1.0] - 2026-08-26
 
 ### Added
