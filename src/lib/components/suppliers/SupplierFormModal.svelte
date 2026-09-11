@@ -72,11 +72,13 @@
       </div>
       {#each contacts as _, index (index)}
         <div class="contact-row">
-          <Input
-            label={index === 0 ? "Contacto principal" : `Contacto ${index + 1}`}
-            bind:value={contacts[index]}
-            placeholder="Teléfono, email, WhatsApp..."
-          />
+          <div class="contact-field">
+            <Input
+              label={index === 0 ? "Contacto principal" : `Contacto ${index + 1}`}
+              bind:value={contacts[index]}
+              placeholder="Teléfono, email, WhatsApp..."
+            />
+          </div>
           <button
             class="remove-contact"
             type="button"
@@ -143,6 +145,10 @@
     grid-template-columns: minmax(0, 1fr) 34px;
     gap: 0.5rem;
     align-items: end;
+  }
+
+  .contact-field {
+    min-width: 0;
   }
 
   .remove-contact {

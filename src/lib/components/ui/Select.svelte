@@ -23,28 +23,22 @@
   const id = $props.id();
 </script>
 
-<div class="field">
-  {#if label}
-    <label class="field-label" for={id}>{label}</label>
-  {/if}
-  <div class="wrap">
-    <select {id} bind:value {onchange} class="select" autocomplete="off">
-      {#if placeholder}
-        <option value="" disabled>{placeholder}</option>
-      {/if}
-      {#each options as option (option.value)}
-        <option value={option.value}>{option.label}</option>
-      {/each}
-    </select>
-    <ChevronDown class="chevron" size={16} />
-  </div>
+{#if label}
+  <label class="field-label" for={id}>{label}</label>
+{/if}
+<div class="wrap">
+  <select {id} bind:value {onchange} class="select" autocomplete="off">
+    {#if placeholder}
+      <option value="" disabled>{placeholder}</option>
+    {/if}
+    {#each options as option (option.value)}
+      <option value={option.value}>{option.label}</option>
+    {/each}
+  </select>
+  <ChevronDown class="chevron" size={16} />
 </div>
 
 <style>
-  .field {
-    width: 100%;
-  }
-
   .field-label {
     display: block;
     margin-bottom: 0.375rem;

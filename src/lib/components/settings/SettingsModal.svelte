@@ -168,8 +168,12 @@
         Define los umbrales para clasificar el estado de stock de cada producto.
       </p>
       <div class="thresholds">
-        <Input label="Umbral bajo" type="number" bind:value={low} />
-        <Input label="Umbral medio" type="number" bind:value={medium} />
+        <div>
+          <Input label="Umbral bajo" type="number" bind:value={low} />
+        </div>
+        <div>
+          <Input label="Umbral medio" type="number" bind:value={medium} />
+        </div>
       </div>
       <div class="section-action">
         <Button size="sm" onclick={saveThresholds}>Guardar franjas</Button>
@@ -523,11 +527,7 @@
     margin-bottom: 0.75rem;
   }
 
-  .add-row :global(.field) {
-    flex: 1;
-  }
-
-  .person :global(.field) {
+  .add-row :global(.input) {
     flex: 1;
   }
 
