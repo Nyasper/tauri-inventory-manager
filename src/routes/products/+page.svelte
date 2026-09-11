@@ -178,7 +178,7 @@
   </div>
 
   <div class="filter">
-    <Select label="Categoría" bind:value={categoryFilter} options={categoryOptions} />
+    <Select ariaLabel="Categoría" bind:value={categoryFilter} options={categoryOptions} />
   </div>
 
   <div class="spacer"></div>

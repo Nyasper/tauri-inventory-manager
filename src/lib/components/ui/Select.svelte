@@ -12,12 +12,14 @@
     options = [],
     placeholder,
     onchange,
+    ariaLabel,
   }: {
     label?: string;
     value?: string;
     options?: SelectOption[];
     placeholder?: string;
     onchange?: (event: Event) => void;
+    ariaLabel?: string;
   } = $props();
 
   const id = $props.id();
@@ -27,7 +29,7 @@
   <label class="field-label" for={id}>{label}</label>
 {/if}
 <div class="wrap">
-  <select {id} bind:value {onchange} class="select" autocomplete="off">
+  <select {id} bind:value {onchange} class="select" autocomplete="off" aria-label={ariaLabel}>
     {#if placeholder}
       <option value="" disabled>{placeholder}</option>
     {/if}
