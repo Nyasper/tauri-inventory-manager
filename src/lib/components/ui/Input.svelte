@@ -16,12 +16,18 @@
   const id = $props.id();
 </script>
 
-{#if label}
-  <label class="field-label" for={id}>{label}</label>
-{/if}
-<input {id} {type} bind:value {placeholder} {disabled} class="input" autocomplete="off" />
+<div class="field">
+  {#if label}
+    <label class="field-label" for={id}>{label}</label>
+  {/if}
+  <input {id} {type} bind:value {placeholder} {disabled} class="input" autocomplete="off" />
+</div>
 
 <style>
+  .field {
+    width: 100%;
+  }
+
   .field-label {
     display: block;
     margin-bottom: 0.375rem;

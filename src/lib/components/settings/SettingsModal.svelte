@@ -523,7 +523,11 @@
     margin-bottom: 0.75rem;
   }
 
-  .add-row :global(.input) {
+  .add-row :global(.field) {
+    flex: 1;
+  }
+
+  .person :global(.field) {
     flex: 1;
   }
 

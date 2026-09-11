@@ -14,12 +14,18 @@
   const id = $props.id();
 </script>
 
-{#if label}
-  <label class="field-label" for={id}>{label}</label>
-{/if}
-<textarea {id} bind:value {placeholder} {rows} class="textarea" autocomplete="off"></textarea>
+<div class="field">
+  {#if label}
+    <label class="field-label" for={id}>{label}</label>
+  {/if}
+  <textarea {id} bind:value {placeholder} {rows} class="textarea" autocomplete="off"></textarea>
+</div>
 
 <style>
+  .field {
+    width: 100%;
+  }
+
   .field-label {
     display: block;
     margin-bottom: 0.375rem;
