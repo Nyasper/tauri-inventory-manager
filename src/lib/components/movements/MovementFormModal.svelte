@@ -192,7 +192,7 @@
       placeholder="Selecciona una presentación"
     />
 
-    <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} />
+    <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} showBounds />
 
     {#if type === "in"}
       <Select
