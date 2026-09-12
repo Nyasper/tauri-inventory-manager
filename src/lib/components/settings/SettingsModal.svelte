@@ -480,6 +480,7 @@
 
   .section-action {
     margin-top: 0.75rem;
+    margin-bottom: 0.40rem;
     display: flex;
     justify-content: flex-end;
   }

@@ -2,7 +2,6 @@
   import { FlexRender } from "@tanstack/svelte-table";
   import type { Snippet } from "svelte";
   import { Search, ChevronUp, ChevronDown } from "@lucide/svelte";
-  import { receive, send } from "./transitions";
 
   let {
     table,
@@ -82,8 +81,6 @@
           class:clickable={!!onRowClick}
           tabindex={onRowClick ? 0 : undefined}
           onkeydown={(event) => { if (onRowClick && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowClick(row.original); } }}
-          in:receive={{ key: row.original.id }}
-          out:send={{ key: row.original.id }}
           onclick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick?.(row.original); }}
         >
           {#each row.getAllCells() as cell (cell.id)}
