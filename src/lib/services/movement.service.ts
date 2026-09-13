@@ -7,7 +7,7 @@ export interface MovementInput {
   quantity: number;
   presentation_id: number;
   supplier_id: number | null;
-  responsible_person_id: number | null;
+  responsible_person_id: number;
   notes: string | null;
   adjustment?: boolean;
   reason?: string | null;

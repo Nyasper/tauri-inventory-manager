@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS movements (
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
  supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
- responsible_person_id INTEGER REFERENCES responsible_persons(id), person_name TEXT,
+ responsible_person_id INTEGER NOT NULL REFERENCES responsible_persons(id), person_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
  FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),

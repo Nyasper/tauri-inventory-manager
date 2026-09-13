@@ -44,7 +44,90 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
         )
         .await?;
     sqlx::raw_sql(SCHEMA).execute(&pool).await?;
+    migrate_movements_responsible(&pool).await?;
     Ok(pool)
+}
+
+const MOVEMENTS_TABLE: &str = r#"
+CREATE TABLE movements_new (
+ id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+ type TEXT NOT NULL CHECK(type IN ('in','out')),
+ quantity REAL NOT NULL CHECK(quantity>0 AND quantity<=1000000000), presentation_id INTEGER NOT NULL,
+ presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
+ factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
+ base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
+ supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
+ responsible_person_id INTEGER NOT NULL REFERENCES responsible_persons(id), person_name TEXT,
+ notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
+ created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
+ FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),
+ CHECK(type='in' OR supplier_id IS NULL),
+ CHECK(kind='regular' OR (reason IS NOT NULL AND length(trim(reason))>0)),
+ CHECK((cancelled_at IS NULL AND cancellation_reason IS NULL) OR
+       (cancelled_at IS NOT NULL AND cancellation_reason IS NOT NULL AND length(trim(cancellation_reason))>0))
+)"#;
+
+const MOVEMENTS_COLUMNS: &str = "id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes,reason,kind,created_at,cancelled_at,cancellation_reason";
+
+/// Versiones anteriores permitían movimientos sin responsable. Rellena los NULL
+/// con el responsable por defecto (o el primero disponible) y reconstruye la
+/// tabla para que `responsible_person_id` sea NOT NULL.
+async fn migrate_movements_responsible(db: &Db) -> Result<(), sqlx::Error> {
+    let columns = sqlx::query("PRAGMA table_info(movements)")
+        .fetch_all(db)
+        .await?;
+    let nullable = columns.iter().any(|row| {
+        row.get::<String, _>("name") == "responsible_person_id" && row.get::<i64, _>("notnull") == 0
+    });
+    if !nullable {
+        return Ok(());
+    }
+    let mut tx = db.begin().await?;
+    let existing: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM responsible_persons ORDER BY is_default DESC, archived ASC, id ASC LIMIT 1",
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    let person = match existing {
+        Some(id) => id,
+        None => {
+            let result = sqlx::query(
+                "INSERT INTO responsible_persons(name,name_key,is_default) VALUES('Responsable','responsable',1)",
+            )
+            .execute(&mut *tx)
+            .await?;
+            result.last_insert_rowid()
+        }
+    };
+    sqlx::query("UPDATE movements SET responsible_person_id=? WHERE responsible_person_id IS NULL")
+        .bind(person)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query(
+        "UPDATE movements SET person_name=(SELECT name FROM responsible_persons WHERE id=movements.responsible_person_id) WHERE person_name IS NULL OR trim(person_name)=''",
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
+    sqlx::query(&format!(
+        "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
+    ))
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query("DROP TABLE movements").execute(&mut *tx).await?;
+    sqlx::query("ALTER TABLE movements_new RENAME TO movements")
+        .execute(&mut *tx)
+        .await?;
+    for index in [
+        "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
+        "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
+        "CREATE INDEX IF NOT EXISTS movements_person ON movements(responsible_person_id)",
+    ] {
+        sqlx::query(index).execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+    Ok(())
 }
 
 /// Loads the same SQL used by `bun run seed` so its integrity is covered by Rust tests.
@@ -337,6 +420,9 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
     positive(input.quantity)?;
     if !["in", "out"].contains(&input.movement_type.as_str()) {
         return Err("Tipo de movimiento inválido.".into());
+    }
+    if input.responsible_person_id.is_none() {
+        return Err("Selecciona un responsable.".into());
     }
     if input.movement_type == "out" && input.supplier_id.is_some() {
         return Err("Una salida no admite proveedor.".into());
@@ -640,7 +726,17 @@ mod tests {
             is_default: default,
         }
     }
+    const TEST_PERSON: i64 = 999999;
     async fn fixture(db: &Db, name: &str) -> (i64, i64) {
+        sqlx::query(
+            "INSERT OR IGNORE INTO responsible_persons(id,name,name_key,is_default) VALUES(?,?,?,0)",
+        )
+        .bind(TEST_PERSON)
+        .bind("Test Person")
+        .bind("test person")
+        .execute(db)
+        .await
+        .unwrap();
         let id = save_product_db(db, product(None, name, None))
             .await
             .unwrap();
@@ -658,7 +754,7 @@ mod tests {
             movement_type: kind.into(),
             quantity,
             supplier_id: None,
-            responsible_person_id: None,
+            responsible_person_id: Some(TEST_PERSON),
             notes: None,
             adjustment: false,
             reason: None,
@@ -670,6 +766,27 @@ mod tests {
             .fetch_one(db)
             .await
             .unwrap()
+    }
+    #[test]
+    fn movements_require_responsible_person() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let columns = sqlx::query("PRAGMA table_info(movements)")
+                .fetch_all(&db)
+                .await
+                .unwrap();
+            let notnull = columns
+                .iter()
+                .find(|row| row.get::<String, _>("name") == "responsible_person_id")
+                .map(|row| row.get::<i64, _>("notnull"))
+                .unwrap();
+            assert_eq!(notnull, 1);
+
+            let a = fixture(&db, "Agua").await;
+            let mut input = movement(a, "in", 1.0);
+            input.responsible_person_id = None;
+            assert!(create_movement_db(&db, input).await.is_err());
+        });
     }
     #[test]
     fn unique_unicode_names_and_editing() {

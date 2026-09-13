@@ -45,8 +45,11 @@
 
   const validation = $derived.by(() => {
     if (loading) return "";
+    if (personsStore.items.length === 0)
+      return "No hay responsables configurados. Añádelos en Configuración.";
     if (!productId) return "Selecciona un producto.";
     if (!presentationId) return "Selecciona una presentación.";
+    if (!personId) return "Selecciona un responsable.";
     if (!Number.isFinite(quantity) || quantity <= 0) return "La cantidad debe ser mayor que cero.";
     if (type === "out") {
       if (availableUnits !== null && availableUnits < 1)
@@ -81,10 +84,10 @@
     }))],
   );
   const personOptions = $derived(
-    [{value:"",label:"Sin responsable"}, ...personsStore.items.map((p) => ({
+    personsStore.items.map((p) => ({
       value: String(p.id),
       label: p.name,
-    }))],
+    })),
   );
   const typeOptions: SelectOption[] = [
     { value: "in", label: "Entrada" },
@@ -130,7 +133,7 @@
     const presId = presentationId ? Number(presentationId) : null;
     const qty = quantity;
 
-    if (!pid || presId === null) return;
+    if (!pid || presId === null || !personId) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
 
     saving = true;
@@ -142,7 +145,7 @@
         quantity: qty,
         presentation_id: presId,
         supplier_id: type === "in" && supplierId ? Number(supplierId) : null,
-        responsible_person_id: personId ? Number(personId) : null,
+        responsible_person_id: Number(personId),
         notes: notes.trim() || null,
         adjustment, reason: adjustment ? reason.trim() : null,
       });
@@ -207,7 +210,7 @@
       label="Responsable"
       bind:value={personId}
       options={personOptions}
-
+      placeholder="Selecciona un responsable"
     />
 
     <Textarea
