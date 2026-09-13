@@ -14,7 +14,7 @@
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
-  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
+  import ProductCategoryCell from "$lib/components/products/ProductCategoryCell.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import { getStockStatus } from "$lib/utils/stock";
   import { formatNumber } from "$lib/utils/format";
@@ -67,18 +67,6 @@
   }
 
   const columns = columnHelper.columns([
-    columnHelper.accessor((p) => p.category_icon, {
-      id: "icon",
-      header: "",
-      enableSorting: false,
-      enableGlobalFilter: false,
-      cell: (info) =>
-        renderComponent(ProductIcon, {
-          icon: info.row.original.category_icon,
-          color: info.row.original.category_color,
-          size: 32,
-        }),
-    }),
     columnHelper.accessor("name", {
       header: () => "Nombre",
       cell: (info) =>
@@ -86,7 +74,8 @@
     }),
     columnHelper.accessor("category_name", {
       header: () => "Categoría",
-      cell: (info) => info.getValue<string>() ?? "—",
+      cell: (info) =>
+        renderComponent(ProductCategoryCell, { product: info.row.original }),
     }),
     columnHelper.accessor("stock", {
       header: () => "Stock",
