@@ -183,6 +183,7 @@
     color: var(--text-muted);
     border-bottom: 1px solid var(--border);
     background: var(--surface-2);
+    white-space: nowrap;
   }
 
   .center {
@@ -217,6 +218,9 @@
     padding: 0.625rem 1rem;
     border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   tbody tr:last-child td {

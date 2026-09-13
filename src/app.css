@@ -265,5 +265,3 @@ input[type="number"]::-webkit-inner-spin-button:active {
 button:disabled { opacity:.5; cursor:not-allowed; }
 @media (max-width:1050px) { :root { --sidebar-width:168px; } .toolbar { flex-wrap:wrap; } }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
-
-.table td { max-width:320px; overflow-wrap:anywhere; }

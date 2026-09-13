@@ -19,12 +19,15 @@
 
   .name {
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .notes {
     font-size: 0.75rem;
     color: var(--text-muted);
-    max-width: 220px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
