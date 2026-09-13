@@ -1,23 +1,42 @@
 import { invoke } from "$lib/api";
 import type { Category } from "$lib/types";
-import { getDb } from "$lib/db";
 
 class CategoryService {
-  async list(): Promise<Category[]> {
-    const db = await getDb();
-    return db.select<Category[]>(
-      "SELECT id, name, color, icon FROM categories ORDER BY name COLLATE NOCASE",
+  list(): Promise<Category[]> {
+    return invoke<Category[]>("list_categories");
+  }
+
+  create(
+    name: string,
+    color: string | null,
+    icon: string | null,
+  ): Promise<number> {
+    return invoke<number>(
+      "save_catalog",
+      { input: { kind: "category", name, color, icon } },
+      "Categoría guardada.",
     );
   }
 
-  async create(name: string, color: string | null, icon: string | null): Promise<number> {
-    return invoke("save_catalog", { input: { kind: "category", name, color, icon } });
+  update(
+    id: number,
+    name: string,
+    color: string | null,
+    icon: string | null,
+  ): Promise<void> {
+    return invoke(
+      "save_catalog",
+      { input: { kind: "category", id, name, color, icon } },
+      "Categoría guardada.",
+    );
   }
-  async update(id: number, name: string, color: string | null, icon: string | null): Promise<void> {
-    await invoke("save_catalog", { input: { kind: "category", id, name, color, icon } });
-  }
-  async remove(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "category", id, restore: false });
+
+  remove(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "category", id, restore: false },
+      "Categoría eliminada.",
+    );
   }
 }
 

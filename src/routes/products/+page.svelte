@@ -11,6 +11,7 @@
   import { productService } from "$lib/services/product.service";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
+  import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
@@ -34,12 +35,10 @@
   const columnHelper = createAppColumnHelper<Product>();
 
   let search = $state("");
-  let archived = $state(false);
-  $effect(()=>{ archived=page.url.searchParams.get("archived")==="1"; }); let archivedItems = $state<Product[]>([]);
-  let archiveLoading = $state(false); let archiveError = $state("");
-  async function loadArchived() { archiveLoading = true; archiveError = ""; try { archivedItems = await productService.list(true); } catch(e) { archiveError = String(e); } finally { archiveLoading = false; } }
-  $effect(() => { if (archived) loadArchived(); });
-  const visible = $derived(archived ? archivedItems : productsStore.items);
+  const archive = new ArchivedList<Product>((archived) =>
+    productService.list(archived),
+  );
+  const visible = $derived(archive.active ? archive.items : productsStore.items);
   let stockFilter = $state("");
   $effect(()=>{stockFilter=page.url.searchParams.get("stock")??"";});
   const targetId = $derived(page.url.searchParams.get("id"));
@@ -135,7 +134,15 @@
   }
 
   function openEdit(product: Product) {
-    if (product.archived) { productService.restore(product.id).then(async () => { await loadArchived(); await productsStore.load(); }); return; }
+    if (product.archived) {
+      productService
+        .restore(product.id)
+        .then(async () => {
+          await archive.reload();
+          await productsStore.load();
+        });
+      return;
+    }
     modalService.open(ProductFormModal, { product });
   }
 
@@ -152,7 +159,7 @@
 </script>
 
 <div class="toolbar">
-  <label><input type="checkbox" bind:checked={archived} /> Archivados</label>
+  <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
   <label><input type="checkbox" checked={stockFilter==="low"} onchange={(e)=>stockFilter=e.currentTarget.checked?"low":""} /> Stock bajo / agotado</label>
   {#if targetId}<Button variant="secondary" onclick={()=>goto("/products")}>Ver todos</Button>{/if}
   <div class="search">
@@ -176,8 +183,8 @@
 </div>
 
 <div class="products">
-  {#if productsStore.error || archiveError}<p class="error" role="alert">{productsStore.error || archiveError}</p><Button onclick={()=>archived?loadArchived():productsStore.load()}>Reintentar</Button>
-  {:else if productsStore.loading || archiveLoading}<p role="status">Cargando productos…</p>
+  {#if productsStore.error || archive.error}<p class="error" role="alert">{productsStore.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():productsStore.load()}>Reintentar</Button>
+  {:else if productsStore.loading || archive.loading}<p role="status">Cargando productos…</p>
   {:else if visible.length === 0}
     <EmptyState
       title="No hay productos"

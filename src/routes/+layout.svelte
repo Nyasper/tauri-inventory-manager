@@ -12,7 +12,6 @@
   import { settingsStore } from "$lib/stores/settings.store.svelte";
   import { personsStore } from "$lib/stores/persons.store.svelte";
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { accentService } from "$lib/stores/accent.service.svelte";
 
   import { modalService } from "$lib/stores/modal.service.svelte";
   import HelpModal from "$lib/components/help/HelpModal.svelte";
@@ -26,7 +25,6 @@
 
   let { children }: { children: Snippet } = $props();
 
-  accentService;
   categoriesStore.load();
   personsStore.load();
   suppliersStore.load();

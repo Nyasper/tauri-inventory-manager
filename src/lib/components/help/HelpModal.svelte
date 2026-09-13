@@ -82,7 +82,7 @@
       </div>
 
       <div class="nav-list">
-        {#each SECTIONS as section (section.id)}
+        {#each filteredSections as section (section.id)}
           {@const Icon = section.icon}
           <button
             type="button"
@@ -96,6 +96,8 @@
               <span class="tab-badge">{section.badge}</span>
             {/if}
           </button>
+        {:else}
+          <p class="nav-empty">Sin resultados para «{searchQuery.trim()}».</p>
         {/each}
       </div>
 
@@ -600,6 +602,12 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+  }
+
+  .nav-empty {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    padding: 0.5rem 0.625rem;
   }
 
   .nav-tab {

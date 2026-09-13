@@ -6,6 +6,7 @@
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
+  import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -13,14 +14,20 @@
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   suppliersStore.load();
-  let archived = $state(false);
-  $effect(()=>{archived=page.url.searchParams.get("archived")==="1";});
-  const targetId=$derived(page.url.searchParams.get("id")); let archivedItems = $state<Supplier[]>([]);
-  let archiveLoading = $state(false); let archiveError = $state("");
-  async function loadArchived() { archiveLoading=true; archiveError=""; try { archivedItems=await supplierService.list(true); } catch(e) { archiveError=String(e); } finally { archiveLoading=false; } }
-  $effect(()=>{ if(archived) loadArchived(); });
-  async function restore(supplier:Supplier) { await supplierService.restore(supplier.id); await loadArchived(); await suppliersStore.load(); }
-  const visible = $derived((archived ? archivedItems : suppliersStore.items).filter(s=>!targetId || s.id===Number(targetId)));
+  const targetId = $derived(page.url.searchParams.get("id"));
+  const archive = new ArchivedList<Supplier>((archived) =>
+    supplierService.list(archived),
+  );
+  const visible = $derived(
+    (archive.active ? archive.items : suppliersStore.items).filter(
+      (supplier) => !targetId || supplier.id === Number(targetId),
+    ),
+  );
+  async function restore(supplier: Supplier) {
+    await supplierService.restore(supplier.id);
+    await archive.reload();
+    await suppliersStore.load();
+  }
 
   const columnHelper = createAppColumnHelper<Supplier>();
 
@@ -66,13 +73,13 @@
 
 <div class="toolbar">
   {#if targetId}<Button variant="secondary" onclick={()=>goto("/suppliers")}>Ver todos</Button>{/if}
-  <label><input type="checkbox" bind:checked={archived} /> Archivados</label>
+  <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
   <div class="spacer"></div>
   <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
-{#if suppliersStore.error || archiveError}<p role="alert" class="error">{suppliersStore.error || archiveError}</p><Button onclick={()=>archived?loadArchived():suppliersStore.load()}>Reintentar</Button>
-{:else if suppliersStore.loading || archiveLoading}<p role="status">Cargando proveedores…</p>
+{#if suppliersStore.error || archive.error}<p role="alert" class="error">{suppliersStore.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():suppliersStore.load()}>Reintentar</Button>
+{:else if suppliersStore.loading || archive.loading}<p role="status">Cargando proveedores…</p>
 {:else if visible.length === 0}
   <EmptyState
     icon={Truck}

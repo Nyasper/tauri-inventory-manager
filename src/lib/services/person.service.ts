@@ -1,29 +1,41 @@
 import { invoke } from "$lib/api";
 import type { ResponsiblePerson } from "$lib/types";
-import { getDb } from "$lib/db";
 
 class PersonService {
-  async list(archived = false): Promise<ResponsiblePerson[]> {
-    const db = await getDb();
-    const rows = await db.select<
-      { id: number; name: string; is_default: number }[]
-    >("SELECT id, name, is_default FROM responsible_persons WHERE archived=? ORDER BY name COLLATE NOCASE", [archived ? 1 : 0]);
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      is_default: Boolean(r.is_default),
-    }));
+  list(archived = false): Promise<ResponsiblePerson[]> {
+    return invoke<ResponsiblePerson[]>("list_persons", { archived });
   }
 
-  async create(name: string, isDefault = false): Promise<number> {
-    return invoke("save_catalog", { input: { kind: "person", name, is_default: isDefault } });
+  create(name: string, isDefault = false): Promise<number> {
+    return invoke<number>(
+      "save_catalog",
+      { input: { kind: "person", name, is_default: isDefault } },
+      "Responsable guardado.",
+    );
   }
-  async update(id: number, name: string, isDefault: boolean): Promise<void> {
-    await invoke("save_catalog", { input: { kind: "person", id, name, is_default: isDefault } });
+
+  update(id: number, name: string, isDefault: boolean): Promise<void> {
+    return invoke(
+      "save_catalog",
+      { input: { kind: "person", id, name, is_default: isDefault } },
+      "Responsable guardado.",
+    );
   }
-  async restore(id:number):Promise<void> { await invoke("archive_record",{kind:"person",id,restore:true}); }
-  async remove(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "person", id, restore: false });
+
+  restore(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "person", id, restore: true },
+      "Responsable restaurado.",
+    );
+  }
+
+  remove(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "person", id, restore: false },
+      "Responsable archivado.",
+    );
   }
 }
 

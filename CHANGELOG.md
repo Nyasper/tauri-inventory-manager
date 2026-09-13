@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-13
+
 ### Added
 
 - Dashboard as the default landing view, with summary cards (products, low/out-of-stock, movements, suppliers), a low-stock panel sorted from out to low, recent movements including the responsible person, and quick actions to create products, movements and suppliers.
@@ -23,12 +25,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Toast notifications for successful database operations and unhandled errors.
 - Database backup and restore from a new "Advanced" section in the settings modal, with an automatic safety copy before restoring.
 - User manual (`MANUAL_DE_USUARIO.md`) covering installation, features and workflows, linked from the README.
-- Interactive in-app user guide modal (`HelpModal.svelte`) accessible via the help (?) button at the bottom of the sidebar.
+- Interactive in-app user guide modal (`HelpModal.svelte`), opened with the F1 key or the help button at the bottom of the sidebar.
 - Rust test suite covering normalized duplicates, rollback, invalid references and quantities, simultaneous withdrawals, cancellation, historical snapshots, archiving, default responsible persons, decimal stock and repeated initialization.
+- Rust read commands (`list_products`, `list_presentations`, `list_suppliers`, `list_categories`, `list_persons`, `page_movements`, `get_settings`, `find_duplicate`) so every query runs through the same SQLx pool as the writes.
+- Tests for the read commands covering joined catalog data, literal search escaping, filters, pagination totals, duplicate lookup and settings fallbacks.
 
 ### Changed
 
-- All database writes now run through validated Rust commands inside SQLite transactions with foreign keys enabled; the frontend only performs read queries.
+- All database access runs through validated Rust commands inside SQLite transactions with foreign keys enabled; the webview no longer opens its own database connection.
 - Replaced versioned SQL migrations with idempotent initialization from `schema.sql`, using a fresh `inventory.db` (the old `app.db` is neither migrated nor copied).
 - Names are normalized (Unicode NFC, lowercase, collapsed whitespace) and unique for products, suppliers, categories and presentations (within their product).
 - Numeric rules: quantities, factors and stock support up to six decimal places with a maximum of 1,000,000,000, and stock can never become negative.
@@ -42,6 +46,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The product list and dashboard share stock-based sorting, and movement listings show the responsible person.
 - The global right-click context menu and browser autocomplete suggestions are disabled.
 - Demo data is now opt-in instead of being seeded automatically on startup.
+- The sidebar is narrower (196px, 168px on small windows) to save horizontal space.
+- Data tables show an "Acciones" header in the actions column and align headers with their column content, with centered columns where appropriate.
+- The product list shows the category icon next to the category name (the separate icon column was removed) and truncates long text with ellipsis.
+- Database access consolidated on a single SQLx connection pool: the Tauri SQL plugin and its frontend connection are gone.
+- Movement and product searches escape `LIKE` wildcards (`%`, `_`) so text matches literally, and pagination resolves the total with `count(*) OVER ()` in one query.
+- Duplicate-name lookup now runs in Rust and reuses the same normalization applied on insert.
+- The `invoke` helper takes an optional success message instead of hardcoding toast text per command.
+- `DataTable` is typed with Svelte generics and TanStack `columnMeta`, and the movements filter options come from the shared stores.
+- Archived lists share a new `ArchivedList` helper that protects against stale responses.
+- The help modal search box now filters the section list.
 
 ### Removed
 
@@ -49,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Product "code" field from the interface and the database; the autoincremental id is the only identifier.
 - Custom product/supplier images (URL or local file), the image utilities and the generic icon wrapper component.
 - Versioned database migrations.
+- `@tauri-apps/plugin-sql` dependency, its `sql:default`/`sql:allow-select` capabilities and its preload configuration.
+- Unused `serde_json` dependency and the redundant write-lock query previously used to serialize transactions.
 
 ### Fixed
 
@@ -57,6 +73,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Category filter alignment in the product toolbar, and layout of supplier and stock-threshold inputs.
 - Number inputs incrementing by large decimal values.
 - Seed data inconsistencies and minor UI spacing issues.
+- `DataTable` called `getVisibleLeafColumns()` without the column visibility feature enabled, which would have thrown when rendering an empty table.
+- The help modal search box accepted input but never filtered anything.
+- Duplicate hints could drift from the backend normalization because the name key was recomputed in the frontend.
+- The demo seed test expectations (26 products, 52 movements) now match the seeded data.
+
+### Security
+
+- Content Security Policy enabled (previously disabled) with a dedicated development variant for Vite HMR.
+- Removed SQL plugin capabilities so the webview can no longer run SQL on its own.
 
 ## [0.1.0] - 2026-08-26
 

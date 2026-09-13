@@ -1,7 +1,16 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { feedback } from "$lib/stores/feedback.svelte";
-export async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+
+/**
+ * Envoltorio de `invoke` que muestra un aviso de éxito cuando el llamador lo
+ * indica. Los comandos sin mensaje (por ejemplo, respaldos) no generan toast.
+ */
+export async function invoke<T>(
+  command: string,
+  args?: Record<string, unknown>,
+  successMessage?: string,
+): Promise<T> {
   const result = await tauriInvoke<T>(command, args);
-  feedback.success(command === "cancel_movement" ? "Movimiento anulado." : command === "archive_record" ? (args?.restore ? "Registro restaurado." : "Operación completada.") : "Cambios guardados.");
+  if (successMessage) feedback.success(successMessage);
   return result;
 }

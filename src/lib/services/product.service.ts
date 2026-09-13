@@ -1,6 +1,5 @@
 import { invoke } from "$lib/api";
-import type { Presentation, Product } from "$lib/types";
-import { getDb } from "$lib/db";
+import type { DuplicateRecord, Presentation, Product } from "$lib/types";
 
 export interface PresentationInput {
   id?: number;
@@ -17,35 +16,43 @@ export interface ProductInput {
 }
 
 class ProductService {
-  async list(archived = false): Promise<Product[]> {
-    const db = await getDb();
-    return db.select<Product[]>(
-      `SELECT p.*, b.name AS base_unit, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
-       FROM products p
-       LEFT JOIN presentations b ON b.id = p.base_presentation_id
-       LEFT JOIN categories c ON c.id = p.category_id
-       WHERE p.archived = ? ORDER BY p.name COLLATE NOCASE`, [archived ? 1 : 0],
+  list(archived = false): Promise<Product[]> {
+    return invoke<Product[]>("list_products", { archived });
+  }
+
+  presentations(productId: number): Promise<Presentation[]> {
+    return invoke<Presentation[]>("list_presentations", { productId });
+  }
+
+  save(input: ProductInput): Promise<number> {
+    return invoke<number>("save_product", { input }, "Producto guardado.");
+  }
+
+  restore(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "product", id, restore: true },
+      "Producto restaurado.",
     );
   }
 
-  async presentations(productId: number): Promise<Presentation[]> {
-    const db = await getDb();
-    return db.select<Presentation[]>(
-      "SELECT id, product_id, name, factor FROM presentations WHERE product_id = ? AND archived=0 ORDER BY factor ASC",
-      [productId],
+  remove(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "product", id, restore: false },
+      "Producto archivado.",
     );
   }
 
-  async save(input: ProductInput): Promise<number> {
-    return invoke<number>("save_product", { input });
-  }
-
-  async restore(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "product", id, restore: true });
-  }
-
-  async remove(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "product", id, restore: false });
+  findDuplicate(
+    name: string,
+    currentId?: number,
+  ): Promise<DuplicateRecord | null> {
+    return invoke<DuplicateRecord | null>("find_duplicate", {
+      kind: "product",
+      name,
+      currentId: currentId ?? null,
+    });
   }
 }
 

@@ -1,12 +1,11 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
   import { Box, Plus } from "@lucide/svelte";
   import Button from "./Button.svelte";
 
-let {
-    icon = Box,
+  let {
+    icon: Icon = Box,
     title,
     description,
     actionLabel,
@@ -18,8 +17,6 @@ let {
     actionLabel?: string;
     onAction?: () => void;
   } = $props();
-
-  const Icon = $derived(icon);
 </script>
 
 <div class="empty">

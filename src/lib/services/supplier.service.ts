@@ -1,6 +1,5 @@
 import { invoke } from "$lib/api";
-import type { Supplier } from "$lib/types";
-import { getDb } from "$lib/db";
+import type { DuplicateRecord, Supplier } from "$lib/types";
 
 export interface SupplierInput {
   name: string;
@@ -8,8 +7,12 @@ export interface SupplierInput {
   notes: string | null;
 }
 
-interface SupplierRow extends Omit<Supplier, "contacts"> {
+interface SupplierRow {
+  id: number;
+  name: string;
   contact: string | null;
+  notes: string | null;
+  archived: number;
 }
 
 function parseContacts(value: string | null): string[] {
@@ -32,7 +35,7 @@ function contactPayload(contacts: string[]): string | null {
       (contact, index, all) =>
         contact &&
         all.findIndex(
-          (candidate) => candidate.toLocaleLowerCase() === contact.toLocaleLowerCase(),
+          (candidate) => candidate.toLowerCase() === contact.toLowerCase(),
         ) === index,
     );
   return unique.length ? JSON.stringify(unique) : null;
@@ -40,45 +43,69 @@ function contactPayload(contacts: string[]): string | null {
 
 class SupplierService {
   async list(archived = false): Promise<Supplier[]> {
-    const db = await getDb();
-    const rows = await db.select<SupplierRow[]>(
-      "SELECT id, name, contact, notes, archived FROM suppliers WHERE archived = ? ORDER BY name COLLATE NOCASE", [archived ? 1 : 0],
-    );
+    const rows = await invoke<SupplierRow[]>("list_suppliers", { archived });
     return rows.map(({ contact, ...supplier }) => ({
       ...supplier,
       contacts: parseContacts(contact),
     }));
   }
 
-  async create(data: SupplierInput): Promise<number> {
-    return invoke("save_catalog", {
-      input: {
-        kind: "supplier",
-        name: data.name,
-        contact: contactPayload(data.contacts),
-        notes: data.notes,
+  create(data: SupplierInput): Promise<number> {
+    return invoke<number>(
+      "save_catalog",
+      {
+        input: {
+          kind: "supplier",
+          name: data.name,
+          contact: contactPayload(data.contacts),
+          notes: data.notes,
+        },
       },
-    });
+      "Proveedor guardado.",
+    );
   }
 
-  async update(data: SupplierInput & { id: number }): Promise<void> {
-    await invoke("save_catalog", {
-      input: {
-        kind: "supplier",
-        id: data.id,
-        name: data.name,
-        contact: contactPayload(data.contacts),
-        notes: data.notes,
+  update(data: SupplierInput & { id: number }): Promise<void> {
+    return invoke(
+      "save_catalog",
+      {
+        input: {
+          kind: "supplier",
+          id: data.id,
+          name: data.name,
+          contact: contactPayload(data.contacts),
+          notes: data.notes,
+        },
       },
+      "Proveedor guardado.",
+    );
+  }
+
+  restore(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "supplier", id, restore: true },
+      "Proveedor restaurado.",
+    );
+  }
+
+  remove(id: number): Promise<void> {
+    return invoke(
+      "archive_record",
+      { kind: "supplier", id, restore: false },
+      "Proveedor archivado.",
+    );
+  }
+
+  findDuplicate(
+    name: string,
+    currentId?: number,
+  ): Promise<DuplicateRecord | null> {
+    return invoke<DuplicateRecord | null>("find_duplicate", {
+      kind: "supplier",
+      name,
+      currentId: currentId ?? null,
     });
-  }
-
-  async restore(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "supplier", id, restore: true });
-  }
-
-  async remove(id: number): Promise<void> {
-    await invoke("archive_record", { kind: "supplier", id, restore: false });
   }
 }
 

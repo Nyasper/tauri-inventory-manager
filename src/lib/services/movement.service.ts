@@ -1,44 +1,84 @@
 import { invoke } from "$lib/api";
 import type { Movement, MovementType } from "$lib/types";
-import { getDb } from "$lib/db";
+
 export interface MovementInput {
-  product_id: number; type: MovementType; quantity: number; presentation_id: number;
-  supplier_id: number | null; responsible_person_id: number | null; notes: string | null;
-  adjustment?: boolean; reason?: string | null;
+  product_id: number;
+  type: MovementType;
+  quantity: number;
+  presentation_id: number;
+  supplier_id: number | null;
+  responsible_person_id: number | null;
+  notes: string | null;
+  adjustment?: boolean;
+  reason?: string | null;
 }
+
 export interface MovementFilters {
-  search?: string; type?: string; product?: string; supplier?: string; person?: string;
-  from?: string; to?: string; status?: string; page?: number;
+  search?: string;
+  type?: string;
+  product?: string;
+  supplier?: string;
+  person?: string;
+  from?: string;
+  to?: string;
+  status?: string;
+  page?: number;
 }
+
+export interface MovementPage {
+  items: Movement[];
+  total: number;
+}
+
+interface MovementQuery {
+  search: string | null;
+  type: string | null;
+  product: number | null;
+  supplier: number | null;
+  person: number | null;
+  from: string | null;
+  to: string | null;
+  status: string | null;
+  page: number;
+}
+
+/** Convierte un día local (`YYYY-MM-DD`) al instante UTC equivalente. */
+function utcDayBoundary(day: string, nextDay: boolean): string | null {
+  const date = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (nextDay) date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function toQuery(filters: MovementFilters): MovementQuery {
+  return {
+    search: filters.search?.trim() || null,
+    type: filters.type && filters.type !== "all" ? filters.type : null,
+    product: filters.product ? Number(filters.product) : null,
+    supplier: filters.supplier ? Number(filters.supplier) : null,
+    person: filters.person ? Number(filters.person) : null,
+    from: filters.from ? utcDayBoundary(filters.from, false) : null,
+    to: filters.to ? utcDayBoundary(filters.to, true) : null,
+    status:
+      filters.status === "active" || filters.status === "cancelled"
+        ? filters.status
+        : null,
+    page: Math.max(0, filters.page ?? 0),
+  };
+}
+
 class MovementService {
-  async page(filters: MovementFilters = {}): Promise<{ items: Movement[]; total: number }> {
-    const db = await getDb();
-    const clauses: string[] = []; const values: (string | number)[] = [];
-    const add = (clause: string, value: string | number) => { clauses.push(clause); values.push(value); };
-    if (filters.search?.trim()) { add("(product_name LIKE ? OR supplier_name LIKE ? OR person_name LIKE ? OR notes LIKE ?)", `%${filters.search.trim()}%`); values.push(values[0],values[0],values[0]); }
-    if (filters.type && filters.type !== "all") add("type=?", filters.type);
-    if (filters.product) add("product_id=?", Number(filters.product));
-    if (filters.supplier) add("supplier_id=?", Number(filters.supplier));
-    if (filters.person) add("responsible_person_id=?", Number(filters.person));
-    if (filters.from) add("created_at>=?", new Date(`${filters.from}T00:00:00`).toISOString().slice(0,19).replace("T"," "));
-    if (filters.to) { const end = new Date(`${filters.to}T00:00:00`); end.setDate(end.getDate()+1); add("created_at<?", end.toISOString().slice(0,19).replace("T"," ")); }
-    if (filters.status === "active") clauses.push("cancelled_at IS NULL");
-    if (filters.status === "cancelled") clauses.push("cancelled_at IS NOT NULL");
-    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const [count, items] = await Promise.all([
-      db.select<{ total: number }[]>(
-        `SELECT count(*) AS total FROM movements ${where}`,
-        values,
-      ),
-      db.select<Movement[]>(
-        `SELECT * FROM movements ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`,
-        [...values, (filters.page ?? 0) * 25],
-      ),
-    ]);
-    return { items, total: count[0].total };
+  page(filters: MovementFilters = {}): Promise<MovementPage> {
+    return invoke<MovementPage>("page_movements", { filters: toQuery(filters) });
   }
-  async list(): Promise<Movement[]> { return (await this.page()).items; }
-  async create(input: MovementInput): Promise<void> { await invoke("create_movement", { input }); }
-  async remove(id: number, reason: string): Promise<void> { await invoke("cancel_movement", { id, reason }); }
+
+  create(input: MovementInput): Promise<void> {
+    return invoke("create_movement", { input }, "Movimiento registrado.");
+  }
+
+  remove(id: number, reason: string): Promise<void> {
+    return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
+  }
 }
+
 export const movementService = new MovementService();

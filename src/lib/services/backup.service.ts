@@ -1,6 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "$lib/api";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { closeDb } from "$lib/db";
 
 const FILTERS = [{ name: "Base de datos SQLite", extensions: ["db"] }];
 
@@ -44,7 +43,6 @@ class BackupService {
 
   /** Reemplaza la base de datos actual por la del respaldo indicado. */
   async restore(path: string): Promise<void> {
-    await closeDb();
     await invoke("restore_database", { srcPath: path });
   }
 }

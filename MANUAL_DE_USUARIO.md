@@ -522,4 +522,4 @@ Esto ocurre porque anular una Entrada implica restar ese stock, y si ya consumi√
 
 ---
 
-*Manual elaborado para Inventory Manager v0.1.0 o superior.*
+*Manual elaborado para Inventory Manager v0.9.0 o superior.*

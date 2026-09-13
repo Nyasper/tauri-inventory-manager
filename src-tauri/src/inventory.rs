@@ -21,9 +21,18 @@ impl DbState {
     pub fn new(pool: Db) -> Self {
         Self(RwLock::new(pool))
     }
+
+    /// Acceso al pool compartido. Se usa un `RwLock` para poder cerrar y
+    /// reabrir la conexión al restaurar la base de datos.
+    pub(crate) fn pool(&self) -> &RwLock<Db> {
+        &self.0
+    }
 }
 
 pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
+    // Una única conexión serializa todas las transacciones, por lo que las
+    // lecturas y escrituras de stock (leer-y-luego-actualizar) no pueden
+    // intercalarse entre comandos concurrentes.
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
         .connect_with(
@@ -77,7 +86,9 @@ fn error(e: sqlx::Error) -> String {
     eprintln!("Database error: {e}");
     "No se pudo completar la operación. Revisa los datos e inténtalo nuevamente.".into()
 }
-fn name(value: &str) -> Result<(String, String), String> {
+/// Normaliza un nombre para mostrarlo y para compararlo de forma única:
+/// colapsa espacios, aplica NFC y calcula su clave en minúsculas.
+pub(crate) fn name(value: &str) -> Result<(String, String), String> {
     let display = value
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -146,11 +157,6 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, String> {
         }
     }
     let mut tx = db.begin().await.map_err(error)?;
-    // Take the write lock before reading mutable inventory data.
-    sqlx::query("UPDATE settings SET value=value WHERE key='default_view'")
-        .execute(&mut *tx)
-        .await
-        .map_err(error)?;
     let id = if let Some(id) = input.id {
         let row=sqlx::query("SELECT base_presentation_id, EXISTS(SELECT 1 FROM movements WHERE product_id=products.id) AS used FROM products WHERE id=? AND archived=0")
             .bind(id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or("El producto no está disponible.")?;
@@ -339,10 +345,6 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
         return Err("Indica el motivo del ajuste.".into());
     }
     let mut tx = db.begin().await.map_err(error)?;
-    sqlx::query("UPDATE settings SET value=value WHERE key='default_view'")
-        .execute(&mut *tx)
-        .await
-        .map_err(error)?;
     let row=sqlx::query("SELECT r.factor,r.name,p.name AS product_name FROM presentations r JOIN products p ON p.id=r.product_id WHERE r.id=? AND p.id=? AND r.archived=0 AND p.archived=0")
         .bind(input.presentation_id).bind(input.product_id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or("El producto o la presentación no están disponibles.")?;
     let factor: f64 = row.get("factor");
@@ -459,8 +461,8 @@ pub async fn save_settings(
     tx.commit().await.map_err(error)
 }
 
-/// Absolute path of the SQLite database file managed by the SQL plugin.
-fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
+/// Absolute path of the SQLite database file managed by the application.
+pub(crate) fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_config_dir()
@@ -988,8 +990,8 @@ mod tests {
                 .fetch_one(&db)
                 .await
                 .unwrap();
-            assert_eq!(first_products, 6);
-            assert_eq!(first_movements, 12);
+            assert_eq!(first_products, 26);
+            assert_eq!(first_movements, 52);
             assert!(sqlx::query("PRAGMA foreign_key_check")
                 .fetch_all(&db)
                 .await
@@ -1000,7 +1002,7 @@ mod tests {
                     .fetch_one(&db)
                     .await
                     .unwrap(),
-                6
+                25
             );
             seed_demo_data(&db).await.unwrap();
             assert_eq!(
@@ -1127,6 +1129,205 @@ mod tests {
             drop(pool);
             drop(state);
             let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn queries_list_products_with_joined_catalog_data() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::list_products_db;
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let category = save_catalog_db(&db, catalog("category", None, "Bebidas", false))
+                .await
+                .unwrap();
+            let mut input = product(None, "Agua", None);
+            input.category_id = Some(category);
+            let id = save_product_db(&db, input).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let row = rows.iter().find(|row| row.id == id).unwrap();
+            assert_eq!(row.base_unit.as_deref(), Some("Unidad"));
+            assert_eq!(row.category_name.as_deref(), Some("Bebidas"));
+            assert_eq!(row.archived, 0);
+            assert!(list_products_db(&db, true).await.unwrap().is_empty());
+        });
+    }
+    #[test]
+    fn queries_filter_search_dates_status_and_pagination() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::{page_movements_db, MovementFilters};
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            let coffee = fixture(&db, "Café").await;
+
+            let mut plain = movement(water, "in", 10.0);
+            plain.notes = Some("sin guion".into());
+            create_movement_db(&db, plain).await.unwrap();
+
+            let mut underscore = movement(coffee, "in", 1.0);
+            underscore.notes = Some("a_b".into());
+            create_movement_db(&db, underscore).await.unwrap();
+
+            let escaped = page_movements_db(
+                &db,
+                &MovementFilters {
+                    search: Some("_".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(escaped.total, 1);
+            assert_eq!(escaped.items[0].notes.as_deref(), Some("a_b"));
+
+            let found = page_movements_db(
+                &db,
+                &MovementFilters {
+                    search: Some("café".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(found.total, 1);
+            assert_eq!(found.items[0].product_id, coffee.0);
+
+            let by_product = page_movements_db(
+                &db,
+                &MovementFilters {
+                    product: Some(water.0),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(by_product.total, 1);
+
+            let by_type = page_movements_db(
+                &db,
+                &MovementFilters {
+                    movement_type: Some("out".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(by_type.total, 0);
+
+            create_movement_db(&db, movement(water, "out", 1.0))
+                .await
+                .unwrap();
+            let outgoing = page_movements_db(
+                &db,
+                &MovementFilters {
+                    movement_type: Some("out".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(outgoing.total, 1);
+
+            let cancelled = page_movements_db(
+                &db,
+                &MovementFilters {
+                    status: Some("cancelled".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(cancelled.total, 0);
+
+            cancel_movement_db(&db, 3, "Error de carga".into())
+                .await
+                .unwrap();
+            let cancelled = page_movements_db(
+                &db,
+                &MovementFilters {
+                    status: Some("cancelled".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(cancelled.total, 1);
+            assert!(cancelled.items[0].cancelled_at.is_some());
+
+            for _ in 0..28 {
+                create_movement_db(&db, movement(water, "in", 1.0))
+                    .await
+                    .unwrap();
+            }
+            let first = page_movements_db(&db, &MovementFilters::default())
+                .await
+                .unwrap();
+            assert_eq!(first.total, 31);
+            assert_eq!(first.items.len(), 25);
+            let second = page_movements_db(
+                &db,
+                &MovementFilters {
+                    page: Some(1),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(second.total, 31);
+            assert_eq!(second.items.len(), 6);
+        });
+    }
+    #[test]
+    fn queries_find_duplicates_and_read_settings() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::{find_duplicate_db, get_settings_db};
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+
+            let found = find_duplicate_db(&db, "product", "  agua ", None)
+                .await
+                .unwrap();
+            assert_eq!(found.map(|row| row.id), Some(water.0));
+            assert!(
+                find_duplicate_db(&db, "product", "agua", Some(water.0))
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor", false))
+                .await
+                .unwrap();
+            archive_record_db(&db, "supplier".into(), supplier, false)
+                .await
+                .unwrap();
+            let archived = find_duplicate_db(&db, "supplier", "proveedor", None)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(archived.archived, 1);
+            assert!(find_duplicate_db(&db, "person", "Proveedor", None)
+                .await
+                .is_err());
+
+            let defaults = get_settings_db(&db).await.unwrap();
+            assert_eq!(defaults.stock_low_threshold, 5.0);
+            assert_eq!(defaults.stock_medium_threshold, 20.0);
+            assert_eq!(defaults.default_view, "dashboard");
+
+            sqlx::query("UPDATE settings SET value='8' WHERE key='stock_low_threshold'")
+                .execute(&db)
+                .await
+                .unwrap();
+            sqlx::query("UPDATE settings SET value='inventada' WHERE key='default_view'")
+                .execute(&db)
+                .await
+                .unwrap();
+            let updated = get_settings_db(&db).await.unwrap();
+            assert_eq!(updated.stock_low_threshold, 8.0);
+            assert_eq!(updated.default_view, "dashboard");
         });
     }
 }

@@ -3,12 +3,13 @@
   import type { Movement, MovementType } from "$lib/types";
   import { movementsStore } from "$lib/stores/movements.store.svelte";
   import { productsStore } from "$lib/stores/products.store.svelte";
+  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
+  import { personsStore } from "$lib/stores/persons.store.svelte";
   import { modalService } from "$lib/stores/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
   import { page } from "$app/state";
-  import { getDb } from "$lib/db";
   import Select from "$lib/components/ui/Select.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
@@ -29,13 +30,16 @@
   let productFilter = $state(page.url.searchParams.get("product") ?? "");
   let supplierFilter = $state(""); let personFilter = $state(""); let from = $state(""); let to = $state("");
   let status = $state("all"); let currentPage = $state(0);
-  let products = $state<{value:string;label:string}[]>([]), suppliers = $state<{value:string;label:string}[]>([]), persons = $state<{value:string;label:string}[]>([]);
-  async function loadOptions() {
-    const db = await getDb();
-    const options = async (table:string) => (await db.select<{id:number;name:string}[]>(`SELECT id,name FROM ${table} ORDER BY name`)).map(r=>({value:String(r.id),label:r.name}));
-    [products,suppliers,persons] = await Promise.all([options("products"),options("suppliers"),options("responsible_persons")]);
-  }
-  loadOptions();
+
+  const productOptions = $derived(
+    productsStore.items.map((p) => ({ value: String(p.id), label: p.name })),
+  );
+  const supplierOptions = $derived(
+    suppliersStore.items.map((s) => ({ value: String(s.id), label: s.name })),
+  );
+  const personOptions = $derived(
+    personsStore.items.map((p) => ({ value: String(p.id), label: p.name })),
+  );
 
   $effect(() => {
     productFilter = page.url.searchParams.get("product") ?? "";
@@ -149,9 +153,9 @@
       aria-label="Buscar movimientos"
     />
   </label>
-  <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...products]} /></div>
-  <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...suppliers]} /></div>
-  <div><Select label="Responsable" bind:value={personFilter} options={[{value:"",label:"Todos"},...persons]} /></div>
+  <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...productOptions]} /></div>
+  <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...supplierOptions]} /></div>
+  <div><Select label="Responsable" bind:value={personFilter} options={[{value:"",label:"Todos"},...personOptions]} /></div>
   <label>Desde<input class="field" type="date" bind:value={from} /></label>
   <label>Hasta<input class="field" type="date" bind:value={to} /></label>
   <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>

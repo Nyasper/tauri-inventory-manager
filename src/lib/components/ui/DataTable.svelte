@@ -1,6 +1,8 @@
-<script lang="ts">
+<script lang="ts" generics="TData extends RowData">
   import { FlexRender } from "@tanstack/svelte-table";
+  import type { RowData } from "@tanstack/svelte-table";
   import type { Snippet } from "svelte";
+  import type { AppColumnMeta, AppTable } from "$lib/components/ui/table";
   import { Search, ChevronUp, ChevronDown } from "@lucide/svelte";
 
   let {
@@ -8,20 +10,22 @@
     searchPlaceholder = "Buscar...",
     emptyText = "No hay resultados",
     showSearch = true,
-    onRowClick = undefined,
+    onRowClick,
     actions,
     fixed = false,
   }: {
-    table: any;
+    table: AppTable<TData>;
     searchPlaceholder?: string;
     emptyText?: string;
     showSearch?: boolean;
-    onRowClick?: (row: any) => void;
-    actions?: Snippet<[any]>;
+    onRowClick?: (row: TData) => void;
+    actions?: Snippet<[TData]>;
     fixed?: boolean;
   } = $props();
 
-  function isCentered(column: any): boolean {
+  function isCentered(column: {
+    columnDef: { meta?: AppColumnMeta | null };
+  }): boolean {
     return column.columnDef.meta?.align === "center";
   }
 </script>
@@ -37,9 +41,8 @@
         aria-label={searchPlaceholder}
         autocomplete="off"
         value={table.atoms.globalFilter.get() ?? ""}
-        oninput={(e) =>
-          table.setGlobalFilter((e.currentTarget as HTMLInputElement).value)
-        }
+        oninput={(event) =>
+          table.setGlobalFilter(event.currentTarget.value)}
       />
     </div>
   {/if}
@@ -85,8 +88,20 @@
         <tr
           class:clickable={!!onRowClick}
           tabindex={onRowClick ? 0 : undefined}
-          onkeydown={(event) => { if (onRowClick && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowClick(row.original); } }}
-          onclick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick?.(row.original); }}
+          onkeydown={(event) => {
+            if (
+              onRowClick &&
+              event.target === event.currentTarget &&
+              (event.key === "Enter" || event.key === " ")
+            ) {
+              event.preventDefault();
+              onRowClick(row.original);
+            }
+          }}
+          onclick={(event) => {
+            if (!(event.target as HTMLElement).closest("button,a,input,select,textarea"))
+              onRowClick?.(row.original);
+          }}
         >
           {#each row.getAllCells() as cell (cell.id)}
             <td class:center={isCentered(cell.column)}>
@@ -106,7 +121,7 @@
         <tr>
           <td
             class="empty"
-            colspan={table.getVisibleLeafColumns().length + (actions ? 1 : 0)}
+            colspan={table.getAllLeafColumns().length + (actions ? 1 : 0)}
           >
             {emptyText}
           </td>

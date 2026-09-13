@@ -81,6 +81,11 @@ export interface AppSettings {
 
 export type StockStatus = "out" | "low" | "medium" | "high";
 
+export interface DuplicateRecord {
+  id: number;
+  archived: number;
+}
+
 export type AccentColor =
   | "blue"
   | "violet"
