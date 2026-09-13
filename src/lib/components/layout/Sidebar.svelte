@@ -7,7 +7,10 @@
     LayoutDashboard,
     ArrowLeftRight,
     Truck,
+    CircleHelp,
   } from "@lucide/svelte";
+  import { modalService } from "$lib/stores/modal.service.svelte";
+  import HelpModal from "$lib/components/help/HelpModal.svelte";
 
   const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -19,6 +22,10 @@
   function isActive(href: string): boolean {
     const path = page.url.pathname;
     return href === "/" ? path === "/" : path.startsWith(href);
+  }
+
+  function openHelp() {
+    modalService.open(HelpModal);
   }
 </script>
 
@@ -39,6 +46,21 @@
       </a>
     {/each}
   </nav>
+
+  <div class="spacer"></div>
+
+  <div class="footer">
+    <button
+      class="help-btn"
+      type="button"
+      aria-label="Manual de usuario y ayuda"
+      title="Manual de usuario y ayuda"
+      onclick={openHelp}
+    >
+      <CircleHelp size={18} />
+      <span>Ayuda</span>
+    </button>
+  </div>
 </aside>
 
 <style>
@@ -105,5 +127,40 @@
   .nav-item.active {
     background: var(--primary-soft);
     color: var(--primary);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .help-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+    text-align: left;
+  }
+
+  .help-btn:hover {
+    background: var(--surface-2);
+    color: var(--text);
   }
 </style>

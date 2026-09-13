@@ -15,7 +15,7 @@
     children: Snippet;
     footer?: Snippet;
     onClose?: () => void;
-    width?: "sm" | "md" | "lg";
+    width?: "sm" | "md" | "lg" | "xl";
   } = $props();
 
   let dialog: HTMLDivElement;
@@ -75,7 +75,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 8vh 1rem 1rem;
+    padding: 5vh 1rem 1rem;
     z-index: 1000;
     overflow-y: auto;
   }
@@ -88,7 +88,7 @@
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
-    max-height: 84vh;
+    max-height: 86vh;
   }
 
   .modal-sm {
@@ -100,6 +100,10 @@
   .modal-lg {
     max-width: 720px;
   }
+  .modal-xl {
+    max-width: 1100px;
+    height: 86vh;
+  }
 
   .header {
     display: flex;
@@ -107,6 +111,7 @@
     justify-content: space-between;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   .header h2 {
@@ -134,6 +139,14 @@
   .body {
     padding: 1.25rem;
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .modal-xl .body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .footer {
@@ -142,5 +155,6 @@
     gap: 0.5rem;
     padding: 1rem 1.25rem;
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
 </style>

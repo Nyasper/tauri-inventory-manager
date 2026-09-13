@@ -2,6 +2,8 @@
 
 Desktop stock/inventory manager built with [Tauri 2](https://tauri.app) and [Svelte 5](https://svelte.dev) (SvelteKit + runes).
 
+Para consultar la documentación completa de uso y todas las características en español, consulta el [Manual de Usuario](MANUAL_DE_USUARIO.md).
+
 ## Features
 
 - Products with categories and flexible presentations (units of measure with conversion factors).

@@ -14,6 +14,9 @@
   import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
   import { accentService } from "$lib/stores/accent.service.svelte";
 
+  import { modalService } from "$lib/stores/modal.service.svelte";
+  import HelpModal from "$lib/components/help/HelpModal.svelte";
+
   const VIEW_PATHS: Record<string, string> = {
     dashboard: "/",
     products: "/products",
@@ -32,6 +35,18 @@
     event.preventDefault(); feedback.error(String(event.reason));
   }
 
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === "F1") {
+      event.preventDefault();
+      const isOpen = modalService.modals.some((m) => m.component === HelpModal);
+      if (isOpen) {
+        modalService.close();
+      } else {
+        modalService.open(HelpModal);
+      }
+    }
+  }
+
   onMount(async () => {
     await settingsStore.load();
     const path = VIEW_PATHS[settingsStore.settings.default_view] ?? "/";
@@ -39,7 +54,7 @@
   });
 </script>
 
-<svelte:window onunhandledrejection={handleError} />
+<svelte:window onunhandledrejection={handleError} onkeydown={handleKeydown} />
 
 <div class="app">
   <Sidebar />
