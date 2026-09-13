@@ -70,7 +70,7 @@
             </th>
           {/each}
           {#if actions}
-            <th class="actions-col"></th>
+            <th class="actions-col">Acciones</th>
           {/if}
         </tr>
       {/each}
