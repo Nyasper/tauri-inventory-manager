@@ -12,7 +12,6 @@
   import { modalService } from "$lib/stores/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import DataTable from "$lib/components/ui/DataTable.svelte";
-  import ProductCard from "$lib/components/products/ProductCard.svelte";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
   import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
@@ -23,8 +22,6 @@
   import Button from "$lib/components/ui/Button.svelte";
   import {
     Search,
-    List,
-    LayoutGrid,
     Plus,
     History,
     Pencil,
@@ -183,27 +180,6 @@
 
   <div class="spacer"></div>
 
-  <div class="view-toggle">
-    <button
-      class="toggle-btn"
-      class:active={productsStore.view === "list"}
-      type="button"
-      aria-label="Vista lista"
-      onclick={() => productsStore.setView("list")}
-    >
-      <List size={16} />
-    </button>
-    <button
-      class="toggle-btn"
-      class:active={productsStore.view === "grid"}
-      type="button"
-      aria-label="Vista cuadrícula"
-      onclick={() => productsStore.setView("grid")}
-    >
-      <LayoutGrid size={16} />
-    </button>
-  </div>
-
   <Button icon={Plus} onclick={openNew}>Nuevo producto</Button>
 </div>
 
@@ -223,18 +199,6 @@
       title="Sin resultados"
       description="Ningún producto coincide con la búsqueda o el filtro seleccionado."
     />
-  {:else if productsStore.view === "grid"}
-    <div class="grid">
-      {#each filtered as product (product.id)}
-        <ProductCard
-          {product}
-          onEdit={openEdit}
-          onDelete={removeProduct}
-          onMovement={(p)=>modalService.open(MovementFormModal,{initialProductId:String(p.id)})}
-          onHistory={(p)=>goto(`/movements?product=${p.id}`)}
-        />
-      {/each}
-    </div>
   {:else}
     <DataTable
       {table}
@@ -348,40 +312,9 @@
     flex: 1;
   }
 
-  .view-toggle {
-    display: flex;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--surface);
-  }
-
-  .toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-
-  .toggle-btn.active {
-    background: var(--primary-soft);
-    color: var(--primary);
-  }
-
   .products {
     display: flex;
     flex-direction: column;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
   }
 
   .actions {
