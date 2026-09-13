@@ -79,7 +79,6 @@
     }),
     columnHelper.accessor("stock", {
       header: () => "Stock",
-      meta: { align: "right" },
       cell: (info) => `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
     }),
     columnHelper.accessor(statusRank, {

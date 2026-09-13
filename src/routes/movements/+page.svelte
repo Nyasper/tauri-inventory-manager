@@ -74,7 +74,6 @@
     }),
     columnHelper.accessor("quantity", {
       header: () => "Cantidad",
-      meta: { align: "right" },
       cell: (info) => formatNumber(info.getValue<number>()),
     }),
     columnHelper.accessor("supplier_name", {

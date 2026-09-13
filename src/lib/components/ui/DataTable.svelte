@@ -18,10 +18,6 @@
     onRowClick?: (row: any) => void;
     actions?: Snippet<[any]>;
   } = $props();
-
-  function isRightAligned(column: any): boolean {
-    return column.columnDef.meta?.align === "right";
-  }
 </script>
 
 <div class="table-wrap">
@@ -47,7 +43,7 @@
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
         <tr>
           {#each headerGroup.headers as header (header.id)}
-            <th class:num={isRightAligned(header.column)}>
+            <th>
               {#if !header.isPlaceholder && header.column.getCanSort()}
                 <button
                   class="th-sort"
@@ -84,13 +80,15 @@
           onclick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick?.(row.original); }}
         >
           {#each row.getAllCells() as cell (cell.id)}
-            <td class:num={isRightAligned(cell.column)}>
+            <td>
               <FlexRender {cell} />
             </td>
           {/each}
           {#if actions}
             <td class="actions-col">
-              {@render actions(row.original)}
+              <div class="actions-inner">
+                {@render actions(row.original)}
+              </div>
             </td>
           {/if}
         </tr>
@@ -148,7 +146,7 @@
   }
 
   th {
-    text-align: left;
+    text-align: center;
     padding: 0.625rem 1rem;
     font-size: 0.75rem;
     font-weight: 600;
@@ -183,6 +181,7 @@
   }
 
   td {
+    text-align: center;
     padding: 0.625rem 1rem;
     border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
@@ -210,11 +209,13 @@
     padding: 2rem 1rem;
   }
 
-  .num {
-    text-align: right;
-  }
-
   .actions-col {
     min-width: 136px;
+  }
+
+  .actions-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 </style>
