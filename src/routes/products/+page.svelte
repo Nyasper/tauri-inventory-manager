@@ -69,22 +69,26 @@
   const columns = columnHelper.columns([
     columnHelper.accessor("name", {
       header: () => "Nombre",
+      meta: { width: "34%" },
       cell: (info) =>
         renderComponent(ProductNameCell, { product: info.row.original }),
     }),
     columnHelper.accessor("category_name", {
       header: () => "Categoría",
+      meta: { width: "22%" },
       cell: (info) =>
         renderComponent(ProductCategoryCell, { product: info.row.original }),
     }),
     columnHelper.accessor("stock", {
       header: () => "Stock",
+      meta: { align: "center", width: "14%" },
       cell: (info) => `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
     }),
     columnHelper.accessor(statusRank, {
       id: "status",
       header: () => "Estado",
       enableGlobalFilter: false,
+      meta: { align: "center", width: "14%" },
       cell: (info) =>
         renderComponent(StockBadge, { status: statusOf(info.row.original) }),
     }),
@@ -190,6 +194,7 @@
   {:else}
     <DataTable
       {table}
+      fixed
       onRowClick={openEdit}
       showSearch={false}
       searchPlaceholder="Buscar productos..."

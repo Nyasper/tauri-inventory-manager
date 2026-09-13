@@ -60,6 +60,7 @@
     columnHelper.accessor((m) => (m.type === "in" ? "Entrada" : "Salida"), {
       id: "type",
       header: () => "Tipo",
+      meta: { align: "center" },
       cell: (info) =>
         renderComponent(MovementTypeCell, { type: info.row.original.type }),
     }),
@@ -74,6 +75,7 @@
     }),
     columnHelper.accessor("quantity", {
       header: () => "Cantidad",
+      meta: { align: "center" },
       cell: (info) => formatNumber(info.getValue<number>()),
     }),
     columnHelper.accessor("supplier_name", {
@@ -85,11 +87,12 @@
       cell: (info) => info.getValue<string>() ?? "—",
     }),
     columnHelper.accessor((m) => m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente", {
-      id: "state", header: () => "Estado",
+      id: "state", header: () => "Estado", meta: { align: "center" },
     }),
     columnHelper.accessor((m) => m.cancellation_reason ?? m.reason ?? m.notes ?? "—", { id:"reason", header:()=>"Motivo / notas" }),
     columnHelper.accessor("created_at", {
       header: () => "Fecha",
+      meta: { align: "center" },
       cell: (info) => formatDate(info.getValue<string>()),
     }),
   ]);

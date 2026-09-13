@@ -10,6 +10,7 @@
     showSearch = true,
     onRowClick = undefined,
     actions,
+    fixed = false,
   }: {
     table: any;
     searchPlaceholder?: string;
@@ -17,7 +18,12 @@
     showSearch?: boolean;
     onRowClick?: (row: any) => void;
     actions?: Snippet<[any]>;
+    fixed?: boolean;
   } = $props();
+
+  function isCentered(column: any): boolean {
+    return column.columnDef.meta?.align === "center";
+  }
 </script>
 
 <div class="table-wrap">
@@ -38,12 +44,15 @@
     </div>
   {/if}
 
-  <table class="table">
+  <table class="table" class:fixed>
     <thead>
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
         <tr>
           {#each headerGroup.headers as header (header.id)}
-            <th>
+            <th
+              class:center={isCentered(header.column)}
+              style:width={header.column.columnDef.meta?.width}
+            >
               {#if !header.isPlaceholder && header.column.getCanSort()}
                 <button
                   class="th-sort"
@@ -66,7 +75,7 @@
             </th>
           {/each}
           {#if actions}
-            <th class="actions-col">Acciones</th>
+            <th class="actions-col center">Acciones</th>
           {/if}
         </tr>
       {/each}
@@ -80,7 +89,7 @@
           onclick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick?.(row.original); }}
         >
           {#each row.getAllCells() as cell (cell.id)}
-            <td>
+            <td class:center={isCentered(cell.column)}>
               <FlexRender {cell} />
             </td>
           {/each}
@@ -145,8 +154,12 @@
     overflow: hidden;
   }
 
+  .table.fixed {
+    table-layout: fixed;
+  }
+
   th {
-    text-align: center;
+    text-align: left;
     padding: 0.625rem 1rem;
     font-size: 0.75rem;
     font-weight: 600;
@@ -155,6 +168,10 @@
     color: var(--text-muted);
     border-bottom: 1px solid var(--border);
     background: var(--surface-2);
+  }
+
+  .center {
+    text-align: center;
   }
 
   .th-sort {
@@ -216,6 +233,6 @@
   .actions-inner {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
   }
 </style>

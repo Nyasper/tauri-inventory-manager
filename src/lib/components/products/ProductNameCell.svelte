@@ -17,12 +17,15 @@
 
   .name {
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .desc {
     font-size: 0.75rem;
     color: var(--text-muted);
-    max-width: 320px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
