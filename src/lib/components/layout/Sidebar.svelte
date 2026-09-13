@@ -109,7 +109,6 @@
   .nav-item {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 0.625rem;
     padding: 0.5rem 0.625rem;
     border-radius: var(--radius-sm);
@@ -144,7 +143,6 @@
   .help-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 0.625rem;
     width: 100%;
     padding: 0.5rem 0.625rem;

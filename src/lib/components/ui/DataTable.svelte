@@ -181,7 +181,7 @@
   }
 
   td {
-    text-align: center;
+    text-align: left;
     padding: 0.625rem 1rem;
     border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
@@ -216,6 +216,6 @@
   .actions-inner {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
   }
 </style>
