@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - "Sin categoría" option in the product category filter to list only products without a category.
 - Quick "−" action in the product table to register an outbound movement with the product preselected.
+- Quick "+" action in the supplier table to register an inbound movement with the supplier preselected.
 - Centralized keyboard shortcuts in `keybindings.service` (`F1` help, `Ctrl+O` settings, `Ctrl+T` light/dark toggle, `Ctrl+1-4` view navigation), documented in the help modal and user manual.
 - Category icons in each row of the dashboard low-stock panel.
 
@@ -18,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Settings moved from the header to the sidebar footer as an "Ajustes" button next to "Ayuda"; the header now only keeps the theme toggle, and the help modal and user manual were updated accordingly.
 - Renamed the "Franjas de stock" / "Umbral" wording to "Límites de stock" across the interface, help modal, error messages and user manual.
 - The movement form now asks for product, presentation and quantity before type and inventory adjustment.
+- Product row actions: the history button is labeled "Ver movimientos", and the blocked archive tooltip now reads "Eliminar producto (el stock debe ser 0)".
+- Missing tooltips added to the remaining icon-only action buttons (supplier, movement, category and product-presentation rows).
 - Settings modal sections are separated by dividers instead of uniform spacing.
 
 ### Fixed

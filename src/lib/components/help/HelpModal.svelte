@@ -316,7 +316,7 @@
           <p>
             Al pasar el cursor sobre un producto dispones de accesos para:
             <code>+</code> registrar una entrada directa, <code>−</code> registrar una salida
-            con el producto preseleccionado, <code>Historial</code> para ver sus movimientos,
+            con el producto preseleccionado, <code>Movimientos</code> para ver su historial,
             <code>Lápiz</code> para editar y <code>Papelera</code> para archivar (si el stock es cero).
           </p>
         </div>
@@ -413,6 +413,10 @@
               <strong>Archivado sin pérdida histórica:</strong> Al archivar un proveedor, los movimientos y
               entradas pasadas siguen conservando su nombre. Puedes consultar los proveedores archivados y
               restaurarlos activando la casilla <em>"Archivados"</em> en la barra superior.
+            </li>
+            <li>
+              <strong>Registro rápido de entradas:</strong> El botón <code>+</code> de la fila abre el formulario
+              de movimiento con el proveedor ya seleccionado y el tipo Entrada, asociando la compra al instante.
             </li>
           </ul>
         </div>

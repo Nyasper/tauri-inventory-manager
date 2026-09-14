@@ -9,6 +9,7 @@
   import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
+  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { Plus, Truck, Pencil, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -98,6 +99,19 @@
         <button
           class="icon-btn"
           type="button"
+          title="Registrar entrada"
+          aria-label={`Registrar entrada de ${supplier.name}`}
+          onclick={() =>
+            modalService.open(MovementFormModal, {
+              initialSupplierId: String(supplier.id),
+            })}
+        >
+          <Plus size={16} />
+        </button>
+        <button
+          class="icon-btn"
+          type="button"
+          title="Editar"
           aria-label="Editar"
           onclick={() => openEdit(supplier)}
         >
@@ -106,6 +120,7 @@
         <button
           class="icon-btn danger"
           type="button"
+          title="Archivar"
           aria-label="Archivar"
           onclick={() => removeSupplier(supplier)}
         >

@@ -271,7 +271,7 @@ En Inventory Manager los registros no se destruyen físicamente, para evitar que
 En el extremo derecho de cada fila de la tabla de productos encontrará botones de acción directa:
 - **`+` (Registrar entrada)**: Abre el formulario de movimiento con este producto preseleccionado y el tipo Entrada por defecto.
 - **`−` (Registrar salida)**: Abre el mismo formulario con este producto preseleccionado y el tipo Salida por defecto.
-- **`Historial` (Icono de reloj con flecha)**: Navega directamente a la tabla de Movimientos, aplicando el filtro exclusivo para ver todo el historial de este producto.
+- **`Movimientos` (Icono de reloj con flecha)**: Navega directamente a la tabla de Movimientos, aplicando el filtro exclusivo para ver todo el historial de este producto.
 - **`Lápiz` (Editar)**: Abre el editor de producto y presentaciones.
 - **`Papelera` (Archivar)**: Archiva el producto (habilitado solo si el stock es cero).
 
@@ -371,6 +371,9 @@ Para dar de alta un nuevo proveedor, pulse **"Nuevo proveedor"**:
 3. **Notas**: Condiciones de pago, horarios de entrega, dirección del depósito, etc.
 
 Para modificar un proveedor existente, pulse el icono del lápiz en su fila.
+
+### Acciones Rápidas por Proveedor
+- **`+` (Registrar entrada)**: Abre el formulario de movimiento con este proveedor preseleccionado y el tipo Entrada por defecto, asociando automáticamente la compra al proveedor.
 
 ### Gestión de Múltiples Líneas de Contacto
 A diferencia de sistemas rígidos que solo permiten un teléfono, Inventory Manager permite agregar todas las líneas necesarias para cada proveedor:

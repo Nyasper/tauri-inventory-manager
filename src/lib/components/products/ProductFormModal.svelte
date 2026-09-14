@@ -188,7 +188,8 @@
           <button
             class="icon-btn"
             type="button"
-            aria-label="Quitar"
+            title="Quitar presentación"
+            aria-label="Quitar presentación"
             disabled={presentations.length <= 1}
             onclick={() => removePresentation(index)}
           >

@@ -241,8 +241,8 @@
           <button
             class="icon-btn"
             type="button"
-            title="Ver historial"
-            aria-label={`Ver historial de ${product.name}`}
+            title="Ver movimientos"
+            aria-label={`Ver movimientos de ${product.name}`}
             onclick={(e) => {
               e.stopPropagation();
               goto(`/movements?product=${product.id}`);
@@ -265,7 +265,7 @@
           <span
             class="archive-wrap"
             title={product.stock > 0
-              ? "El stock debe ser 0. Registra un ajuste antes de archivarlo."
+              ? "Eliminar producto (el stock debe ser 0)."
               : "Archivar"}
           >
             <button

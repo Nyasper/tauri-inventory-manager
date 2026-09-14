@@ -230,7 +230,8 @@
                 <button
                   class="icon-btn"
                   type="button"
-                  aria-label="Editar"
+                  title="Editar categoría"
+                  aria-label="Editar categoría"
                   onclick={() =>
                     startEditCategory(category.id, category.name, category.color, category.icon)
                   }
@@ -240,7 +241,8 @@
                 <button
                   class="icon-btn"
                   type="button"
-                  aria-label="Eliminar"
+                  title="Eliminar categoría"
+                  aria-label="Eliminar categoría"
                   onclick={() => removeCategory(category.id, category.name)}
                 >
                   <Trash size={16} />

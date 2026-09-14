@@ -178,6 +178,7 @@
         <button
           class="icon-btn danger"
           type="button"
+          title={movement.cancelled_at ? "Movimiento anulado" : "Anular movimiento"}
           aria-label="Anular movimiento"
           disabled={!!movement.cancelled_at}
           onclick={() => removeMovement(movement)}

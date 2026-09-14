@@ -17,7 +17,12 @@
   let {
     initialProductId = "",
     initialType = "in",
-  }: { initialProductId?: string; initialType?: MovementType } = $props();
+    initialSupplierId = "",
+  }: {
+    initialProductId?: string;
+    initialType?: MovementType;
+    initialSupplierId?: string;
+  } = $props();
   let productId = $state(untrack(() => initialProductId));
   let adjustment = $state(false);
   let reason = $state("");
@@ -26,7 +31,7 @@
   let presentationId = $state("");
   let type = $state<MovementType>(untrack(() => initialType));
   let quantity = $state(1);
-  let supplierId = $state("");
+  let supplierId = $state(untrack(() => initialSupplierId));
   let notes = $state("");
   let saving = $state(false);
   let error = $state("");
