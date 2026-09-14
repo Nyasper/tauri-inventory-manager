@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Product row actions: the history button is labeled "Ver movimientos", and the blocked archive tooltip now reads "Eliminar producto (el stock debe ser 0)".
 - Missing tooltips added to the remaining icon-only action buttons (supplier, movement, category and product-presentation rows).
 - Settings modal sections are separated by dividers instead of uniform spacing.
+- Application icon replaced with the new box icon (executable, installers and favicon), and the old clean-icon assets were removed.
 
 ### Fixed
 
