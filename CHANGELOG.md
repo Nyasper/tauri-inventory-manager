@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Settings moved from the header to the sidebar footer as an "Ajustes" button next to "Ayuda"; the header now only keeps the theme toggle, and the user manual was updated accordingly.
+- Renamed the "Franjas de stock" / "Umbral" wording to "Límites de stock" across the interface, help modal, error messages and user manual.
 - The movement form now asks for product, presentation and quantity before type and inventory adjustment.
 
 ### Fixed

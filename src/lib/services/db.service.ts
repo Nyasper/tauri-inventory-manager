@@ -289,7 +289,7 @@ export function saveSettingsThresholds(
   low: number,
   medium: number,
 ): Promise<void> {
-  return invoke("save_settings", { low, medium }, "Umbrales guardados.");
+  return invoke("save_settings", { low, medium }, "Límites guardados.");
 }
 
 export function saveSettingsDefaultView(view: DefaultView): Promise<void> {

@@ -217,7 +217,7 @@
           <ul class="feature-list">
             <li>
               <strong>Stock por agotarse:</strong> Muestra los 5 productos con menor existencia relativa a
-              sus umbrales. Cuenta con el enlace <em>"Ver todos"</em> para aislar los productos que
+              sus límites. Cuenta con el enlace <em>"Ver todos"</em> para aislar los productos que
               precisan reposición urgente.
             </li>
             <li>
@@ -262,19 +262,19 @@
               <tr>
                 <td><strong>Bajo</strong></td>
                 <td><StockBadge status="low" /></td>
-                <td>0 &lt; Stock &le; Umbral bajo</td>
+                <td>0 &lt; Stock &le; Límite bajo</td>
                 <td>Nivel crítico; requiere reposición pronta.</td>
               </tr>
               <tr>
                 <td><strong>Medio</strong></td>
                 <td><StockBadge status="medium" /></td>
-                <td>Umbral bajo &lt; Stock &le; Umbral medio</td>
+                <td>Límite bajo &lt; Stock &le; Límite medio</td>
                 <td>Aviso preventivo de reposición regular.</td>
               </tr>
               <tr>
                 <td><strong>Alto</strong></td>
                 <td><StockBadge status="high" /></td>
-                <td>Stock &gt; Umbral medio</td>
+                <td>Stock &gt; Límite medio</td>
                 <td>Existencias óptimas y suficientes.</td>
               </tr>
             </tbody>
@@ -421,15 +421,15 @@
         <div class="topic">
           <h2><Settings size={20} class="topic-icon" /> Configuración y Opciones Avanzadas</h2>
           <p class="lead">
-            Ajusta los parámetros globales de la aplicación, umbrales de stock, estética y respaldos
+            Ajusta los parámetros globales de la aplicación, límites de stock, estética y respaldos
             de la base de datos.
           </p>
 
           <div class="card-grid">
             <div class="info-card">
-              <h3>Franjas de Stock</h3>
+              <h3>Límites de Stock</h3>
               <p>
-                Configura los umbrales numéricos de stock <strong>Bajo</strong> y <strong>Medio</strong>.
+                Configura los límites numéricos de stock <strong>Bajo</strong> y <strong>Medio</strong>.
                 Debe cumplirse la relación: <code>0 &le; Bajo &lt; Medio</code>.
               </p>
             </div>

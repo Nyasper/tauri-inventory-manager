@@ -478,7 +478,7 @@ pub async fn save_settings(
     let mut tx = db.begin().await.map_err(error)?;
     if let (Some(low), Some(medium)) = (low, medium) {
         if !low.is_finite() || !medium.is_finite() || low < 0.0 || medium <= low || medium > 1e9 {
-            return Err("Los umbrales deben cumplir: 0 ≤ bajo < medio ≤ 1.000 millones.".into());
+            return Err("Los límites deben cumplir: 0 ≤ bajo < medio ≤ 1.000 millones.".into());
         }
         for (key, value) in [
             ("stock_low_threshold", low),
@@ -492,7 +492,7 @@ pub async fn save_settings(
                 .map_err(error)?;
         }
     } else if low.is_some() || medium.is_some() {
-        return Err("Indica ambos umbrales.".into());
+        return Err("Indica ambos límites.".into());
     }
     if let Some(view) = view {
         if !["dashboard", "products", "movements", "suppliers"].contains(&view.as_str()) {

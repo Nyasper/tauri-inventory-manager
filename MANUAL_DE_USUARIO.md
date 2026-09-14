@@ -44,7 +44,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Gestión de Múltiples Líneas de Contacto](#gestión-de-múltiples-líneas-de-contacto)
    - [Archivado y Restauración de Proveedores](#archivado-y-restauración-de-proveedores)
 8. [Configuración y Personalización del Sistema](#8-configuración-y-personalización-del-sistema)
-   - [Franjas y Umbrales de Stock](#franjas-y-umbrales-de-stock)
+   - [Límites de Stock](#límites-de-stock)
    - [Paleta de Colores de Acento](#paleta-de-colores-de-acento)
    - [Vista por Defecto al Iniciar](#vista-por-defecto-al-iniciar)
    - [Administración de Categorías (Colores e Iconos)](#administración-de-categorías-colores-e-iconos)
@@ -117,7 +117,7 @@ Permite el desplazamiento inmediato entre los 4 módulos esenciales:
 - **Proveedores (`/suppliers`)**: Directorio de suministradores y datos de contacto comercial.
 
 En la parte inferior de la barra lateral se encuentran dos accesos directos:
-- **Ajustes (⚙)**: Abre la ventana modal de parámetros globales (umbrales, colores, categorías y respaldos).
+- **Ajustes (⚙)**: Abre la ventana modal de parámetros globales (límites, colores, categorías y respaldos).
 - **Ayuda (?)**: Abre este manual de usuario.
 
 ### Cabecera (Header) y Controles Globales
@@ -172,7 +172,7 @@ En la parte superior se presentan cuatro tarjetas interactivas:
 4. **Proveedores**: Cantidad de empresas o proveedores comerciales dados de alta. Al hacer clic, abre la vista de Proveedores.
 
 ### Panel de Stock por Agotarse
-- Lista hasta 5 productos cuyo stock actual sea menor o igual al umbral "Bajo" configurado.
+- Lista hasta 5 productos cuyo stock actual sea menor o igual al límite "Bajo" configurado.
 - Los productos se ordenan de menor a mayor existencia (los más críticos primero).
 - Cada fila muestra el nombre del producto, la cantidad en su **unidad base** y la insignia de estado correspondiente (`Sin stock` o `Bajo`).
 - El botón **"Ver todos"** lleva a la tabla completa filtrada por stock crítico.
@@ -210,17 +210,17 @@ La barra de herramientas superior cuenta con herramientas de filtrado en tiempo 
 La tabla de datos lista los productos con su icono de categoría, nombre, observaciones, nombre de categoría, stock total en unidad base y la insignia de estado. Puede ordenar los datos por columnas haciendo clic sobre la cabecera correspondiente.
 
 ### Estados y Clasificación de Stock
-El stock de cada producto se clasifica automáticamente en 4 niveles según los umbrales configurados:
+El stock de cada producto se clasifica automáticamente en 4 niveles según los límites configurados:
 
 | Estado | Condición de Stock | Color de Insignia | Significado Operativo |
 | :--- | :--- | :--- | :--- |
 | **Sin stock** | $\text{Stock} \le 0$ | Gris pizarra | El producto está completamente agotado. |
-| **Bajo** | $0 < \text{Stock} \le \text{Umbral Bajo}$ | Rojo suave / Alerta | Nivel crítico; requiere reposición inmediata. |
-| **Medio** | $\text{Umbral Bajo} < \text{Stock} \le \text{Umbral Medio}$ | Ámbar / Precaución | Nivel normal de aviso de reposición preventiva. |
-| **Alto** | $\text{Stock} > \text{Umbral Medio}$ | Transparente / Verde sutil | Existencias óptimas y abundantes. |
+| **Bajo** | $0 < \text{Stock} \le \text{Límite Bajo}$ | Rojo suave / Alerta | Nivel crítico; requiere reposición inmediata. |
+| **Medio** | $\text{Límite Bajo} < \text{Stock} \le \text{Límite Medio}$ | Ámbar / Precaución | Nivel normal de aviso de reposición preventiva. |
+| **Alto** | $\text{Stock} > \text{Límite Medio}$ | Transparente / Verde sutil | Existencias óptimas y abundantes. |
 
 > [!NOTE]
-> Los valores por defecto de los umbrales son **5** para Bajo y **20** para Medio, pero pueden personalizarse a cualquier valor en la Configuración del sistema.
+> Los valores por defecto de los límites son **5** para Bajo y **20** para Medio, pero pueden personalizarse a cualquier valor en la Configuración del sistema.
 
 ### Creación de un Producto Nuevo
 Para crear un artículo, haga clic en el botón **"Nuevo producto"**:
@@ -393,9 +393,9 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 +-------------------------------------------------------------------+
 | CONFIGURACIÓN                                                 [X] |
 +-------------------------------------------------------------------+
-| FRANJAS DE STOCK                                                  |
-| Umbral bajo: [ 5.00 ]         Umbral medio: [ 20.00 ]             |
-|                                            [Guardar franjas]      |
+| LÍMITES DE STOCK                                                  |
+| Límite bajo: [ 5.00 ]         Límite medio: [ 20.00 ]             |
+|                                            [Guardar límites]      |
 |                                                                   |
 | COLOR DE ACENTO                                                   |
 | (• Azul) (Violeta) (Esmeralda) (Ámbar) (Rosa) (Teal) (Gris)       |
@@ -413,13 +413,13 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 +-------------------------------------------------------------------+
 ```
 
-### Franjas y Umbrales de Stock
+### Límites de Stock
 Permite parametrizar las reglas que determinan las insignias de estado de todos los productos:
-- **Umbral bajo**: Nivel a partir del cual el stock se considera crítico (ej. 5 unidades).
-- **Umbral medio**: Nivel a partir del cual el stock se considera en aviso preventivo (ej. 20 unidades).
+- **Límite bajo**: Nivel a partir del cual el stock se considera crítico (ej. 5 unidades).
+- **Límite medio**: Nivel a partir del cual el stock se considera en aviso preventivo (ej. 20 unidades).
 - **Validación matemática**: Debe cumplirse siempre la regla:
-  $$0 \le \text{Umbral Bajo} < \text{Umbral Medio} \le 1.000.000.000$$
-- Pulse **"Guardar franjas"** para aplicar los cambios en todo el inventario.
+  $$0 \le \text{Límite Bajo} < \text{Límite Medio} \le 1.000.000.000$$
+- Pulse **"Guardar límites"** para aplicar los cambios en todo el inventario.
 
 ### Paleta de Colores de Acento
 Personalice la identidad visual de la aplicación según sus preferencias estéticas o institucionales. Se ofrecen 7 temas cromáticos diseñados para máxima legibilidad tanto en modo claro como en modo oscuro:

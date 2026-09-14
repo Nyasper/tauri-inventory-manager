@@ -66,7 +66,7 @@
     const lowValue = Number(low);
     const mediumValue = Number(medium);
     if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue) || lowValue < 0 || mediumValue <= lowValue) {
-      throw new Error("Los umbrales deben cumplir: 0 ≤ bajo < medio.");
+      throw new Error("Los límites deben cumplir: 0 ≤ bajo < medio.");
     }
     await settingsService.saveThresholds(lowValue, mediumValue);
   }
@@ -136,23 +136,23 @@
 <Modal title="Configuración" onClose={() => modalService.close()} width="md">
   <div class="settings">
     <section>
-      <h3>Franjas de stock</h3>
+      <h3>Límites de stock</h3>
       <p class="hint">
-        Define los umbrales para clasificar el estado de stock de cada producto.
+        Define los límites para clasificar el estado de stock de cada producto.
       </p>
       <div class="thresholds">
         <div>
-          <Input label="Umbral bajo" type="number" bind:value={low} />
+          <Input label="Límite bajo" type="number" bind:value={low} />
         </div>
         <div>
-          <Input label="Umbral medio" type="number" bind:value={medium} />
+          <Input label="Límite medio" type="number" bind:value={medium} />
         </div>
       </div>
       <div class="section-action">
-        <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}>Guardar franjas</Button>
+        <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}>Guardar límites</Button>
       </div>
       {#if !thresholdsValid}
-        <p class="validation" role="status">Los umbrales deben cumplir: 0 ≤ bajo &lt; medio.</p>
+        <p class="validation" role="status">Los límites deben cumplir: 0 ≤ bajo &lt; medio.</p>
       {/if}
     </section>
 
