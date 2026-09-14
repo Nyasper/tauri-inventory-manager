@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - "Sin categoría" option in the product category filter to list only products without a category.
 - Quick "−" action in the product table to register an outbound movement with the product preselected.
+- Centralized keyboard shortcuts in `keybindings.service` (`F1` help, `Ctrl+O` settings, `Ctrl+T` light/dark toggle, `Ctrl+1-4` view navigation), documented in the help modal and user manual.
 
 ### Changed
 

@@ -11,9 +11,7 @@
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
-
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import HelpModal from "$lib/components/help/HelpModal.svelte";
+  import { keybindingsService } from "$lib/services/keybindings.service";
 
   const VIEW_PATHS: Record<string, string> = {
     dashboard: "/",
@@ -31,18 +29,6 @@
     event.preventDefault(); feedback.error(String(event.reason));
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "F1") {
-      event.preventDefault();
-      const isOpen = modalService.modals.some((m) => m.component === HelpModal);
-      if (isOpen) {
-        modalService.close();
-      } else {
-        modalService.open(HelpModal);
-      }
-    }
-  }
-
   function handleContextMenu(event: MouseEvent) {
     event.preventDefault();
   }
@@ -56,7 +42,7 @@
 
 <svelte:window
   onunhandledrejection={handleError}
-  onkeydown={handleKeydown}
+  onkeydown={keybindingsService.handleKeydown}
   oncontextmenu={handleContextMenu}
 />
 

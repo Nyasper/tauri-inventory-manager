@@ -4,6 +4,7 @@
   import Badge from "$lib/components/ui/Badge.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
+  import type { Shortcut } from "$lib/services/keybindings.service";
   import {
     BookOpen,
     LayoutDashboard,
@@ -46,6 +47,8 @@
     { id: "settings", title: "Configuración", icon: Settings },
     { id: "faq", title: "Preguntas Frecuentes", icon: CircleHelp, badge: "FAQ" },
   ];
+
+  let { shortcuts = [] }: { shortcuts?: Shortcut[] } = $props();
 
   let activeSection = $state<SectionId>("general");
   let searchQuery = $state("");
@@ -158,6 +161,19 @@
               manual en cualquier momento (también accesible mediante la tecla <strong>F1</strong>).
             </li>
           </ul>
+
+          <h3>Atajos de Teclado</h3>
+          <ul class="feature-list">
+            {#each shortcuts as shortcut (shortcut.id)}
+              <li>
+                <strong>{shortcut.keys}:</strong> {shortcut.description}.
+              </li>
+            {/each}
+          </ul>
+          <p class="shortcuts-note">
+            Los atajos de navegación (Ctrl + 1 a Ctrl + 4) se desactivan mientras hay una ventana modal
+            abierta; los demás funcionan en cualquier momento.
+          </p>
 
           <div class="tip-box">
             <Info size={18} />
@@ -776,6 +792,12 @@
     gap: 0.5rem;
     font-size: 0.84375rem;
     color: var(--text);
+  }
+
+  .shortcuts-note {
+    margin-top: 0.5rem;
+    font-size: 0.78125rem;
+    color: var(--text-muted);
   }
 
   .tip-box,

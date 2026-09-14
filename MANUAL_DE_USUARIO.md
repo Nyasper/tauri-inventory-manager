@@ -17,6 +17,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Cabecera (Header) y Controles Globales](#cabecera-header-y-controles-globales)
    - [Modo Oscuro / Claro](#modo-oscuro--claro)
    - [Notificaciones del Sistema (Toasts) y Modales](#notificaciones-del-sistema-toasts-y-modales)
+   - [Atajos de Teclado](#atajos-de-teclado)
 4. [Panel de Control (Dashboard)](#4-panel-de-control-dashboard)
    - [Tarjetas de Indicadores (KPIs)](#tarjetas-de-indicadores-kpis)
    - [Panel de Stock por Agotarse](#panel-de-stock-por-agotarse)
@@ -130,6 +131,19 @@ La aplicación adapta toda su paleta de colores, tablas y ventanas modales segú
 ### Notificaciones del Sistema (Toasts) y Modales
 - **Avisos Emergentes (Toasts)**: Se muestran en la esquina inferior derecha para confirmar acciones exitosas (por ejemplo, "Respaldo creado correctamente") o alertar sobre errores del sistema. Pueden cerrarse manualmente haciendo clic en el botón `×`.
 - **Modales con Bloqueo de Seguridad**: Las pantallas de edición y confirmación se abren en ventanas modales focalizadas. Mientras una operación esté procesándose o guardándose, los botones se deshabilitan para evitar dobles envíos o escrituras duplicadas.
+
+### Atajos de Teclado
+| Atajo | Acción |
+| --- | --- |
+| `F1` | Abrir o cerrar el Manual de Usuario y Ayuda. |
+| `Ctrl + O` | Abrir o cerrar la ventana de Configuración. |
+| `Ctrl + T` | Alternar entre modo claro y oscuro. |
+| `Ctrl + 1` | Ir al Dashboard. |
+| `Ctrl + 2` | Ir a Productos. |
+| `Ctrl + 3` | Ir a Movimientos. |
+| `Ctrl + 4` | Ir a Proveedores. |
+
+> Los atajos de navegación (`Ctrl + 1` a `Ctrl + 4`) se desactivan mientras hay una ventana modal abierta; el resto funciona en cualquier momento.
 
 ---
 

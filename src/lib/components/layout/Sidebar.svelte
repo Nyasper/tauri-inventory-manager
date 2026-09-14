@@ -10,9 +10,7 @@
     CircleHelp,
     Settings,
   } from "@lucide/svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import HelpModal from "$lib/components/help/HelpModal.svelte";
-  import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
+  import { openHelp, openSettings } from "$lib/services/keybindings.service";
 
   const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -24,14 +22,6 @@
   function isActive(href: string): boolean {
     const path = page.url.pathname;
     return href === "/" ? path === "/" : path.startsWith(href);
-  }
-
-  function openHelp() {
-    modalService.open(HelpModal);
-  }
-
-  function openSettings() {
-    modalService.open(SettingsModal);
   }
 </script>
 
