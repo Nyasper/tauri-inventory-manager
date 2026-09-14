@@ -216,12 +216,12 @@
           <h3>Paneles Informativos</h3>
           <ul class="feature-list">
             <li>
-              <strong>Stock por agotarse:</strong> Muestra los 5 productos con menor existencia relativa a
+              <strong>Stock por agotarse:</strong> Muestra los 10 productos con menor existencia relativa a
               sus límites. Cuenta con el enlace <em>"Ver todos"</em> para aislar los productos que
               precisan reposición urgente.
             </li>
             <li>
-              <strong>Movimientos recientes:</strong> Lista las últimas 5 operaciones asentadas, detallando
+              <strong>Movimientos recientes:</strong> Lista las últimas 10 operaciones asentadas, detallando
               tipo (Entrada verde / Salida roja), cantidad en su presentación y fecha. Si el
               movimiento fue anulado, se resalta de forma transparente.
             </li>

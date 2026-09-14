@@ -31,6 +31,8 @@
   movementsService.load({});
   suppliersService.load();
 
+  const PANEL_SIZE = 10;
+
   const lowProducts = $derived(
     productsService.items
       .filter((p) => {
@@ -42,10 +44,10 @@
         return status === "low" || status === "out";
       })
       .sort((a,b)=>a.stock-b.stock)
-      .slice(0, 5),
+      .slice(0, PANEL_SIZE),
   );
 
-  const recentMovements = $derived(movementsService.items.slice(0, 5));
+  const recentMovements = $derived(movementsService.items.slice(0, PANEL_SIZE));
 
   const stats = $derived([
     {

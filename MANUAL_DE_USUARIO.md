@@ -172,13 +172,13 @@ En la parte superior se presentan cuatro tarjetas interactivas:
 4. **Proveedores**: Cantidad de empresas o proveedores comerciales dados de alta. Al hacer clic, abre la vista de Proveedores.
 
 ### Panel de Stock por Agotarse
-- Lista hasta 5 productos cuyo stock actual sea menor o igual al límite "Bajo" configurado.
+- Lista hasta 10 productos cuyo stock actual sea menor o igual al límite "Bajo" configurado.
 - Los productos se ordenan de menor a mayor existencia (los más críticos primero).
 - Cada fila muestra el nombre del producto, la cantidad en su **unidad base** y la insignia de estado correspondiente (`Sin stock` o `Bajo`).
 - El botón **"Ver todos"** lleva a la tabla completa filtrada por stock crítico.
 
 ### Panel de Movimientos Recientes
-- Exhibe los últimos 5 movimientos registrados en la aplicación.
+- Exhibe los últimos 10 movimientos registrados en la aplicación.
 - Cada elemento especifica:
   - Tipo de movimiento: Insignia verde **Entrada** (con icono de flecha hacia abajo) o roja **Salida** (flecha hacia arriba).
   - Estado de anulación: Si fue anulado, se resalta explícitamente la etiqueta `Anulado`.
