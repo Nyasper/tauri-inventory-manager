@@ -7,11 +7,11 @@
 </script>
 
 {#if type === "in"}
-  <Badge bg="var(--success)" color="#ffffff">
+  <Badge uniform bg="var(--success)" color="#ffffff">
     <ArrowDownToLine size={13} /> Entrada
   </Badge>
 {:else}
-  <Badge bg="var(--danger)" color="#ffffff">
+  <Badge uniform bg="var(--danger)" color="#ffffff">
     <ArrowUpFromLine size={13} /> Salida
   </Badge>
 {/if}

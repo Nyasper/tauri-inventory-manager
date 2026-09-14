@@ -341,7 +341,7 @@
           <div class="card-grid">
             <div class="info-card">
               <div class="card-header">
-                <Badge bg="var(--success)" color="#ffffff">Entrada</Badge>
+                <Badge uniform bg="var(--success)" color="#ffffff">Entrada</Badge>
                 <h3>Entrada de Stock</h3>
               </div>
               <p>
@@ -352,7 +352,7 @@
 
             <div class="info-card">
               <div class="card-header">
-                <Badge bg="var(--danger)" color="#ffffff">Salida</Badge>
+                <Badge uniform bg="var(--danger)" color="#ffffff">Salida</Badge>
                 <h3>Salida de Stock</h3>
               </div>
               <p>
