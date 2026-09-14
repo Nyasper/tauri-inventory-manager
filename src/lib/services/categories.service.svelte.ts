@@ -16,9 +16,10 @@ class CategoriesService {
     name: string,
     color: string | null,
     icon: string | null,
-  ): Promise<void> {
-    await saveCategory(null, name, color, icon);
+  ): Promise<number> {
+    const id = await saveCategory(null, name, color, icon);
     await this.load();
+    return id;
   }
 
   async update(

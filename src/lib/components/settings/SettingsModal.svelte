@@ -7,7 +7,7 @@
   import Input from "$lib/components/ui/Input.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import IconPicker from "$lib/components/ui/IconPicker.svelte";
+  import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
@@ -22,24 +22,11 @@
     accentService,
     ACCENTS,
   } from "$lib/services/accent.service.svelte";
-
-  const CATEGORY_COLORS = [
-    "#3b82f6",
-    "#22c55e",
-    "#8b5cf6",
-    "#14b8a6",
-    "#64748b",
-    "#f59e0b",
-    "#ef4444",
-    "#e11d48",
-  ];
-
-  interface CatDraft {
-    id: number | null;
-    name: string;
-    color: string;
-    icon: IconName | null;
-  }
+  import {
+    CATEGORY_COLORS,
+    newCategoryDraft,
+    type CategoryDraft,
+  } from "$lib/categories";
 
   let archivedPersons=$state<ResponsiblePerson[]>([]);
   let showArchivedPersons=$state(false);
@@ -52,7 +39,7 @@
   let editingId = $state<number | null>(null);
   let editName = $state("");
   let defaultView = $state("dashboard");
-  let editingCat = $state<CatDraft | null>(null);
+  let editingCat = $state<CategoryDraft | null>(null);
   let busy = $state(false);
 
   const thresholdsValid = $derived(
@@ -63,9 +50,6 @@
   );
   const canAddPerson = $derived(newPerson.trim() !== "" && !busy);
   const canSaveEdit = $derived(editName.trim() !== "" && !busy);
-  const canSaveCategory = $derived(
-    !!editingCat && editingCat.name.trim() !== "" && !busy,
-  );
 
   const viewOptions: SelectOption[] = [
     { value: "dashboard", label: "Dashboard" },
@@ -101,7 +85,7 @@
   }
 
   function startNewCategory() {
-    editingCat = { id: null, name: "", color: CATEGORY_COLORS[0], icon: "box" };
+    editingCat = newCategoryDraft();
   }
 
   function startEditCategory(id: number, name: string, color: string | null, icon: string | null) {
@@ -111,21 +95,6 @@
       color: color ?? CATEGORY_COLORS[0],
       icon: icon && icon in ICONS ? (icon as IconName) : null,
     };
-  }
-
-  async function saveCategory() {
-    if (!editingCat) return;
-    const name = editingCat.name.trim();
-    if (!name) {
-      await modalService.confirm("El nombre de la categoría es obligatorio.", "Categoría");
-      return;
-    }
-    if (editingCat.id === null) {
-      await categoriesService.create(name, editingCat.color, editingCat.icon);
-    } else {
-      await categoriesService.update(editingCat.id, name, editingCat.color, editingCat.icon);
-    }
-    editingCat = null;
   }
 
   async function removeCategory(id: number, name: string) {
@@ -283,35 +252,12 @@
       </p>
 
       {#if editingCat}
-        {@const cat = editingCat}
         <div class="cat-editor">
-          <Input
-            label="Nombre"
-            placeholder="Nombre de la categoría"
-            bind:value={cat.name}
+          <CategoryEditor
+            draft={editingCat}
+            onSaved={() => (editingCat = null)}
+            onCancel={() => (editingCat = null)}
           />
-          <span class="field-label">Color</span>
-          <div class="cat-colors">
-            {#each CATEGORY_COLORS as color (color)}
-              <button
-                type="button"
-                class="cat-color"
-                class:active={cat.color === color}
-                style="--swatch: {color}"
-                aria-label={color}
-                onclick={() => (cat.color = color)}
-              ></button>
-            {/each}
-          </div>
-          <IconPicker bind:value={cat.icon} />
-          <div class="cat-editor-actions">
-            <Button variant="secondary" size="sm" onclick={() => (editingCat = null)}>
-              Cancelar
-            </Button>
-            <Button size="sm" disabled={!canSaveCategory} onclick={saveCategory}>
-              {cat.id === null ? "Crear" : "Guardar"}
-            </Button>
-          </div>
         </div>
       {:else}
         <div class="section-action">
@@ -531,55 +477,11 @@
   }
 
   .cat-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
     padding: 0.875rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--surface-2);
     margin-bottom: 0.75rem;
-  }
-
-  .field-label {
-    display: block;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
-
-  .cat-colors {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .cat-color {
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    border-radius: 50%;
-    border: 2px solid var(--surface);
-    background: var(--swatch);
-    box-shadow: 0 0 0 1px var(--border);
-    cursor: pointer;
-    transition:
-      transform 0.12s,
-      box-shadow 0.12s;
-  }
-
-  .cat-color:hover {
-    transform: scale(1.1);
-  }
-
-  .cat-color.active {
-    box-shadow: 0 0 0 2px var(--primary);
-  }
-
-  .cat-editor-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
   }
 
   .cats {

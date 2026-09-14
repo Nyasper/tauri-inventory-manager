@@ -9,6 +9,7 @@
   } from "$lib/services/db.service";
   import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
+  import CategoryFormModal from "$lib/components/categories/CategoryFormModal.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
@@ -50,6 +51,14 @@
       label: c.name,
     })),
   ]);
+
+  function openNewCategory() {
+    modalService.open(CategoryFormModal, {
+      onCreated: (id: number) => {
+        categoryId = String(id);
+      },
+    });
+  }
 
   const validation = $derived.by(() => {
     if (loading || loadFailed) return "";
@@ -127,11 +136,18 @@
         <Input label="Nombre" bind:value={name} placeholder="Nombre del producto" />
       </div>
       <div class="span-2">
-        <Select
-          label="Categoría"
-          bind:value={categoryId}
-          options={categoryOptions}
-        />
+        <div class="category-row">
+          <div class="category-select">
+            <Select
+              label="Categoría"
+              bind:value={categoryId}
+              options={categoryOptions}
+            />
+          </div>
+          <Button variant="secondary" icon={Plus} onclick={openNewCategory}>
+            Nueva
+          </Button>
+        </div>
       </div>
       <div class="span-2">
         <Textarea
@@ -217,6 +233,17 @@
 
   .span-2 {
     grid-column: span 2;
+  }
+
+  .category-row {
+    display: flex;
+    align-items: end;
+    gap: 0.5rem;
+  }
+
+  .category-select {
+    flex: 1;
+    min-width: 0;
   }
 
   .presentations {
