@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Inventory Manager",
+        "title": "Gestor de Inventario",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

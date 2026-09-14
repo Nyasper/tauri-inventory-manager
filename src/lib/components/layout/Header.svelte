@@ -16,7 +16,7 @@
       const match = key === "/" ? path === "/" : path.startsWith(key);
       if (match) return value;
     }
-    return "Inventory Manager";
+    return "Gestor de Inventario";
   });
 </script>
 

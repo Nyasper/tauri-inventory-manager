@@ -105,7 +105,7 @@
       </div>
 
       <div class="nav-footer">
-        <span class="version-label">Inventory Manager</span>
+        <span class="version-label">Gestor de Inventario</span>
         <span class="sub-label">Control de Inventario Local</span>
       </div>
     </nav>
@@ -116,7 +116,7 @@
         <div class="topic">
           <h2><BookOpen size={20} class="topic-icon" /> Introducción</h2>
           <p class="lead">
-            <strong>Inventory Manager</strong> es una aplicación de escritorio diseñada para brindar control
+            <strong>Gestor de Inventario</strong> es una aplicación de escritorio diseñada para brindar control
             total, ágil y seguro sobre las existencias de productos, presentaciones fraccionadas,
             trazabilidad histórica de movimientos y gestión de proveedores.
           </p>

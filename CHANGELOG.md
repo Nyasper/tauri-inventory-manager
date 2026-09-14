@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Missing tooltips added to the remaining icon-only action buttons (supplier, movement, category and product-presentation rows).
 - Settings modal sections are separated by dividers instead of uniform spacing.
 - Application icon replaced with the new box icon (executable, installers and favicon), and the old clean-icon assets were removed.
+- Sidebar brand now shows the box icon in the accent color with a transparent background and reads "Inventario", and the visible product name changed to "Gestor de Inventario" (window title, document title, header, help modal and backup error). The bundle product name is unchanged.
 
 ### Fixed
 

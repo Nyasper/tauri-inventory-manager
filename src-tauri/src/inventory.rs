@@ -557,7 +557,7 @@ async fn validate_backup(path: &Path) -> Result<(), String> {
     .map_err(|_| "El archivo de respaldo está dañado o no es compatible.".to_string())?;
     let _ = conn.close().await;
     if found != BACKUP_TABLES.len() as i64 {
-        return Err("El archivo no parece un respaldo válido de Inventory Manager.".into());
+        return Err("El archivo no parece un respaldo válido de Gestor de Inventario.".into());
     }
     Ok(())
 }
