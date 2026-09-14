@@ -63,7 +63,7 @@
       title="Configuración"
       onclick={openSettings}
     >
-      <Settings size={16} />
+      <Settings size={18} />
       <span>Ajustes</span>
     </button>
     <button
@@ -73,7 +73,7 @@
       title="Manual de usuario y ayuda"
       onclick={openHelp}
     >
-      <CircleHelp size={16} />
+      <CircleHelp size={18} />
       <span>Ayuda</span>
     </button>
   </div>
@@ -151,7 +151,7 @@
 
   .footer {
     display: flex;
-    align-items: stretch;
+    flex-direction: column;
     gap: 0.25rem;
     padding-top: 0.75rem;
     border-top: 1px solid var(--border);
@@ -159,23 +159,21 @@
 
   .footer-btn {
     display: flex;
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     align-items: center;
-    justify-content: center;
-    gap: 0.3125rem;
-    padding: 0.5rem 0.25rem;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-muted);
     font-weight: 500;
-    font-size: 0.75rem;
-    white-space: nowrap;
+    font-size: 0.875rem;
     cursor: pointer;
     transition:
       background-color 0.15s,
       color 0.15s;
+    text-align: left;
   }
 
   .footer-btn:hover {

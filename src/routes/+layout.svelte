@@ -43,6 +43,10 @@
     }
   }
 
+  function handleContextMenu(event: MouseEvent) {
+    event.preventDefault();
+  }
+
   onMount(async () => {
     await settingsService.load();
     const path = VIEW_PATHS[settingsService.settings.default_view] ?? "/";
@@ -50,7 +54,11 @@
   });
 </script>
 
-<svelte:window onunhandledrejection={handleError} onkeydown={handleKeydown} />
+<svelte:window
+  onunhandledrejection={handleError}
+  onkeydown={handleKeydown}
+  oncontextmenu={handleContextMenu}
+/>
 
 <div class="app">
   <Sidebar />

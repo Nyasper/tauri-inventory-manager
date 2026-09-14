@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- "Sin categoría" option in the product category filter to list only products without a category.
+
+### Changed
+
+- Settings moved from the header to the sidebar footer as an "Ajustes" button next to "Ayuda"; the header now only keeps the theme toggle, and the user manual was updated accordingly.
+
+### Fixed
+
+- The global right-click context menu is disabled again, after the handler was lost in an earlier layout refactor.
+
 ## [0.10.0] - 2026-09-14
 
 ### Removed
