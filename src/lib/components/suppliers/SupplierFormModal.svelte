@@ -10,7 +10,13 @@
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Button from "$lib/components/ui/Button.svelte";
 
-  let { supplier = null }: { supplier?: Supplier | null } = $props();
+  let {
+    supplier = null,
+    onCreated,
+  }: {
+    supplier?: Supplier | null;
+    onCreated?: (id: number) => void;
+  } = $props();
 
   const initial = untrack(() => supplier);
 
@@ -39,7 +45,8 @@
       if (initial) {
         await suppliersService.update({ ...data, id: initial.id });
       } else {
-        await suppliersService.create(data);
+        const id = await suppliersService.create(data);
+        onCreated?.(id);
       }
       modalService.close();
     } catch (e) {

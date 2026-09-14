@@ -24,9 +24,10 @@ class SuppliersService {
     }
   }
 
-  async create(data: SupplierInput): Promise<void> {
-    await saveSupplier(null, data);
+  async create(data: SupplierInput): Promise<number> {
+    const id = await saveSupplier(null, data);
     await this.load();
+    return id;
   }
 
   async update(data: SupplierInput & { id: number }): Promise<void> {

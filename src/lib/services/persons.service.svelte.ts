@@ -15,9 +15,10 @@ class PersonsService {
     this.items = await getPersons();
   }
 
-  async create(name: string, isDefault = false): Promise<void> {
-    await savePerson(null, name, isDefault);
+  async create(name: string, isDefault = false): Promise<number> {
+    const id = await savePerson(null, name, isDefault);
     await this.load();
+    return id;
   }
 
   async update(id: number, name: string, isDefault: boolean): Promise<void> {

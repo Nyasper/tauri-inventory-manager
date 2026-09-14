@@ -8,6 +8,7 @@
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
+  import PersonFormModal from "$lib/components/persons/PersonFormModal.svelte";
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
@@ -35,7 +36,6 @@
   async function restorePerson(id:number) { await personsService.restore(id); await loadArchivedPersons(); }
   let low = $state("");
   let medium = $state("");
-  let newPerson = $state("");
   let editingId = $state<number | null>(null);
   let editName = $state("");
   let defaultView = $state("dashboard");
@@ -48,7 +48,6 @@
       Number(low) >= 0 &&
       Number(low) < Number(medium),
   );
-  const canAddPerson = $derived(newPerson.trim() !== "" && !busy);
   const canSaveEdit = $derived(editName.trim() !== "" && !busy);
 
   const viewOptions: SelectOption[] = [
@@ -103,13 +102,6 @@
       "Eliminar categoría",
     );
     if (ok) await categoriesService.remove(id);
-  }
-
-  async function addPerson() {
-    const name = newPerson.trim();
-    if (!name) return;
-    await personsService.create(name, personsService.items.length === 0);
-    newPerson = "";
   }
 
   async function setDefault(id: number) {
@@ -314,9 +306,15 @@
         Personas que se pueden asociar a los movimientos de stock.
       </p>
 
-      <div class="add-row">
-        <Input placeholder="Nombre de la persona" bind:value={newPerson} />
-        <Button size="sm" icon={Plus} disabled={!canAddPerson} onclick={addPerson}>Añadir</Button>
+      <div class="section-action">
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Plus}
+          onclick={() => modalService.open(PersonFormModal)}
+        >
+          Nuevo responsable
+        </Button>
       </div>
 
       {#if personsService.items.length === 0}
@@ -526,17 +524,6 @@
   .person-actions {
     display: flex;
     gap: 0.125rem;
-  }
-
-  .add-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-  }
-
-  .add-row :global(.input) {
-    flex: 1;
   }
 
   .empty-note {

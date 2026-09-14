@@ -12,6 +12,9 @@
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
+  import PersonFormModal from "$lib/components/persons/PersonFormModal.svelte";
+  import { Plus } from "@lucide/svelte";
 
   let { initialProductId = "" }: { initialProductId?: string } = $props();
   let productId = $state(untrack(() => initialProductId));
@@ -126,6 +129,22 @@
     if (def && !defaultApplied) { defaultApplied = true; personId = String(def.id); }
   });
 
+  function openNewSupplier() {
+    modalService.open(SupplierFormModal, {
+      onCreated: (id: number) => {
+        supplierId = String(id);
+      },
+    });
+  }
+
+  function openNewPerson() {
+    modalService.open(PersonFormModal, {
+      onCreated: (id: number) => {
+        personId = String(id);
+      },
+    });
+  }
+
   async function save() {
     if (saving || loading || validation) return;
     const pid = productId ? Number(productId) : null;
@@ -196,20 +215,33 @@
     <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} showBounds />
 
     {#if type === "in"}
-      <Select
-        label="Proveedor"
-        bind:value={supplierId}
-        options={supplierOptions}
-
-      />
+      <div class="field-row">
+        <div class="field-select">
+          <Select
+            label="Proveedor"
+            bind:value={supplierId}
+            options={supplierOptions}
+          />
+        </div>
+        <Button variant="secondary" icon={Plus} onclick={openNewSupplier}>
+          Nuevo
+        </Button>
+      </div>
     {/if}
 
-    <Select
-      label="Responsable"
-      bind:value={personId}
-      options={personOptions}
-      placeholder="Selecciona un responsable"
-    />
+    <div class="field-row">
+      <div class="field-select">
+        <Select
+          label="Responsable"
+          bind:value={personId}
+          options={personOptions}
+          placeholder="Selecciona un responsable"
+        />
+      </div>
+      <Button variant="secondary" icon={Plus} onclick={openNewPerson}>
+        Nuevo
+      </Button>
+    </div>
 
     <Textarea
       label="Notas"
@@ -235,6 +267,17 @@
     display: flex;
     flex-direction: column;
     gap: 0.875rem;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: end;
+    gap: 0.5rem;
+  }
+
+  .field-select {
+    flex: 1;
+    min-width: 0;
   }
 
   .error {
