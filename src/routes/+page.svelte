@@ -15,6 +15,7 @@
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
+  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
   import {
     Box,
     TriangleAlert,
@@ -132,6 +133,13 @@
         <div class="rows">
           {#each lowProducts as product (product.id)}
             <button class="row" type="button" onclick={() => goto("/products")}>
+              <span class="row-icon" title={product.category_name ?? "Sin categoría"}>
+                <ProductIcon
+                  icon={product.category_icon}
+                  color={product.category_color}
+                  size={28}
+                />
+              </span>
               <span class="row-name" title={product.name}>{product.name}</span>
               <span class="row-meta">
                 <span class="row-stock">{formatNumber(product.stock)} {product.base_unit}</span>
@@ -337,6 +345,11 @@
 
   .row:hover .row-name {
     color: var(--primary);
+  }
+
+  .row-icon {
+    display: inline-flex;
+    flex-shrink: 0;
   }
 
   .row-name {
