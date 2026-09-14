@@ -1,15 +1,15 @@
-import { invoke } from "$lib/api";
 import type { Category } from "$lib/types";
+import {
+  archiveCategory,
+  getCategories,
+  saveCategory,
+} from "$lib/services/db.service";
 
 class CategoriesService {
   items = $state<Category[]>([]);
 
-  list(): Promise<Category[]> {
-    return invoke<Category[]>("list_categories");
-  }
-
   async load(): Promise<void> {
-    this.items = await this.list();
+    this.items = await getCategories();
   }
 
   async create(
@@ -17,11 +17,7 @@ class CategoriesService {
     color: string | null,
     icon: string | null,
   ): Promise<void> {
-    await invoke<number>(
-      "save_catalog",
-      { input: { kind: "category", name, color, icon } },
-      "Categoría guardada.",
-    );
+    await saveCategory(null, name, color, icon);
     await this.load();
   }
 
@@ -31,20 +27,12 @@ class CategoriesService {
     color: string | null,
     icon: string | null,
   ): Promise<void> {
-    await invoke(
-      "save_catalog",
-      { input: { kind: "category", id, name, color, icon } },
-      "Categoría guardada.",
-    );
+    await saveCategory(id, name, color, icon);
     await this.load();
   }
 
   async remove(id: number): Promise<void> {
-    await invoke(
-      "archive_record",
-      { kind: "category", id, restore: false },
-      "Categoría eliminada.",
-    );
+    await archiveCategory(id);
     await this.load();
   }
 }

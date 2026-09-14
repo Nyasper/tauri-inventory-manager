@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import { getSuppliers } from "$lib/services/db.service";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import type { Supplier } from "$lib/types";
   import { modalService } from "$lib/services/modal.service.svelte";
@@ -15,7 +16,7 @@
   suppliersService.load();
   const targetId = $derived(page.url.searchParams.get("id"));
   const archive = new ArchivedList<Supplier>((archived) =>
-    suppliersService.list(archived),
+    getSuppliers(archived),
   );
   const visible = $derived(
     (archive.active ? archive.items : suppliersService.items).filter(
@@ -25,7 +26,6 @@
   async function restore(supplier: Supplier) {
     await suppliersService.restore(supplier.id);
     await archive.reload();
-    await suppliersService.load();
   }
 
   const columnHelper = createAppColumnHelper<Supplier>();

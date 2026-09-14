@@ -1,7 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import {
+    findProductDuplicate,
+    findSupplierDuplicate,
+  } from "$lib/services/db.service";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { DuplicateRecord } from "$lib/types";
@@ -22,8 +24,8 @@
     if (!error.includes("Ya existe")) return Promise.resolve(null);
     const request =
       kind === "product"
-        ? productsService.findDuplicate(name, currentId)
-        : suppliersService.findDuplicate(name, currentId);
+        ? findProductDuplicate(name, currentId)
+        : findSupplierDuplicate(name, currentId);
     return request.catch(() => null);
   }
 

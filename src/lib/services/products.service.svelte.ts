@@ -1,74 +1,42 @@
-import { invoke } from "$lib/api";
-import type { DuplicateRecord, Presentation, Product } from "$lib/types";
-
-export interface PresentationInput {
-  id?: number;
-  name: string;
-  factor: number;
-}
-
-export interface ProductInput {
-  id: number | null;
-  name: string;
-  description: string | null;
-  category_id: number | null;
-  presentations: PresentationInput[];
-}
+import type { Product } from "$lib/types";
+import {
+  archiveProduct,
+  getProducts,
+  restoreProduct,
+  saveProduct,
+  type ProductInput,
+} from "$lib/services/db.service";
 
 class ProductsService {
   items = $state<Product[]>([]);
   loading = $state(false);
   error = $state("");
 
-  list(archived = false): Promise<Product[]> {
-    return invoke<Product[]>("list_products", { archived });
-  }
-
-  presentations(productId: number): Promise<Presentation[]> {
-    return invoke<Presentation[]>("list_presentations", { productId });
-  }
-
-  save(input: ProductInput): Promise<number> {
-    return invoke<number>("save_product", { input }, "Producto guardado.");
-  }
-
-  restore(id: number): Promise<void> {
-    return invoke(
-      "archive_record",
-      { kind: "product", id, restore: true },
-      "Producto restaurado.",
-    );
-  }
-
-  remove(id: number): Promise<void> {
-    return invoke(
-      "archive_record",
-      { kind: "product", id, restore: false },
-      "Producto archivado.",
-    );
-  }
-
-  findDuplicate(
-    name: string,
-    currentId?: number,
-  ): Promise<DuplicateRecord | null> {
-    return invoke<DuplicateRecord | null>("find_duplicate", {
-      kind: "product",
-      name,
-      currentId: currentId ?? null,
-    });
-  }
-
   async load(archived = false): Promise<void> {
     this.loading = true;
     this.error = "";
     try {
-      this.items = await this.list(archived);
+      this.items = await getProducts(archived);
     } catch (e) {
       this.error = String(e);
     } finally {
       this.loading = false;
     }
+  }
+
+  async save(input: ProductInput): Promise<void> {
+    await saveProduct(input);
+    await this.load();
+  }
+
+  async remove(id: number): Promise<void> {
+    await archiveProduct(id);
+    await this.load();
+  }
+
+  async restore(id: number): Promise<void> {
+    await restoreProduct(id);
+    await this.load();
   }
 }
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import type { Presentation, MovementType } from "$lib/types";
+  import { getPresentations } from "$lib/services/db.service";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
@@ -103,7 +104,7 @@
     let cancelled = false;
     loading = true;
     presentationId = ""; presentations = [];
-    productsService.presentations(pid).then((rows) => {
+    getPresentations(pid).then((rows) => {
       if (cancelled) return;
       presentations = rows;
       presentationOptions = rows.map((r) => ({

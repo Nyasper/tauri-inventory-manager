@@ -1,6 +1,7 @@
 <script lang="ts">
   import { personsService } from "$lib/services/persons.service.svelte";
   import { backupService } from "$lib/services/backup.service";
+  import { getPersons } from "$lib/services/db.service";
   import type { ResponsiblePerson } from "$lib/types";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
@@ -42,9 +43,9 @@
 
   let archivedPersons=$state<ResponsiblePerson[]>([]);
   let showArchivedPersons=$state(false);
-  async function loadArchivedPersons() { archivedPersons=await personsService.list(true); }
+  async function loadArchivedPersons() { archivedPersons=await getPersons(true); }
   $effect(()=>{if(showArchivedPersons) loadArchivedPersons();});
-  async function restorePerson(id:number) { await personsService.restore(id); await personsService.load(); await loadArchivedPersons(); }
+  async function restorePerson(id:number) { await personsService.restore(id); await loadArchivedPersons(); }
   let low = $state("");
   let medium = $state("");
   let newPerson = $state("");

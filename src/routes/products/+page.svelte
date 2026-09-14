@@ -5,6 +5,7 @@
   import { renderComponent } from "@tanstack/svelte-table";
   import type { SortingState } from "@tanstack/svelte-table";
   import type { Product } from "$lib/types";
+  import { getProducts } from "$lib/services/db.service";
   import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
@@ -35,7 +36,7 @@
 
   let search = $state("");
   const archive = new ArchivedList<Product>((archived) =>
-    productsService.list(archived),
+    getProducts(archived),
   );
   const visible = $derived(archive.active ? archive.items : productsService.items);
   let stockFilter = $state("");
@@ -134,12 +135,7 @@
 
   function openEdit(product: Product) {
     if (product.archived) {
-      productsService
-        .restore(product.id)
-        .then(async () => {
-          await archive.reload();
-          await productsService.load();
-        });
+      productsService.restore(product.id).then(() => archive.reload());
       return;
     }
     modalService.open(ProductFormModal, { product });
@@ -152,7 +148,6 @@
     );
     if (ok) {
       await productsService.remove(product.id);
-      await productsService.load();
     }
   }
 </script>

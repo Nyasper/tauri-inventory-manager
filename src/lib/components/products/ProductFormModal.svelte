@@ -3,10 +3,11 @@
   import { untrack } from "svelte";
   import type { Product } from "$lib/types";
   import {
-    productsService,
+    getPresentations,
     type PresentationInput,
     type ProductInput,
-  } from "$lib/services/products.service.svelte";
+  } from "$lib/services/db.service";
+  import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
@@ -35,7 +36,7 @@
   let error = $state("");
 
   if (initial?.id) {
-    productsService.presentations(initial.id).then((rows) => {
+    getPresentations(initial.id).then((rows) => {
       presentations = rows.length
         ? rows.map((r) => ({ id: r.id, name: r.name, factor: r.factor }))
         : [{ name: "Unidad", factor: 1 }];
@@ -105,7 +106,6 @@
     error = "";
     try {
       await productsService.save(input);
-      await productsService.load();
       modalService.close();
     } catch (e) {
       error = String(e);
