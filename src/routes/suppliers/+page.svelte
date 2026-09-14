@@ -1,10 +1,9 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { supplierService } from "$lib/services/supplier.service";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import type { Supplier } from "$lib/types";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
@@ -13,20 +12,20 @@
   import { Plus, Truck, Pencil, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
-  suppliersStore.load();
+  suppliersService.load();
   const targetId = $derived(page.url.searchParams.get("id"));
   const archive = new ArchivedList<Supplier>((archived) =>
-    supplierService.list(archived),
+    suppliersService.list(archived),
   );
   const visible = $derived(
-    (archive.active ? archive.items : suppliersStore.items).filter(
+    (archive.active ? archive.items : suppliersService.items).filter(
       (supplier) => !targetId || supplier.id === Number(targetId),
     ),
   );
   async function restore(supplier: Supplier) {
-    await supplierService.restore(supplier.id);
+    await suppliersService.restore(supplier.id);
     await archive.reload();
-    await suppliersStore.load();
+    await suppliersService.load();
   }
 
   const columnHelper = createAppColumnHelper<Supplier>();
@@ -67,7 +66,7 @@
       `¿Archivar el proveedor "${supplier.name}"?`,
       "Archivar proveedor",
     );
-    if (ok) await suppliersStore.remove(supplier.id);
+    if (ok) await suppliersService.remove(supplier.id);
   }
 </script>
 
@@ -78,8 +77,8 @@
   <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
-{#if suppliersStore.error || archive.error}<p role="alert" class="error">{suppliersStore.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():suppliersStore.load()}>Reintentar</Button>
-{:else if suppliersStore.loading || archive.loading}<p role="status">Cargando proveedores…</p>
+{#if suppliersService.error || archive.error}<p role="alert" class="error">{suppliersService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():suppliersService.load()}>Reintentar</Button>
+{:else if suppliersService.loading || archive.loading}<p role="status">Cargando proveedores…</p>
 {:else if visible.length === 0}
   <EmptyState
     icon={Truck}

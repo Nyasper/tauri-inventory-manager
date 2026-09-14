@@ -1,5 +1,5 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-import { feedback } from "$lib/stores/feedback.svelte";
+import { feedback } from "$lib/services/feedback.service.svelte";
 
 /**
  * Envoltorio de `invoke` que muestra un aviso de éxito cuando el llamador lo

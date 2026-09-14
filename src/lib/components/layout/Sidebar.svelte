@@ -9,7 +9,7 @@
     Truck,
     CircleHelp,
   } from "@lucide/svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import HelpModal from "$lib/components/help/HelpModal.svelte";
 
   const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [

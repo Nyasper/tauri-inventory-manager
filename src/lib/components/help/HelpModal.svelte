@@ -3,7 +3,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import {
     BookOpen,
     LayoutDashboard,

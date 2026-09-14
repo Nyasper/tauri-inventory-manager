@@ -1,13 +1,11 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import type { Presentation, MovementType } from "$lib/types";
-  import { productService } from "$lib/services/product.service";
-  import { movementService } from "$lib/services/movement.service";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { personsStore } from "$lib/stores/persons.store.svelte";
-  import { movementsStore } from "$lib/stores/movements.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { personsService } from "$lib/services/persons.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
@@ -29,7 +27,7 @@
   let saving = $state(false);
   let error = $state("");
 
-  const selectedProduct = $derived(productsStore.items.find((p) => p.id === Number(productId)));
+  const selectedProduct = $derived(productsService.items.find((p) => p.id === Number(productId)));
   const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
   const baseQuantity = $derived(Math.round((Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
   const projected = $derived(Math.round(((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6) / 1e6);
@@ -45,7 +43,7 @@
 
   const validation = $derived.by(() => {
     if (loading) return "";
-    if (personsStore.items.length === 0)
+    if (personsService.items.length === 0)
       return "No hay responsables configurados. Añádelos en Configuración.";
     if (!productId) return "Selecciona un producto.";
     if (!presentationId) return "Selecciona una presentación.";
@@ -72,19 +70,19 @@
   let presentationOptions = $state<SelectOption[]>([]);
 
   const productOptions = $derived(
-    productsStore.items.map((p) => ({
+    productsService.items.map((p) => ({
       value: String(p.id),
       label: p.name,
     })),
   );
   const supplierOptions = $derived(
-    [{value:"",label:"Sin proveedor"}, ...suppliersStore.items.map((s) => ({
+    [{value:"",label:"Sin proveedor"}, ...suppliersService.items.map((s) => ({
       value: String(s.id),
       label: s.name,
     }))],
   );
   const personOptions = $derived(
-    personsStore.items.map((p) => ({
+    personsService.items.map((p) => ({
       value: String(p.id),
       label: p.name,
     })),
@@ -105,7 +103,7 @@
     let cancelled = false;
     loading = true;
     presentationId = ""; presentations = [];
-    productService.presentations(pid).then((rows) => {
+    productsService.presentations(pid).then((rows) => {
       if (cancelled) return;
       presentations = rows;
       presentationOptions = rows.map((r) => ({
@@ -123,7 +121,7 @@
 
   let defaultApplied = false;
   $effect(() => {
-    const def = personsStore.defaultPerson;
+    const def = personsService.defaultPerson;
     if (def && !defaultApplied) { defaultApplied = true; personId = String(def.id); }
   });
 
@@ -139,7 +137,7 @@
     saving = true;
     error = "";
     try {
-      await movementService.create({
+      await movementsService.create({
         product_id: pid,
         type,
         quantity: qty,
@@ -149,8 +147,7 @@
         notes: notes.trim() || null,
         adjustment, reason: adjustment ? reason.trim() : null,
       });
-      await movementsStore.load();
-      await productsStore.load();
+      await productsService.load();
       modalService.close();
     } catch (e) {
       error = String(e);

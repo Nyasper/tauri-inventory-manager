@@ -3,11 +3,11 @@
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
   import type { Movement } from "$lib/types";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { movementsStore } from "$lib/stores/movements.store.svelte";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { settingsStore } from "$lib/stores/settings.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { settingsService } from "$lib/services/settings.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import { getStockStatus } from "$lib/utils/stock";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
@@ -26,17 +26,17 @@
     ArrowUpFromLine,
   } from "@lucide/svelte";
 
-  productsStore.load();
-  movementsStore.load({});
-  suppliersStore.load();
+  productsService.load();
+  movementsService.load({});
+  suppliersService.load();
 
   const lowProducts = $derived(
-    productsStore.items
+    productsService.items
       .filter((p) => {
         const status = getStockStatus(
           p.stock,
-          settingsStore.settings.stock_low_threshold,
-          settingsStore.settings.stock_medium_threshold,
+          settingsService.settings.stock_low_threshold,
+          settingsService.settings.stock_medium_threshold,
         );
         return status === "low" || status === "out";
       })
@@ -44,12 +44,12 @@
       .slice(0, 5),
   );
 
-  const recentMovements = $derived(movementsStore.items.slice(0, 5));
+  const recentMovements = $derived(movementsService.items.slice(0, 5));
 
   const stats = $derived([
     {
       label: "Productos",
-      value: formatNumber(productsStore.items.length),
+      value: formatNumber(productsService.items.length),
       icon: Box as Component<LucideProps>,
       tone: "primary",
       href: "/products",
@@ -57,11 +57,11 @@
     {
       label: "Stock bajo / agotado",
       value: formatNumber(
-        productsStore.items.filter((p) => {
+        productsService.items.filter((p) => {
           const status = getStockStatus(
             p.stock,
-            settingsStore.settings.stock_low_threshold,
-            settingsStore.settings.stock_medium_threshold,
+            settingsService.settings.stock_low_threshold,
+            settingsService.settings.stock_medium_threshold,
           );
           return status === "low" || status === "out";
         }).length,
@@ -72,14 +72,14 @@
     },
     {
       label: "Movimientos",
-      value: formatNumber(movementsStore.total),
+      value: formatNumber(movementsService.total),
       icon: Activity as Component<LucideProps>,
       tone: "primary",
       href: "/movements",
     },
     {
       label: "Proveedores",
-      value: formatNumber(suppliersStore.items.length),
+      value: formatNumber(suppliersService.items.length),
       icon: Truck as Component<LucideProps>,
       tone: "primary",
       href: "/suppliers",
@@ -100,8 +100,8 @@
 </script>
 
 <div class="dashboard">
-  {#if productsStore.loading || movementsStore.loading || suppliersStore.loading}<p role="status">Cargando inventario…</p>{/if}
-  {#if productsStore.error || movementsStore.error || suppliersStore.error}<p class="error" role="alert">No se pudo cargar el inventario.</p><button onclick={()=>{productsStore.load();movementsStore.load({});suppliersStore.load();}}>Reintentar</button>{/if}
+  {#if productsService.loading || movementsService.loading || suppliersService.loading}<p role="status">Cargando inventario…</p>{/if}
+  {#if productsService.error || movementsService.error || suppliersService.error}<p class="error" role="alert">No se pudo cargar el inventario.</p><button onclick={()=>{productsService.load();movementsService.load({});suppliersService.load();}}>Reintentar</button>{/if}
   <section class="stats">
     {#each stats as stat (stat.label)}
       {@const Icon = stat.icon}
@@ -126,7 +126,7 @@
         </button>
       </div>
 
-      {#if lowProducts.length === 0 && !productsStore.loading && !productsStore.error}
+      {#if lowProducts.length === 0 && !productsService.loading && !productsService.error}
         <p class="empty-note">No hay productos con stock bajo.</p>
       {:else}
         <div class="rows">
@@ -138,8 +138,8 @@
                 <StockBadge
                   status={getStockStatus(
                     product.stock,
-                    settingsStore.settings.stock_low_threshold,
-                    settingsStore.settings.stock_medium_threshold,
+                    settingsService.settings.stock_low_threshold,
+                    settingsService.settings.stock_medium_threshold,
                   )}
                 />
               </span>
@@ -157,7 +157,7 @@
         </button>
       </div>
 
-      {#if recentMovements.length === 0 && !movementsStore.loading && !movementsStore.error}
+      {#if recentMovements.length === 0 && !movementsService.loading && !movementsService.error}
         <p class="empty-note">No hay movimientos registrados.</p>
       {:else}
         <div class="rows">

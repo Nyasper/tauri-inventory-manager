@@ -2,9 +2,9 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
-  import { movementsStore } from "$lib/stores/movements.store.svelte";
-  import { productsStore } from "$lib/stores/products.store.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
   import type { Movement } from "$lib/types";
   let { movement }: { movement: Movement } = $props();
   let reason = $state(""); let saving = $state(false); let error = $state("");
@@ -12,7 +12,7 @@
   async function save() {
     if (!canSave) return;
     saving = true;
-    try { await movementsStore.remove(movement.id, reason); await productsStore.load(); modalService.close(); }
+    try { await movementsService.remove(movement.id, reason); await productsService.load(); modalService.close(); }
     catch(e) { error = String(e); } finally { saving = false; }
   }
 </script>

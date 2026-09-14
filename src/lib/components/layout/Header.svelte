@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { Sun, Moon, Settings } from "@lucide/svelte";
-  import { themeService } from "$lib/stores/theme.service.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { themeService } from "$lib/services/theme.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
 
   const titles: Record<string, string> = {

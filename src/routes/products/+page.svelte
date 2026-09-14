@@ -5,11 +5,10 @@
   import { renderComponent } from "@tanstack/svelte-table";
   import type { SortingState } from "@tanstack/svelte-table";
   import type { Product } from "$lib/types";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { categoriesStore } from "$lib/stores/categories.store.svelte";
-  import { settingsStore } from "$lib/stores/settings.store.svelte";
-  import { productService } from "$lib/services/product.service";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
+  import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { settingsService } from "$lib/services/settings.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
@@ -30,15 +29,15 @@
   } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
-  productsStore.load();
+  productsService.load();
 
   const columnHelper = createAppColumnHelper<Product>();
 
   let search = $state("");
   const archive = new ArchivedList<Product>((archived) =>
-    productService.list(archived),
+    productsService.list(archived),
   );
-  const visible = $derived(archive.active ? archive.items : productsStore.items);
+  const visible = $derived(archive.active ? archive.items : productsService.items);
   let stockFilter = $state("");
   $effect(()=>{stockFilter=page.url.searchParams.get("stock")??"";});
   const targetId = $derived(page.url.searchParams.get("id"));
@@ -47,8 +46,8 @@
   function statusOf(product: Product) {
     return getStockStatus(
       product.stock,
-      settingsStore.settings.stock_low_threshold,
-      settingsStore.settings.stock_medium_threshold,
+      settingsService.settings.stock_low_threshold,
+      settingsService.settings.stock_medium_threshold,
     );
   }
 
@@ -123,7 +122,7 @@
 
   const categoryOptions = $derived([
     { value: "", label: "Todas las categorías" },
-    ...categoriesStore.items.map((c) => ({
+    ...categoriesService.items.map((c) => ({
       value: String(c.id),
       label: c.name,
     })),
@@ -135,11 +134,11 @@
 
   function openEdit(product: Product) {
     if (product.archived) {
-      productService
+      productsService
         .restore(product.id)
         .then(async () => {
           await archive.reload();
-          await productsStore.load();
+          await productsService.load();
         });
       return;
     }
@@ -152,8 +151,8 @@
       "Archivar producto",
     );
     if (ok) {
-      await productService.remove(product.id);
-      await productsStore.load();
+      await productsService.remove(product.id);
+      await productsService.load();
     }
   }
 </script>
@@ -183,8 +182,8 @@
 </div>
 
 <div class="products">
-  {#if productsStore.error || archive.error}<p class="error" role="alert">{productsStore.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():productsStore.load()}>Reintentar</Button>
-  {:else if productsStore.loading || archive.loading}<p role="status">Cargando productos…</p>
+  {#if productsService.error || archive.error}<p class="error" role="alert">{productsService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():productsService.load()}>Reintentar</Button>
+  {:else if productsService.loading || archive.loading}<p role="status">Cargando productos…</p>
   {:else if visible.length === 0}
     <EmptyState
       title="No hay productos"

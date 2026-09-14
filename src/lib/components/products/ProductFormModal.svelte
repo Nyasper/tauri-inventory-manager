@@ -3,13 +3,12 @@
   import { untrack } from "svelte";
   import type { Product } from "$lib/types";
   import {
-    productService,
+    productsService,
     type PresentationInput,
     type ProductInput,
-  } from "$lib/services/product.service";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { categoriesStore } from "$lib/stores/categories.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  } from "$lib/services/products.service.svelte";
+  import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
@@ -36,7 +35,7 @@
   let error = $state("");
 
   if (initial?.id) {
-    productService.presentations(initial.id).then((rows) => {
+    productsService.presentations(initial.id).then((rows) => {
       presentations = rows.length
         ? rows.map((r) => ({ id: r.id, name: r.name, factor: r.factor }))
         : [{ name: "Unidad", factor: 1 }];
@@ -45,7 +44,7 @@
 
   const categoryOptions = $derived([
     { value: "", label: "Sin categoría" },
-    ...categoriesStore.items.map((c) => ({
+    ...categoriesService.items.map((c) => ({
       value: String(c.id),
       label: c.name,
     })),
@@ -105,8 +104,8 @@
     saving = true;
     error = "";
     try {
-      await productService.save(input);
-      await productsStore.load();
+      await productsService.save(input);
+      await productsService.load();
       modalService.close();
     } catch (e) {
       error = String(e);

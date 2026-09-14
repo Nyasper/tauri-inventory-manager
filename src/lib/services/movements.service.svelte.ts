@@ -67,18 +67,44 @@ function toQuery(filters: MovementFilters): MovementQuery {
   };
 }
 
-class MovementService {
+class MovementsService {
+  items = $state<Movement[]>([]);
+  total = $state(0);
+  loading = $state(false);
+  error = $state("");
+  filters: MovementFilters = {};
+  private request = 0;
+
   page(filters: MovementFilters = {}): Promise<MovementPage> {
     return invoke<MovementPage>("page_movements", { filters: toQuery(filters) });
   }
 
-  create(input: MovementInput): Promise<void> {
-    return invoke("create_movement", { input }, "Movimiento registrado.");
+  async load(filters: MovementFilters = this.filters): Promise<void> {
+    this.filters = filters;
+    const request = ++this.request;
+    this.loading = true;
+    this.error = "";
+    try {
+      const result = await this.page(filters);
+      if (request !== this.request) return;
+      this.items = result.items;
+      this.total = result.total;
+    } catch (e) {
+      if (request === this.request) this.error = String(e);
+    } finally {
+      if (request === this.request) this.loading = false;
+    }
   }
 
-  remove(id: number, reason: string): Promise<void> {
-    return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
+  async create(input: MovementInput): Promise<void> {
+    await invoke("create_movement", { input }, "Movimiento registrado.");
+    await this.load();
+  }
+
+  async remove(id: number, reason: string): Promise<void> {
+    await invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
+    await this.load();
   }
 }
 
-export const movementService = new MovementService();
+export const movementsService = new MovementsService();

@@ -15,7 +15,11 @@ export interface ProductInput {
   presentations: PresentationInput[];
 }
 
-class ProductService {
+class ProductsService {
+  items = $state<Product[]>([]);
+  loading = $state(false);
+  error = $state("");
+
   list(archived = false): Promise<Product[]> {
     return invoke<Product[]>("list_products", { archived });
   }
@@ -54,6 +58,18 @@ class ProductService {
       currentId: currentId ?? null,
     });
   }
+
+  async load(archived = false): Promise<void> {
+    this.loading = true;
+    this.error = "";
+    try {
+      this.items = await this.list(archived);
+    } catch (e) {
+      this.error = String(e);
+    } finally {
+      this.loading = false;
+    }
+  }
 }
 
-export const productService = new ProductService();
+export const productsService = new ProductsService();

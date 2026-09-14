@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { feedback } from "$lib/stores/feedback.svelte";
+  import { feedback } from "$lib/services/feedback.service.svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -8,12 +8,12 @@
   import Sidebar from "$lib/components/layout/Sidebar.svelte";
   import Header from "$lib/components/layout/Header.svelte";
   import ModalHost from "$lib/components/ui/ModalHost.svelte";
-  import { categoriesStore } from "$lib/stores/categories.store.svelte";
-  import { settingsStore } from "$lib/stores/settings.store.svelte";
-  import { personsStore } from "$lib/stores/persons.store.svelte";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
+  import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { settingsService } from "$lib/services/settings.service.svelte";
+  import { personsService } from "$lib/services/persons.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
 
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import HelpModal from "$lib/components/help/HelpModal.svelte";
 
   const VIEW_PATHS: Record<string, string> = {
@@ -25,9 +25,9 @@
 
   let { children }: { children: Snippet } = $props();
 
-  categoriesStore.load();
-  personsStore.load();
-  suppliersStore.load();
+  categoriesService.load();
+  personsService.load();
+  suppliersService.load();
 
   function handleError(event: PromiseRejectionEvent) {
     event.preventDefault(); feedback.error(String(event.reason));
@@ -46,8 +46,8 @@
   }
 
   onMount(async () => {
-    await settingsStore.load();
-    const path = VIEW_PATHS[settingsStore.settings.default_view] ?? "/";
+    await settingsService.load();
+    const path = VIEW_PATHS[settingsService.settings.default_view] ?? "/";
     if (page.url.pathname === "/" && !page.url.search && path !== "/") goto(path);
   });
 </script>

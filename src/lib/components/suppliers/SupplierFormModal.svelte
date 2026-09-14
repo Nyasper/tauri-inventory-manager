@@ -3,8 +3,8 @@
   import { untrack } from "svelte";
   import { Plus, Trash } from "@lucide/svelte";
   import type { Supplier } from "$lib/types";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
@@ -37,9 +37,9 @@
         notes: notes.trim() || null,
       };
       if (initial) {
-        await suppliersStore.update({ ...data, id: initial.id });
+        await suppliersService.update({ ...data, id: initial.id });
       } else {
-        await suppliersStore.create(data);
+        await suppliersService.create(data);
       }
       modalService.close();
     } catch (e) {

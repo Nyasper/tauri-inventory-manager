@@ -1,7 +1,7 @@
+import { invoke } from "$lib/api";
 import type { AppSettings, DefaultView } from "$lib/types";
-import { settingsService } from "$lib/services/settings.service";
 
-class SettingsStore {
+class SettingsService {
   settings = $state<AppSettings>({
     stock_low_threshold: 5,
     stock_medium_threshold: 20,
@@ -9,19 +9,19 @@ class SettingsStore {
   });
 
   async load(): Promise<void> {
-    this.settings = await settingsService.get();
+    this.settings = await invoke<AppSettings>("get_settings");
   }
 
   async saveThresholds(low: number, medium: number): Promise<void> {
-    await settingsService.setThresholds(low, medium);
+    await invoke("save_settings", { low, medium }, "Umbrales guardados.");
     this.settings.stock_low_threshold = low;
     this.settings.stock_medium_threshold = medium;
   }
 
   async saveDefaultView(view: DefaultView): Promise<void> {
-    await settingsService.setDefaultView(view);
+    await invoke("save_settings", { view }, "Vista por defecto actualizada.");
     this.settings.default_view = view;
   }
 }
 
-export const settingsStore = new SettingsStore();
+export const settingsService = new SettingsService();

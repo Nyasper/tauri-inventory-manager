@@ -1,11 +1,11 @@
 <script lang="ts">
   import { renderComponent } from "@tanstack/svelte-table";
   import type { Movement, MovementType } from "$lib/types";
-  import { movementsStore } from "$lib/stores/movements.store.svelte";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { personsStore } from "$lib/stores/persons.store.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { personsService } from "$lib/services/persons.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
@@ -20,7 +20,7 @@
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
 
-  productsStore.load();
+  productsService.load();
 
   const columnHelper = createAppColumnHelper<Movement>();
 
@@ -32,13 +32,13 @@
   let status = $state("all"); let currentPage = $state(0);
 
   const productOptions = $derived(
-    productsStore.items.map((p) => ({ value: String(p.id), label: p.name })),
+    productsService.items.map((p) => ({ value: String(p.id), label: p.name })),
   );
   const supplierOptions = $derived(
-    suppliersStore.items.map((s) => ({ value: String(s.id), label: s.name })),
+    suppliersService.items.map((s) => ({ value: String(s.id), label: s.name })),
   );
   const personOptions = $derived(
-    personsStore.items.map((p) => ({ value: String(p.id), label: p.name })),
+    personsService.items.map((p) => ({ value: String(p.id), label: p.name })),
   );
 
   $effect(() => {
@@ -56,7 +56,7 @@
   const query = $derived({search, product:productFilter, supplier:supplierFilter, person:personFilter, from,to,status,type:typeFilter});
   $effect(() => { query; currentPage=0; });
   $effect(() => {
-    movementsStore.load({ ...query, page: currentPage });
+    movementsService.load({ ...query, page: currentPage });
   });
 
 
@@ -101,7 +101,7 @@
     }),
   ]);
 
-  const data = $derived(movementsStore.items);
+  const data = $derived(movementsService.items);
 
   const table = createAppTable({
     columns,
@@ -160,11 +160,11 @@
   <label>Hasta<input class="field" type="date" bind:value={to} /></label>
   <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>
 </div>
-{#if movementsStore.error}
-  <p role="alert" class="error">{movementsStore.error}</p><Button onclick={()=>movementsStore.load()}>Reintentar</Button>
-{:else if movementsStore.loading && movementsStore.items.length === 0}
+{#if movementsService.error}
+  <p role="alert" class="error">{movementsService.error}</p><Button onclick={()=>movementsService.load()}>Reintentar</Button>
+{:else if movementsService.loading && movementsService.items.length === 0}
   <p role="status">Cargando movimientos…</p>
-{:else if movementsStore.items.length === 0}
+{:else if movementsService.items.length === 0}
   <EmptyState
     icon={ArrowLeftRight}
     title="No hay movimientos para estos filtros"
@@ -173,8 +173,8 @@
     onAction={openNew}
   />
 {:else}
-  <div class="table-state" class:updating={movementsStore.loading}>
-    {#if movementsStore.loading}
+  <div class="table-state" class:updating={movementsService.loading}>
+    {#if movementsService.loading}
       <span class="updating-label" role="status">Actualizando…</span>
     {/if}
     <DataTable
@@ -199,9 +199,9 @@
 {/if}
 
 <div class="pagination">
-  <Button variant="secondary" disabled={currentPage===0 || movementsStore.loading} onclick={()=>currentPage--}>Anterior</Button>
-  <span>Página {currentPage+1} · {movementsStore.total} movimientos</span>
-  <Button variant="secondary" disabled={(currentPage+1)*25>=movementsStore.total || movementsStore.loading} onclick={()=>currentPage++}>Siguiente</Button>
+  <Button variant="secondary" disabled={currentPage===0 || movementsService.loading} onclick={()=>currentPage--}>Anterior</Button>
+  <span>Página {currentPage+1} · {movementsService.total} movimientos</span>
+  <Button variant="secondary" disabled={(currentPage+1)*25>=movementsService.total || movementsService.loading} onclick={()=>currentPage++}>Siguiente</Button>
 </div>
 <style>
   .toolbar {

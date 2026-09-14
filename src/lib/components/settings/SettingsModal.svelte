@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { personService } from "$lib/services/person.service";
+  import { personsService } from "$lib/services/persons.service.svelte";
   import { backupService } from "$lib/services/backup.service";
   import type { ResponsiblePerson } from "$lib/types";
   import Modal from "$lib/components/ui/Modal.svelte";
@@ -9,19 +9,18 @@
   import IconPicker from "$lib/components/ui/IconPicker.svelte";
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
-  import { settingsStore } from "$lib/stores/settings.store.svelte";
-  import { categoriesStore } from "$lib/stores/categories.store.svelte";
-  import { personsStore } from "$lib/stores/persons.store.svelte";
-  import { productsStore } from "$lib/stores/products.store.svelte";
-  import { movementsStore } from "$lib/stores/movements.store.svelte";
-  import { suppliersStore } from "$lib/stores/suppliers.store.svelte";
-  import { feedback } from "$lib/stores/feedback.svelte";
-  import { modalService } from "$lib/stores/modal.service.svelte";
+  import { settingsService } from "$lib/services/settings.service.svelte";
+  import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { productsService } from "$lib/services/products.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { feedback } from "$lib/services/feedback.service.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
   import {
     accentService,
     ACCENTS,
-  } from "$lib/stores/accent.service.svelte";
+  } from "$lib/services/accent.service.svelte";
 
   const CATEGORY_COLORS = [
     "#3b82f6",
@@ -43,9 +42,9 @@
 
   let archivedPersons=$state<ResponsiblePerson[]>([]);
   let showArchivedPersons=$state(false);
-  async function loadArchivedPersons() { archivedPersons=await personService.list(true); }
+  async function loadArchivedPersons() { archivedPersons=await personsService.list(true); }
   $effect(()=>{if(showArchivedPersons) loadArchivedPersons();});
-  async function restorePerson(id:number) { await personService.restore(id); await personsStore.load(); await loadArchivedPersons(); }
+  async function restorePerson(id:number) { await personsService.restore(id); await personsService.load(); await loadArchivedPersons(); }
   let low = $state("");
   let medium = $state("");
   let newPerson = $state("");
@@ -79,16 +78,16 @@
   );
 
   $effect(() => {
-    low = String(settingsStore.settings.stock_low_threshold);
-    medium = String(settingsStore.settings.stock_medium_threshold);
+    low = String(settingsService.settings.stock_low_threshold);
+    medium = String(settingsService.settings.stock_medium_threshold);
   });
 
   $effect(() => {
-    defaultView = settingsStore.settings.default_view;
+    defaultView = settingsService.settings.default_view;
   });
 
   async function saveDefaultView() {
-    await settingsStore.saveDefaultView(defaultView as DefaultView);
+    await settingsService.saveDefaultView(defaultView as DefaultView);
   }
 
   async function saveThresholds() {
@@ -97,7 +96,7 @@
     if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue) || lowValue < 0 || mediumValue <= lowValue) {
       throw new Error("Los umbrales deben cumplir: 0 ≤ bajo < medio.");
     }
-    await settingsStore.saveThresholds(lowValue, mediumValue);
+    await settingsService.saveThresholds(lowValue, mediumValue);
   }
 
   function startNewCategory() {
@@ -121,9 +120,9 @@
       return;
     }
     if (editingCat.id === null) {
-      await categoriesStore.create(name, editingCat.color, editingCat.icon);
+      await categoriesService.create(name, editingCat.color, editingCat.icon);
     } else {
-      await categoriesStore.update(editingCat.id, name, editingCat.color, editingCat.icon);
+      await categoriesService.update(editingCat.id, name, editingCat.color, editingCat.icon);
     }
     editingCat = null;
   }
@@ -133,24 +132,24 @@
       `¿Eliminar la categoría "${name}"? Los productos asociados quedarán sin categoría.`,
       "Eliminar categoría",
     );
-    if (ok) await categoriesStore.remove(id);
+    if (ok) await categoriesService.remove(id);
   }
 
   async function addPerson() {
     const name = newPerson.trim();
     if (!name) return;
-    await personsStore.create(name, personsStore.items.length === 0);
+    await personsService.create(name, personsService.items.length === 0);
     newPerson = "";
   }
 
   async function setDefault(id: number) {
-    const person = personsStore.items.find((p) => p.id === id);
+    const person = personsService.items.find((p) => p.id === id);
     if (!person) return;
     const ok = await modalService.confirm(
       `¿Establecer a "${person.name}" como responsable por defecto?`,
       "Responsable por defecto",
     );
-    if (ok) await personsStore.update(id, person.name, true);
+    if (ok) await personsService.update(id, person.name, true);
   }
 
   function startEdit(id: number, name: string) {
@@ -160,10 +159,10 @@
 
   async function saveEdit() {
     if (editingId === null) return;
-    const person = personsStore.items.find((p) => p.id === editingId);
+    const person = personsService.items.find((p) => p.id === editingId);
     if (!person) return;
     const newName = editName.trim() || person.name;
-    await personsStore.update(editingId, newName, person.is_default);
+    await personsService.update(editingId, newName, person.is_default);
     editingId = null;
   }
 
@@ -172,7 +171,7 @@
       "¿Archivar esta persona responsable? Su historial se conservará.",
       "Archivar persona",
     );
-    if (ok) await personsStore.remove(id);
+    if (ok) await personsService.remove(id);
   }
 
   async function createBackup() {
@@ -201,12 +200,12 @@
     try {
       await backupService.restore(path);
       await Promise.all([
-        settingsStore.load(),
-        categoriesStore.load(),
-        personsStore.load(),
-        suppliersStore.load(),
-        productsStore.load(),
-        movementsStore.load(),
+        settingsService.load(),
+        categoriesService.load(),
+        personsService.load(),
+        suppliersService.load(),
+        productsService.load(),
+        movementsService.load(),
       ]);
       await loadArchivedPersons();
       feedback.success("Base de datos restaurada correctamente.");
@@ -321,11 +320,11 @@
         </div>
       {/if}
 
-      {#if categoriesStore.items.length === 0}
+      {#if categoriesService.items.length === 0}
         <p class="empty-note">Sin categorías configuradas.</p>
       {:else}
         <ul class="cats">
-          {#each categoriesStore.items as category (category.id)}
+          {#each categoriesService.items as category (category.id)}
             {@const Icon = category.icon && category.icon in ICONS ? ICONS[category.icon as IconName] : ICONS.box}
             <li class="cat">
               <span
@@ -373,11 +372,11 @@
         <Button size="sm" icon={Plus} disabled={!canAddPerson} onclick={addPerson}>Añadir</Button>
       </div>
 
-      {#if personsStore.items.length === 0}
+      {#if personsService.items.length === 0}
         <p class="empty-note">Sin responsables configurados.</p>
       {:else}
         <ul class="people">
-          {#each personsStore.items as person (person.id)}
+          {#each personsService.items as person (person.id)}
             <li class="person">
               {#if editingId === person.id}
                 <Input bind:value={editName} />
