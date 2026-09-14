@@ -5,9 +5,9 @@
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
-  import DeleteMovementsModal from "$lib/components/movements/DeleteMovementsModal.svelte";
+  import AdminPasswordModal from "$lib/components/settings/AdminPasswordModal.svelte";
   import { ICONS, type IconName } from "$lib/icons";
-  import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
+  import { Plus, Pencil, Trash, DatabaseBackup, Upload, KeyRound } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
@@ -259,7 +259,8 @@
       <h3>Avanzado</h3>
       <p class="hint">
         Crea una copia de seguridad de la base de datos o restáurala desde un
-        archivo. También puedes eliminar movimientos del historial en lote.
+        archivo. También puedes cambiar la contraseña que protege la eliminación
+        de movimientos.
       </p>
       <div class="backup-actions">
         <Button
@@ -283,11 +284,11 @@
         <Button
           size="sm"
           variant="secondary"
-          icon={Trash}
+          icon={KeyRound}
           disabled={busy}
-          onclick={() => modalService.open(DeleteMovementsModal)}
+          onclick={() => modalService.open(AdminPasswordModal)}
         >
-          Eliminar movimientos
+          Cambiar contraseña de administrador
         </Button>
       </div>
       {#if busy}

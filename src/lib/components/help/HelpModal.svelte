@@ -20,7 +20,7 @@
     Info,
     Check,
     DatabaseBackup,
-    Trash,
+    KeyRound,
   } from "@lucide/svelte";
 
   type SectionId =
@@ -385,8 +385,8 @@
               Deberás ingresar un motivo de anulación obligatorio. El sistema revertirá el stock de forma
               atómica y mantendrá el registro original para fines de auditoría.
               <br />
-              Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde
-              <em>Configuración &gt; Avanzado &gt; "Eliminar movimientos"</em> con contraseña.
+              Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde el
+              botón <em>"Eliminar movimientos"</em> al pie de la tabla, con contraseña.
             </div>
           </div>
 
@@ -448,7 +448,7 @@
           <h2><Settings size={20} class="topic-icon" /> Configuración y Opciones Avanzadas</h2>
           <p class="lead">
             Ajusta los parámetros globales de la aplicación, límites de stock, estética, respaldos
-            de la base de datos y eliminación masiva de movimientos.
+            de la base de datos y la contraseña de administrador.
           </p>
 
           <div class="card-grid">
@@ -498,13 +498,14 @@
 
             <div class="info-card">
               <div class="card-header">
-                <Trash size={18} class="accent-icon" />
-                <h3>Eliminar Movimientos</h3>
+                <KeyRound size={18} class="accent-icon" />
+                <h3>Contraseña de Administrador</h3>
               </div>
               <p>
-                Purga los <strong>N movimientos más recientes o más antiguos</strong> del historial. Requiere la
-                contraseña de eliminación (inicial <code>admin</code>), que puedes cambiar en la misma ventana
-                con la clave actual y la nueva dos veces. El stock actual no cambia.
+                Cambia la contraseña que protege la eliminación masiva de movimientos (inicial
+                <code>admin</code>), ingresando la clave actual y la nueva dos veces. La eliminación en
+                lote se realiza desde el botón <em>"Eliminar movimientos"</em> al pie de la tabla de
+                Movimientos y no modifica el stock.
               </p>
             </div>
           </div>
@@ -553,8 +554,8 @@
                 Lo correcto es <strong>Anular el movimiento</strong> haciendo clic en el icono de papelera en la
                 tabla de Movimientos e ingresando el motivo; el stock se revertirá automáticamente y podrás
                 asentar el movimiento correcto. Si necesitas purgar el historial, un administrador puede usar
-                <em>Configuración &gt; Avanzado &gt; "Eliminar movimientos"</em> con contraseña: esa purga es
-                irreversible y no modifica el stock.
+                el botón <em>"Eliminar movimientos"</em> al pie de la tabla de Movimientos con contraseña: esa
+                purga es irreversible y no modifica el stock.
               </div>
             </details>
 

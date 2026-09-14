@@ -8,6 +8,7 @@
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
+  import DeleteMovementsModal from "$lib/components/movements/DeleteMovementsModal.svelte";
   import { page } from "$app/state";
   import Select from "$lib/components/ui/Select.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
@@ -16,7 +17,7 @@
   import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import Button from "$lib/components/ui/Button.svelte";
-  import { Plus, ArrowLeftRight, Trash } from "@lucide/svelte";
+  import { Plus, ArrowLeftRight, Trash, Undo2 } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
 
@@ -185,7 +186,7 @@
           disabled={!!movement.cancelled_at}
           onclick={() => removeMovement(movement)}
         >
-          <Trash size={16} />
+          <Undo2 size={16} />
         </button>
       {/snippet}
     </DataTable>
@@ -193,6 +194,10 @@
 {/if}
 
 <div class="pagination">
+  <Button variant="secondary" icon={Trash} onclick={() => modalService.open(DeleteMovementsModal)}>
+    Eliminar movimientos
+  </Button>
+  <div class="spacer"></div>
   <Button variant="secondary" disabled={currentPage===0 || movementsService.loading} onclick={()=>currentPage--}>Anterior</Button>
   <span>Página {currentPage+1} · {movementsService.total} movimientos</span>
   <Button variant="secondary" disabled={(currentPage+1)*25>=movementsService.total || movementsService.loading} onclick={()=>currentPage++}>Siguiente</Button>

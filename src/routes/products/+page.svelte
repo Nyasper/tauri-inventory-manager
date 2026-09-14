@@ -29,6 +29,8 @@
     History,
     Pencil,
     Trash,
+    Archive,
+    Undo2,
   } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
@@ -196,12 +198,20 @@
   {#if productsService.error || archive.error}<p class="error" role="alert">{productsService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():productsService.load()}>Reintentar</Button>
   {:else if productsService.loading || archive.loading}<p role="status">Cargando productos…</p>
   {:else if visible.length === 0}
-    <EmptyState
-      title="No hay productos"
-      description="Crea tu primer producto para empezar a gestionar el inventario."
-      actionLabel="Nuevo producto"
-      onAction={openNew}
-    />
+    {#if archive.active}
+      <EmptyState
+        icon={Archive}
+        title="No hay productos archivados"
+        description="Los productos que archives aparecerán aquí."
+      />
+    {:else}
+      <EmptyState
+        title="No hay productos"
+        description="Crea tu primer producto para empezar a gestionar el inventario."
+        actionLabel="Nuevo producto"
+        onAction={openNew}
+      />
+    {/if}
   {:else if filtered.length === 0}
     <EmptyState
       icon={Search}
@@ -219,7 +229,18 @@
       {#snippet actions(product)}
       {#if product.archived}
         <div class="actions">
-          <Button size="sm" onclick={() => openEdit(product)}>Restaurar</Button>
+          <button
+            class="icon-btn"
+            type="button"
+            title="Restaurar"
+            aria-label={`Restaurar ${product.name}`}
+            onclick={(e) => {
+              e.stopPropagation();
+              openEdit(product);
+            }}
+          >
+            <Undo2 size={16} />
+          </button>
           <button
             class="icon-btn danger"
             type="button"
@@ -291,7 +312,7 @@
           <span
             class="archive-wrap"
             title={product.stock > 0
-              ? "Eliminar producto (el stock debe ser 0)."
+              ? "Archivar (el stock debe ser 0)."
               : "Archivar"}
           >
             <button
@@ -304,7 +325,7 @@
                 removeProduct(product);
               }}
             >
-              <Trash size={16} />
+              <Archive size={16} />
             </button>
           </span>
         </div>

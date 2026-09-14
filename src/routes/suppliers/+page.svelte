@@ -12,7 +12,7 @@
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import DeleteRecordModal from "$lib/components/ui/DeleteRecordModal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { Plus, Truck, Pencil, Trash } from "@lucide/svelte";
+  import { Plus, Truck, Pencil, Trash, Archive, Undo2 } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   suppliersService.load();
@@ -93,13 +93,21 @@
 {#if suppliersService.error || archive.error}<p role="alert" class="error">{suppliersService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():suppliersService.load()}>Reintentar</Button>
 {:else if suppliersService.loading || archive.loading}<p role="status">Cargando proveedores…</p>
 {:else if visible.length === 0}
-  <EmptyState
-    icon={Truck}
-    title="No hay proveedores"
-    description="Añade proveedores para asociarlos a las entradas de stock."
-    actionLabel="Nuevo proveedor"
-    onAction={openNew}
-  />
+  {#if archive.active}
+    <EmptyState
+      icon={Archive}
+      title="No hay proveedores archivados"
+      description="Los proveedores que archives aparecerán aquí."
+    />
+  {:else}
+    <EmptyState
+      icon={Truck}
+      title="No hay proveedores"
+      description="Añade proveedores para asociarlos a las entradas de stock."
+      actionLabel="Nuevo proveedor"
+      onAction={openNew}
+    />
+  {/if}
 {:else}
   <DataTable
     {table}
@@ -108,7 +116,15 @@
     {#snippet actions(supplier)}
       {#if supplier.archived}
       <div class="actions">
-        <Button size="sm" onclick={()=>restore(supplier)}>Restaurar</Button>
+        <button
+          class="icon-btn"
+          type="button"
+          title="Restaurar"
+          aria-label={`Restaurar ${supplier.name}`}
+          onclick={() => restore(supplier)}
+        >
+          <Undo2 size={16} />
+        </button>
         <button
           class="icon-btn danger"
           type="button"
@@ -149,7 +165,7 @@
           aria-label="Archivar"
           onclick={() => removeSupplier(supplier)}
         >
-          <Trash size={16} />
+          <Archive size={16} />
         </button>
       </div>
       {/if}
