@@ -17,6 +17,7 @@ pub fn run() {
             inventory::save_catalog,
             inventory::archive_record,
             inventory::delete_product,
+            inventory::delete_supplier,
             inventory::create_movement,
             inventory::cancel_movement,
             inventory::delete_movements,

@@ -14,6 +14,7 @@
   import { ArchivedList } from "$lib/utils/archived.svelte";
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
+  import DeleteRecordModal from "$lib/components/ui/DeleteRecordModal.svelte";
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
   import ProductCategoryCell from "$lib/components/products/ProductCategoryCell.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
@@ -155,14 +156,15 @@
     }
   }
 
-  async function removePermanently(product: Product) {
-    const ok = await modalService.confirm(
-      `¿Eliminar definitivamente el producto "${product.name}"? Esta acción no se puede deshacer. Sus movimientos se conservarán marcados como "producto eliminado".`,
-      "Eliminar definitivamente",
-    );
-    if (!ok) return;
-    await productsService.removePermanently(product.id);
-    await archive.reload();
+  function removePermanently(product: Product) {
+    modalService.open(DeleteRecordModal, {
+      kind: "product",
+      name: product.name,
+      onConfirm: async (password: string) => {
+        await productsService.removePermanently(product.id, password);
+        await archive.reload();
+      },
+    });
   }
 </script>
 

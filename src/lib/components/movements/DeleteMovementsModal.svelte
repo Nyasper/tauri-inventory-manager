@@ -118,8 +118,8 @@
     <section>
       <h3>Cambiar contraseña</h3>
       <p class="hint">
-        La contraseña protege la eliminación de movimientos. La inicial es
-        «admin».
+        La contraseña protege la eliminación de movimientos, productos y
+        proveedores. La inicial es «admin».
       </p>
       <div class="password">
         <Input

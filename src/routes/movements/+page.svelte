@@ -13,6 +13,7 @@
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
+  import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import Button from "$lib/components/ui/Button.svelte";
   import { Plus, ArrowLeftRight, Trash } from "@lucide/svelte";
@@ -80,7 +81,8 @@
     }),
     columnHelper.accessor("supplier_name", {
       header: () => "Proveedor",
-      cell: (info) => info.getValue<string>() ?? "—",
+      cell: (info) =>
+        renderComponent(MovementSupplierCell, { movement: info.row.original }),
     }),
     columnHelper.accessor((m) => m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente", {
       id: "state", header: () => "Estado", meta: { align: "center" },

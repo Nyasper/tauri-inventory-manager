@@ -119,10 +119,10 @@ export function restoreProduct(id: number): Promise<void> {
   );
 }
 
-export function deleteProduct(id: number): Promise<void> {
+export function deleteProduct(id: number, password: string): Promise<void> {
   return invoke(
     "delete_product",
-    { id },
+    { id, password },
     "Producto eliminado definitivamente.",
   );
 }
@@ -268,6 +268,14 @@ export function restoreSupplier(id: number): Promise<void> {
     "archive_record",
     { kind: "supplier", id, restore: true },
     "Proveedor restaurado.",
+  );
+}
+
+export function deleteSupplier(id: number, password: string): Promise<void> {
+  return invoke(
+    "delete_supplier",
+    { id, password },
+    "Proveedor eliminado definitivamente.",
   );
 }
 

@@ -267,7 +267,7 @@ En Inventory Manager los registros se archivan (borrado lógico) para evitar que
   1. Marque la casilla **"Archivados"** en la barra superior.
   2. Localice el producto en la lista.
   3. Presione el botón **"Restaurar"**. El producto volverá inmediatamente al catálogo activo con todo su historial intacto.
-- **Cómo eliminar definitivamente**: Con la casilla **"Archivados"** activa, pulse el icono de papelera (`Eliminar definitivamente`) junto al botón "Restaurar". La acción es irreversible y libera el nombre del producto; sus movimientos se conservan en el historial marcados como **"Producto eliminado"**.
+- **Cómo eliminar definitivamente**: Con la casilla **"Archivados"** activa, pulse el icono de papelera (`Eliminar definitivamente`) junto al botón "Restaurar". Se solicitará la **contraseña de administración**. La acción es irreversible y libera el nombre del producto; sus movimientos se conservan en el historial marcados como **"Producto eliminado"**.
 
 ### Acciones Rápidas por Producto
 En el extremo derecho de cada fila de la tabla de productos encontrará botones de acción directa:
@@ -336,6 +336,7 @@ La vista de movimientos ofrece un potente panel de filtros combinables para audi
 - **Buscador de Texto**: Coincide en tiempo real con nombre de producto, proveedor o notas.
 - **Filtro por Producto**: Aísla todas las operaciones del producto elegido.
 - **Productos eliminados**: Los movimientos de productos eliminados definitivamente conservan su nombre y muestran la etiqueta `Producto eliminado`; ya no aparecen en el filtro por producto, pero sí en la búsqueda por texto.
+- **Proveedores eliminados**: Los movimientos conservan el nombre del proveedor con la etiqueta `Proveedor eliminado`; ya no aparecen en el filtro por proveedor, pero sí en la búsqueda por texto.
 - **Filtro por Proveedor**: Muestra las compras realizadas a un proveedor específico.
 - **Rango de Fechas (Desde / Hasta)**: Acota las transacciones al período cronológico seleccionado.
 - **Estado**: Permite filtrar entre transacciones `Vigentes` o `Anuladas`.
@@ -389,6 +390,7 @@ A diferencia de sistemas rígidos que solo permiten un teléfono, Inventory Mana
 - Si un proveedor deja de operar con su empresa, puede archivarlo pulsando el icono de papelera (`Archivar`).
 - El historial de compras y movimientos asociados a dicho proveedor **se preservará intacto**.
 - Para consultar o recuperar proveedores dados de baja, marque la casilla **"Archivados"** en la parte superior y presione **"Restaurar"**.
+- **Eliminación definitiva**: Con la casilla **"Archivados"** activa, pulse el icono de papelera junto a "Restaurar" e ingrese la **contraseña de administración**. La acción es irreversible y sus movimientos se conservan en el historial marcados como **"Proveedor eliminado"**.
 
 ---
 

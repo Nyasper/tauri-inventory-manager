@@ -57,7 +57,7 @@ CREATE TABLE movements_new (
  presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
- supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
+ supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL, supplier_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
  FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id) ON DELETE SET NULL,
@@ -406,14 +406,19 @@ async fn archive_record_db(db: &Db, kind: String, id: i64, restore: bool) -> Res
     Ok(())
 }
 #[tauri::command]
-pub async fn delete_product(db: State<'_, DbState>, id: i64) -> Result<(), String> {
+pub async fn delete_product(
+    db: State<'_, DbState>,
+    id: i64,
+    password: String,
+) -> Result<(), String> {
     let db = db.0.read().await;
-    delete_product_db(&db, id).await
+    delete_product_db(&db, id, password).await
 }
 /// Elimina definitivamente un producto archivado. Sus movimientos se
 /// conservan: las claves foráneas se limpian y el historial queda marcado como
 /// "producto eliminado" gracias a los snapshots de nombre.
-async fn delete_product_db(db: &Db, id: i64) -> Result<(), String> {
+async fn delete_product_db(db: &Db, id: i64, password: String) -> Result<(), String> {
+    check_delete_password(db, &password).await?;
     let mut tx = db.begin().await.map_err(error)?;
     let row = sqlx::query("SELECT archived, stock FROM products WHERE id=?")
         .bind(id)
@@ -433,6 +438,36 @@ async fn delete_product_db(db: &Db, id: i64) -> Result<(), String> {
         .await
         .map_err(error)?;
     sqlx::query("DELETE FROM products WHERE id=?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?;
+    tx.commit().await.map_err(error)
+}
+#[tauri::command]
+pub async fn delete_supplier(
+    db: State<'_, DbState>,
+    id: i64,
+    password: String,
+) -> Result<(), String> {
+    let db = db.0.read().await;
+    delete_supplier_db(&db, id, password).await
+}
+/// Elimina definitivamente un proveedor archivado. Sus movimientos conservan
+/// el nombre del proveedor y quedan marcados como "proveedor eliminado".
+async fn delete_supplier_db(db: &Db, id: i64, password: String) -> Result<(), String> {
+    check_delete_password(db, &password).await?;
+    let mut tx = db.begin().await.map_err(error)?;
+    let archived: i64 = sqlx::query_scalar("SELECT archived FROM suppliers WHERE id=?")
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(error)?
+        .ok_or("El proveedor no existe.")?;
+    if archived != 1 {
+        return Err("Solo se pueden eliminar definitivamente proveedores archivados.".into());
+    }
+    sqlx::query("DELETE FROM suppliers WHERE id=?")
         .bind(id)
         .execute(&mut *tx)
         .await
@@ -581,10 +616,9 @@ async fn delete_movements_db(
     if !(1..=1_000_000_000).contains(&count) {
         return Err("Indica una cantidad válida de movimientos.".into());
     }
-    if password.trim() != delete_password_db(db).await? {
-        return Err("Contraseña incorrecta.".into());
-    }
-    let order = if mode == "recent" {        "created_at DESC, id DESC"
+    check_delete_password(db, &password).await?;
+    let order = if mode == "recent" {
+        "created_at DESC, id DESC"
     } else {
         "created_at ASC, id ASC"
     };
@@ -1175,12 +1209,13 @@ mod tests {
             let a = fixture(&db, "Agua").await;
             create_movement_db(&db, movement(a, "in", 5.0)).await.unwrap();
             create_movement_db(&db, movement(a, "out", 5.0)).await.unwrap();
-            // Solo se eliminan productos archivados.
-            assert!(delete_product_db(&db, a.0).await.is_err());
+            // Solo se eliminan productos archivados y con la contraseña correcta.
+            assert!(delete_product_db(&db, a.0, "admin".into()).await.is_err());
             archive_record_db(&db, "product".into(), a.0, false)
                 .await
                 .unwrap();
-            delete_product_db(&db, a.0).await.unwrap();
+            assert!(delete_product_db(&db, a.0, "otra".into()).await.is_err());
+            delete_product_db(&db, a.0, "admin".into()).await.unwrap();
             assert_eq!(
                 sqlx::query_scalar::<_, i64>("SELECT count(*) FROM products")
                     .fetch_one(&db)
@@ -1238,7 +1273,7 @@ mod tests {
                    type TEXT NOT NULL, quantity REAL NOT NULL, presentation_id INTEGER NOT NULL,
                    presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
                    factor REAL NOT NULL, base_quantity REAL NOT NULL,
- supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL, supplier_name TEXT,
+                   supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
                    notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular',
                    created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
                    FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id)
@@ -1263,13 +1298,23 @@ mod tests {
                 row.get::<String, _>("name") == "product_id"
                     && row.get::<i64, _>("notnull") == 0
             }));
+            let keys = sqlx::query("PRAGMA foreign_key_list(movements)")
+                .fetch_all(&migrated)
+                .await
+                .unwrap();
+            assert!(keys.iter().any(|row| {
+                row.get::<String, _>("from") == "supplier_id"
+                    && row.get::<String, _>("on_delete") == "SET NULL"
+            }));
             create_movement_db(&migrated, movement(a, "out", 2.0))
                 .await
                 .unwrap();
             archive_record_db(&migrated, "product".into(), a.0, false)
                 .await
                 .unwrap();
-            delete_product_db(&migrated, a.0).await.unwrap();
+            delete_product_db(&migrated, a.0, "admin".into())
+                .await
+                .unwrap();
             let (product_id, name): (Option<i64>, String) =
                 sqlx::query_as("SELECT product_id,product_name FROM movements LIMIT 1")
                     .fetch_one(&migrated)
@@ -1284,6 +1329,51 @@ mod tests {
                 .is_empty());
             migrated.close().await;
             let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn archived_suppliers_can_be_deleted_keeping_their_movements() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let a = fixture(&db, "Agua").await;
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor"))
+                .await
+                .unwrap();
+            let mut input = movement(a, "in", 3.0);
+            input.supplier_id = Some(supplier);
+            create_movement_db(&db, input).await.unwrap();
+            // Solo se eliminan proveedores archivados y con la contraseña correcta.
+            assert!(delete_supplier_db(&db, supplier, "admin".into())
+                .await
+                .is_err());
+            archive_record_db(&db, "supplier".into(), supplier, false)
+                .await
+                .unwrap();
+            assert!(delete_supplier_db(&db, supplier, "otra".into())
+                .await
+                .is_err());
+            delete_supplier_db(&db, supplier, "admin".into())
+                .await
+                .unwrap();
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM suppliers")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+            let (supplier_id, name): (Option<i64>, Option<String>) =
+                sqlx::query_as("SELECT supplier_id,supplier_name FROM movements LIMIT 1")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap();
+            assert_eq!(supplier_id, None);
+            assert_eq!(name.as_deref(), Some("Proveedor"));
+            assert!(sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&db)
+                .await
+                .unwrap()
+                .is_empty());
         });
     }
     #[test]

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Permanent deletion of archived suppliers from the "Archivados" view; their movements keep the supplier name snapshot with a "Proveedor eliminado" badge.
+
+### Changed
+
+- Permanent deletion of products and suppliers now requires the administration password, the same one that protects batch movement deletion, and shows an inline error when it is wrong.
+- Movement type badges (Entrada / Salida) now share a uniform minimum width in tables and the dashboard.
+
 ## [0.11.0] - 2026-09-14
 
 ### Added

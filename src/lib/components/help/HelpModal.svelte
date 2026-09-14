@@ -308,8 +308,9 @@
             </li>
             <li>
               <strong>Eliminación definitiva:</strong> Con la casilla <em>"Archivados"</em> activa puedes
-              restaurar el producto o eliminarlo para siempre. Sus movimientos se conservan en el historial
-              marcados como <em>"Producto eliminado"</em>.
+              restaurar el producto o eliminarlo para siempre ingresando la <strong>contraseña de
+              administración</strong>. Sus movimientos se conservan en el historial marcados como
+              <em>"Producto eliminado"</em>.
             </li>
             <li>
               <strong>Recuperación de duplicados:</strong> Si intentas registrar un producto con un nombre
@@ -399,7 +400,8 @@
           <p>
             Los movimientos de productos eliminados definitivamente conservan su nombre y muestran la
             etiqueta <em>"Producto eliminado"</em>; siguen apareciendo en la búsqueda por texto aunque ya no
-            estén disponibles en el filtro por producto.
+            estén disponibles en el filtro por producto. Lo mismo ocurre con los proveedores eliminados,
+            que muestran la etiqueta <em>"Proveedor eliminado"</em>.
           </p>
         </div>
 
@@ -428,6 +430,11 @@
               <strong>Archivado sin pérdida histórica:</strong> Al archivar un proveedor, los movimientos y
               entradas pasadas siguen conservando su nombre. Puedes consultar los proveedores archivados y
               restaurarlos activando la casilla <em>"Archivados"</em> en la barra superior.
+            </li>
+            <li>
+              <strong>Eliminación definitiva:</strong> Desde <em>"Archivados"</em> puedes borrar un proveedor
+              para siempre ingresando la <strong>contraseña de administración</strong>; sus movimientos
+              conservan el nombre marcados como <em>"Proveedor eliminado"</em>.
             </li>
             <li>
               <strong>Registro rápido de entradas:</strong> El botón <code>+</code> de la fila abre el formulario

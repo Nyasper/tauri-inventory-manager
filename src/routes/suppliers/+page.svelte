@@ -10,6 +10,7 @@
   import DataTable from "$lib/components/ui/DataTable.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
+  import DeleteRecordModal from "$lib/components/ui/DeleteRecordModal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { Plus, Truck, Pencil, Trash } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -69,6 +70,17 @@
     );
     if (ok) await suppliersService.remove(supplier.id);
   }
+
+  function removePermanently(supplier: Supplier) {
+    modalService.open(DeleteRecordModal, {
+      kind: "supplier",
+      name: supplier.name,
+      onConfirm: async (password: string) => {
+        await suppliersService.removePermanently(supplier.id, password);
+        await archive.reload();
+      },
+    });
+  }
 </script>
 
 <div class="toolbar">
@@ -94,7 +106,20 @@
     searchPlaceholder="Buscar proveedores..."
   >
     {#snippet actions(supplier)}
-      {#if supplier.archived}<Button size="sm" onclick={()=>restore(supplier)}>Restaurar</Button>{:else}
+      {#if supplier.archived}
+      <div class="actions">
+        <Button size="sm" onclick={()=>restore(supplier)}>Restaurar</Button>
+        <button
+          class="icon-btn danger"
+          type="button"
+          title="Eliminar definitivamente"
+          aria-label={`Eliminar definitivamente ${supplier.name}`}
+          onclick={() => removePermanently(supplier)}
+        >
+          <Trash size={16} />
+        </button>
+      </div>
+      {:else}
       <div class="actions">
         <button
           class="icon-btn"

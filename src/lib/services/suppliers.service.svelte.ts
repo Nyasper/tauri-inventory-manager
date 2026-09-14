@@ -1,6 +1,7 @@
 import type { Supplier } from "$lib/types";
 import {
   archiveSupplier,
+  deleteSupplier,
   getSuppliers,
   restoreSupplier,
   saveSupplier,
@@ -42,6 +43,11 @@ class SuppliersService {
 
   async restore(id: number): Promise<void> {
     await restoreSupplier(id);
+    await this.load();
+  }
+
+  async removePermanently(id: number, password: string): Promise<void> {
+    await deleteSupplier(id, password);
     await this.load();
   }
 }

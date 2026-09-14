@@ -40,8 +40,8 @@ class ProductsService {
     await this.load();
   }
 
-  async removePermanently(id: number): Promise<void> {
-    await deleteProduct(id);
+  async removePermanently(id: number, password: string): Promise<void> {
+    await deleteProduct(id, password);
     await this.load();
   }
 }
