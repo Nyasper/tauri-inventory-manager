@@ -98,7 +98,7 @@ La ventana principal de la aplicación está dividida en tres áreas estratégic
 
 ```
 +-----------------------------------------------------------------------+
-|  [Logo] Inventory   | Header: Título de Sección     [Sol/Luna] [⚙]   |
+|  [Logo] Inventory   | Header: Título de Sección      [Sol/Luna]     |
 +---------------------+-------------------------------------------------+
 | [📊] Dashboard       |                                                 |
 | [📦] Productos       |                                                 |

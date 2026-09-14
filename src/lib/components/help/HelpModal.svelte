@@ -150,11 +150,11 @@
           <ul class="feature-list">
             <li>
               <strong>Barra Lateral (Sidebar):</strong> Permite saltar al instante entre el Dashboard,
-              Productos, Movimientos y Proveedores.
+              Productos, Movimientos y Proveedores. En su pie se encuentran los accesos a
+              <em>Ajustes</em> y <em>Ayuda</em>.
             </li>
             <li>
-              <strong>Cabecera (Header):</strong> Incluye el conmutador de <em>Modo Claro / Modo Oscuro</em>
-              y el acceso directo a la <em>Configuración</em> (⚙).
+              <strong>Cabecera (Header):</strong> Incluye el conmutador de <em>Modo Claro / Modo Oscuro</em>.
             </li>
             <li>
               <strong>Botón de Ayuda (?):</strong> Ubicado abajo a la izquierda del menú para consultar este

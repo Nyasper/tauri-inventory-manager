@@ -289,7 +289,22 @@
   .settings {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+  }
+
+  .settings section {
+    padding: 0.875rem 0;
+  }
+
+  .settings section:first-child {
+    padding-top: 0;
+  }
+
+  .settings section:last-child {
+    padding-bottom: 0;
+  }
+
+  .settings section + section {
+    border-top: 1px solid var(--border);
   }
 
   h3 {
