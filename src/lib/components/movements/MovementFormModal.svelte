@@ -14,14 +14,17 @@
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import { Plus } from "@lucide/svelte";
 
-  let { initialProductId = "" }: { initialProductId?: string } = $props();
+  let {
+    initialProductId = "",
+    initialType = "in",
+  }: { initialProductId?: string; initialType?: MovementType } = $props();
   let productId = $state(untrack(() => initialProductId));
   let adjustment = $state(false);
   let reason = $state("");
   let presentations = $state<Presentation[]>([]);
   let loading = $state(false);
   let presentationId = $state("");
-  let type = $state<MovementType>("in");
+  let type = $state<MovementType>(untrack(() => initialType));
   let quantity = $state(1);
   let supplierId = $state("");
   let notes = $state("");
@@ -156,27 +159,14 @@
   width="md"
 >
   <div class="form">
-    <label><input type="checkbox" bind:checked={adjustment} /> Ajuste de inventario</label>
-    {#if adjustment}<Textarea label="Motivo del ajuste" bind:value={reason} />{/if}
-    {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
-    {#if selectedProduct && selectedPresentation}
-      <div class="stock-preview" aria-live="polite">
-        <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
-        <p>{Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
-        <p>Resultante: <strong class:error={projected < 0}>{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong></p>
-      </div>
-    {/if}
-    {#if validation && !saving}
-      <p class="validation" role="alert">{validation}</p>
-    {/if}
-    <Select label="Tipo" bind:value={type} options={typeOptions} />
-
     <Select
       label="Producto"
       bind:value={productId}
       options={productOptions}
       placeholder="Selecciona un producto"
     />
+
+    {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
 
     <Select
       label="Presentación"
@@ -186,6 +176,23 @@
     />
 
     <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} showBounds />
+
+    {#if selectedProduct && selectedPresentation}
+      <div class="stock-preview" aria-live="polite">
+        <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
+        <p>{Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
+        <p>Resultante: <strong class:error={projected < 0}>{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong></p>
+      </div>
+    {/if}
+
+    {#if validation && !saving}
+      <p class="validation" role="alert">{validation}</p>
+    {/if}
+
+    <Select label="Tipo" bind:value={type} options={typeOptions} />
+
+    <label><input type="checkbox" bind:checked={adjustment} /> Ajuste de inventario</label>
+    {#if adjustment}<Textarea label="Motivo del ajuste" bind:value={reason} />{/if}
 
     {#if type === "in"}
       <div class="field-row">

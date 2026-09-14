@@ -299,7 +299,8 @@
           <h3>Acciones Rápidas en la Tabla</h3>
           <p>
             Al pasar el cursor sobre un producto dispones de accesos para:
-            <code>+</code> Registrar movimiento directo, <code>Historial</code> para ver sus movimientos,
+            <code>+</code> registrar una entrada directa, <code>−</code> registrar una salida
+            con el producto preseleccionado, <code>Historial</code> para ver sus movimientos,
             <code>Lápiz</code> para editar y <code>Papelera</code> para archivar (si el stock es cero).
           </p>
         </div>

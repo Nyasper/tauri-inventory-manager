@@ -255,7 +255,8 @@ En Inventory Manager los registros no se destruyen físicamente, para evitar que
 
 ### Acciones Rápidas por Producto
 En el extremo derecho de cada fila de la tabla de productos encontrará botones de acción directa:
-- **`+` (Registrar movimiento)**: Abre de inmediato el formulario de entrada/salida con este producto preseleccionado.
+- **`+` (Registrar entrada)**: Abre el formulario de movimiento con este producto preseleccionado y el tipo Entrada por defecto.
+- **`−` (Registrar salida)**: Abre el mismo formulario con este producto preseleccionado y el tipo Salida por defecto.
 - **`Historial` (Icono de reloj con flecha)**: Navega directamente a la tabla de Movimientos, aplicando el filtro exclusivo para ver todo el historial de este producto.
 - **`Lápiz` (Editar)**: Abre el editor de producto y presentaciones.
 - **`Papelera` (Archivar)**: Archiva el producto (habilitado solo si el stock es cero).
@@ -278,11 +279,11 @@ Al registrar un movimiento, existe una casilla de verificación denominada **"Aj
 ### Formulario de Registro de Movimiento
 Para asentar una operación, pulse **"Nuevo movimiento"** en la barra de herramientas o en el Dashboard:
 
-1. **Casilla "Ajuste de inventario"**: Marque si corresponde a una rectificación de inventario y complete el motivo.
-2. **Tipo**: Seleccione `Entrada` o `Salida`.
-3. **Producto**: Seleccione el producto de la lista desplegable.
-4. **Presentación**: Seleccione el empaque utilizado. Cada opción muestra su factor de conversión (ej. `Bolsa x 5 (×5)`).
-5. **Cantidad**: Número de unidades o paquetes que ingresan o egresan.
+1. **Producto**: Seleccione el producto de la lista desplegable.
+2. **Presentación**: Seleccione el empaque utilizado. Cada opción muestra su factor de conversión (ej. `Bolsa x 5 (×5)`).
+3. **Cantidad**: Número de unidades o paquetes que ingresan o egresan.
+4. **Tipo**: Seleccione `Entrada` o `Salida`.
+5. **Casilla "Ajuste de inventario"**: Marque si corresponde a una rectificación de inventario y complete el motivo.
 6. **Proveedor**: Disponible únicamente en Entradas. Seleccione el proveedor responsable o deje en "Sin proveedor".
 7. **Notas**: Observaciones complementarias opcionales (número de remito, factura de compra, destino interno, etc.).
 

@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - "Sin categoría" option in the product category filter to list only products without a category.
+- Quick "−" action in the product table to register an outbound movement with the product preselected.
 
 ### Changed
 
 - Settings moved from the header to the sidebar footer as an "Ajustes" button next to "Ayuda"; the header now only keeps the theme toggle, and the user manual was updated accordingly.
+- The movement form now asks for product, presentation and quantity before type and inventory adjustment.
 
 ### Fixed
 

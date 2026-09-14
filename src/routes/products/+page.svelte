@@ -24,6 +24,7 @@
   import {
     Search,
     Plus,
+    Minus,
     History,
     Pencil,
     Trash,
@@ -211,8 +212,8 @@
           <button
             class="icon-btn"
             type="button"
-            title="Registrar movimiento"
-            aria-label={`Registrar movimiento de ${product.name}`}
+            title="Registrar entrada"
+            aria-label={`Registrar entrada de ${product.name}`}
             onclick={(e) => {
               e.stopPropagation();
               modalService.open(MovementFormModal, {
@@ -221,6 +222,21 @@
             }}
           >
             <Plus size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            title="Registrar salida"
+            aria-label={`Registrar salida de ${product.name}`}
+            onclick={(e) => {
+              e.stopPropagation();
+              modalService.open(MovementFormModal, {
+                initialProductId: String(product.id),
+                initialType: "out",
+              });
+            }}
+          >
+            <Minus size={16} />
           </button>
           <button
             class="icon-btn"
