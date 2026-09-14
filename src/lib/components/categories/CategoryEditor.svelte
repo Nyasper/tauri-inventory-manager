@@ -60,7 +60,7 @@
       ></button>
     {/each}
   </div>
-  <IconPicker bind:value={draft.icon} />
+  <IconPicker bind:value={draft.icon} color={draft.color} />
   {#if error}
     <p class="error" role="alert">{error}</p>
   {:else if !canSave && !saving}
