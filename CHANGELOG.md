@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Permanent deletion of products and suppliers now requires the administration password, the same one that protects batch movement deletion, and shows an inline error when it is wrong.
 - Movement type badges (Entrada / Salida) now share a uniform minimum width in tables and the dashboard.
+- In the products and suppliers tables, the archive action now uses an archive icon instead of a trash can, and the restore action in the archived views is now an undo icon button instead of a text button.
+- The archived views of products and suppliers now show a dedicated empty-state message ("No hay productos/proveedores archivados") instead of the regular empty-list message.
+- The "Anular movimiento" action in the movements view now uses an undo icon instead of a trash can.
 - The "Eliminar movimientos" batch-deletion button moved from Settings › Advanced to the bottom of the movements view (next to the pagination controls).
 - The administration password that protects movement deletion can now only be changed from Settings › Advanced via the new "Cambiar contraseña de administrador" button, and it was removed from the delete-movements modal.
 
