@@ -9,7 +9,6 @@ import type {
   MovementType,
   Presentation,
   Product,
-  ResponsiblePerson,
   Supplier,
 } from "$lib/types";
 
@@ -39,7 +38,6 @@ export interface MovementInput {
   quantity: number;
   presentation_id: number;
   supplier_id: number | null;
-  responsible_person_id: number;
   notes: string | null;
   adjustment?: boolean;
   reason?: string | null;
@@ -50,7 +48,6 @@ export interface MovementFilters {
   type?: string;
   product?: string;
   supplier?: string;
-  person?: string;
   from?: string;
   to?: string;
   status?: string;
@@ -67,7 +64,6 @@ interface MovementQuery {
   type: string | null;
   product: number | null;
   supplier: number | null;
-  person: number | null;
   from: string | null;
   to: string | null;
   status: string | null;
@@ -150,7 +146,6 @@ function toQuery(filters: MovementFilters): MovementQuery {
     type: filters.type && filters.type !== "all" ? filters.type : null,
     product: filters.product ? Number(filters.product) : null,
     supplier: filters.supplier ? Number(filters.supplier) : null,
-    person: filters.person ? Number(filters.person) : null,
     from: filters.from ? utcDayBoundary(filters.from, false) : null,
     to: filters.to ? utcDayBoundary(filters.to, true) : null,
     status:
@@ -255,40 +250,6 @@ export function findSupplierDuplicate(
     name,
     currentId: currentId ?? null,
   });
-}
-
-/* ------------------------------ Responsables ----------------------------- */
-
-export function getPersons(archived = false): Promise<ResponsiblePerson[]> {
-  return invoke<ResponsiblePerson[]>("list_persons", { archived });
-}
-
-export function savePerson(
-  id: number | null,
-  name: string,
-  isDefault: boolean,
-): Promise<number> {
-  return invoke<number>(
-    "save_catalog",
-    { input: { kind: "person", id, name, is_default: isDefault } },
-    "Responsable guardado.",
-  );
-}
-
-export function archivePerson(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "person", id, restore: false },
-    "Responsable archivado.",
-  );
-}
-
-export function restorePerson(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "person", id, restore: true },
-    "Responsable restaurado.",
-  );
 }
 
 /* ------------------------------- Categorías ------------------------------ */

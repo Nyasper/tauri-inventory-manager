@@ -95,11 +95,13 @@
 
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
-    const cat = categoryFilter ? Number(categoryFilter) : null;
+    const cat = categoryFilter && categoryFilter !== "none" ? Number(categoryFilter) : null;
     return visible.filter((p) => {
       if (targetId && p.id !== Number(targetId)) return false;
       if (stockFilter === "low" && !["low","out"].includes(statusOf(p))) return false;
-      if (cat !== null && p.category_id !== cat) return false;
+      if (categoryFilter === "none") {
+        if (p.category_id !== null) return false;
+      } else if (cat !== null && p.category_id !== cat) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
@@ -123,6 +125,7 @@
 
   const categoryOptions = $derived([
     { value: "", label: "Todas las categorías" },
+    { value: "none", label: "Sin categoría" },
     ...categoriesService.items.map((c) => ({
       value: String(c.id),
       label: c.name,

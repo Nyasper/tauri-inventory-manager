@@ -4,7 +4,6 @@
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { personsService } from "$lib/services/persons.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
   import DataTable from "$lib/components/ui/DataTable.svelte";
@@ -28,7 +27,7 @@
   let searchInput = $state("");
   let search = $state("");
   let productFilter = $state(page.url.searchParams.get("product") ?? "");
-  let supplierFilter = $state(""); let personFilter = $state(""); let from = $state(""); let to = $state("");
+  let supplierFilter = $state(""); let from = $state(""); let to = $state("");
   let status = $state("all"); let currentPage = $state(0);
 
   const productOptions = $derived(
@@ -36,9 +35,6 @@
   );
   const supplierOptions = $derived(
     suppliersService.items.map((s) => ({ value: String(s.id), label: s.name })),
-  );
-  const personOptions = $derived(
-    personsService.items.map((p) => ({ value: String(p.id), label: p.name })),
   );
 
   $effect(() => {
@@ -53,7 +49,7 @@
     return () => clearTimeout(timer);
   });
 
-  const query = $derived({search, product:productFilter, supplier:supplierFilter, person:personFilter, from,to,status,type:typeFilter});
+  const query = $derived({search, product:productFilter, supplier:supplierFilter, from,to,status,type:typeFilter});
   $effect(() => { query; currentPage=0; });
   $effect(() => {
     movementsService.load({ ...query, page: currentPage });
@@ -84,10 +80,6 @@
     }),
     columnHelper.accessor("supplier_name", {
       header: () => "Proveedor",
-      cell: (info) => info.getValue<string>() ?? "—",
-    }),
-    columnHelper.accessor("person_name", {
-      header: () => "Responsable",
       cell: (info) => info.getValue<string>() ?? "—",
     }),
     columnHelper.accessor((m) => m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente", {
@@ -155,7 +147,6 @@
   </label>
   <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...productOptions]} /></div>
   <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...supplierOptions]} /></div>
-  <div><Select label="Responsable" bind:value={personFilter} options={[{value:"",label:"Todos"},...personOptions]} /></div>
   <label>Desde<input class="field" type="date" bind:value={from} /></label>
   <label>Hasta<input class="field" type="date" bind:value={to} /></label>
   <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>

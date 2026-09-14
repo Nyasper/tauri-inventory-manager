@@ -1,9 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { Sun, Moon, Settings } from "@lucide/svelte";
+  import { Sun, Moon } from "@lucide/svelte";
   import { themeService } from "$lib/services/theme.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
 
   const titles: Record<string, string> = {
     "/": "Dashboard",
@@ -20,10 +18,6 @@
     }
     return "Inventory Manager";
   });
-
-  function openSettings() {
-    modalService.open(SettingsModal);
-  }
 </script>
 
 <header class="header">
@@ -41,14 +35,7 @@
         <Moon size={18} />
       {/if}
     </button>
-    <button
-      class="icon-btn"
-      type="button"
-      aria-label="Configuración"
-      onclick={openSettings}
-    >
-      <Settings size={18} />
-    </button>  </div>
+  </div>
 </header>
 
 <style>

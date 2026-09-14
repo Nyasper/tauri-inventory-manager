@@ -37,12 +37,6 @@ export interface Supplier {
   notes: string | null;
 }
 
-export interface ResponsiblePerson {
-  id: number;
-  name: string;
-  is_default: boolean;
-}
-
 export type MovementType = "in" | "out";
 
 export interface Movement {
@@ -58,13 +52,11 @@ export interface Movement {
   presentation_id: number;
   base_quantity: number;
   supplier_id: number | null;
-  responsible_person_id: number | null;
   notes: string | null;
   created_at: string;
   product_name?: string;
   presentation_name?: string;
   supplier_name?: string;
-  person_name?: string;
 }
 
 export type DefaultView =

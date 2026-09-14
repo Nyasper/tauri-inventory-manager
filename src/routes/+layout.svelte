@@ -10,7 +10,6 @@
   import ModalHost from "$lib/components/ui/ModalHost.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
-  import { personsService } from "$lib/services/persons.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
 
   import { modalService } from "$lib/services/modal.service.svelte";
@@ -26,7 +25,6 @@
   let { children }: { children: Snippet } = $props();
 
   categoriesService.load();
-  personsService.load();
   suppliersService.load();
 
   function handleError(event: PromiseRejectionEvent) {

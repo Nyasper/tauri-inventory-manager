@@ -8,9 +8,11 @@
     ArrowLeftRight,
     Truck,
     CircleHelp,
+    Settings,
   } from "@lucide/svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import HelpModal from "$lib/components/help/HelpModal.svelte";
+  import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
 
   const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -26,6 +28,10 @@
 
   function openHelp() {
     modalService.open(HelpModal);
+  }
+
+  function openSettings() {
+    modalService.open(SettingsModal);
   }
 </script>
 
@@ -51,13 +57,23 @@
 
   <div class="footer">
     <button
-      class="help-btn"
+      class="footer-btn"
+      type="button"
+      aria-label="Configuración"
+      title="Configuración"
+      onclick={openSettings}
+    >
+      <Settings size={16} />
+      <span>Ajustes</span>
+    </button>
+    <button
+      class="footer-btn"
       type="button"
       aria-label="Manual de usuario y ayuda"
       title="Manual de usuario y ayuda"
       onclick={openHelp}
     >
-      <CircleHelp size={18} />
+      <CircleHelp size={16} />
       <span>Ayuda</span>
     </button>
   </div>
@@ -135,31 +151,34 @@
 
   .footer {
     display: flex;
-    align-items: center;
+    align-items: stretch;
+    gap: 0.25rem;
     padding-top: 0.75rem;
     border-top: 1px solid var(--border);
   }
 
-  .help-btn {
+  .footer-btn {
     display: flex;
+    flex: 1;
+    min-width: 0;
     align-items: center;
-    gap: 0.625rem;
-    width: 100%;
-    padding: 0.5rem 0.625rem;
+    justify-content: center;
+    gap: 0.3125rem;
+    padding: 0.5rem 0.25rem;
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-muted);
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
     cursor: pointer;
     transition:
       background-color 0.15s,
       color 0.15s;
-    text-align: left;
   }
 
-  .help-btn:hover {
+  .footer-btn:hover {
     background: var(--surface-2);
     color: var(--text);
   }

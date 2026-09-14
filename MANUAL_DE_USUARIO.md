@@ -47,7 +47,6 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Paleta de Colores de Acento](#paleta-de-colores-de-acento)
    - [Vista por Defecto al Iniciar](#vista-por-defecto-al-iniciar)
    - [Administración de Categorías (Colores e Iconos)](#administración-de-categorías-colores-e-iconos)
-   - [Gestión de Responsables y Responsable Predeterminado](#gestión-de-responsables-y-responsable-predeterminado)
    - [Opciones Avanzadas: Copias de Seguridad (Backup) y Restauración](#opciones-avanzadas-copias-de-seguridad-backup-y-restauración)
 9. [Reglas de Integridad y Validación de Datos](#9-reglas-de-integridad-y-validación-de-datos)
 10. [Preguntas Frecuentes y Solución de Problemas (FAQ)](#10-preguntas-frecuentes-y-solución-de-problemas-faq)
@@ -116,11 +115,14 @@ Permite el desplazamiento inmediato entre los 4 módulos esenciales:
 - **Movimientos (`/movements`)**: Registro histórico, auditoría de entradas/salidas y cancelaciones.
 - **Proveedores (`/suppliers`)**: Directorio de suministradores y datos de contacto comercial.
 
+En la parte inferior de la barra lateral se encuentran dos accesos directos:
+- **Ajustes (⚙)**: Abre la ventana modal de parámetros globales (umbrales, colores, categorías y respaldos).
+- **Ayuda (?)**: Abre este manual de usuario.
+
 ### Cabecera (Header) y Controles Globales
-Ubicada en la parte superior derecha:
+Ubicada en la parte superior:
 - **Indicador de Sección**: Muestra el nombre del módulo actual.
 - **Selector de Tema (Sol / Luna)**: Alterna al instante entre el tema visual Claro y Oscuro.
-- **Botón de Configuración (⚙)**: Despliega la ventana modal de parámetros globales (umbrales, colores, categorías, personas y respaldos).
 
 ### Modo Oscuro / Claro
 La aplicación adapta toda su paleta de colores, tablas y ventanas modales según la preferencia del usuario. Su elección queda guardada en el almacenamiento local del equipo y se recordará automáticamente en cada apertura.
@@ -167,7 +169,6 @@ En la parte superior se presentan cuatro tarjetas interactivas:
   - Tipo de movimiento: Insignia verde **Entrada** (con icono de flecha hacia abajo) o roja **Salida** (flecha hacia arriba).
   - Estado de anulación: Si fue anulado, se resalta explícitamente la etiqueta `Anulado`.
   - Nombre del producto.
-  - Persona responsable asignada.
   - Cantidad y presentación utilizada (ej. `5 Caja x 12`).
   - Fecha y hora formateada de la transacción.
 - Al hacer clic sobre cualquier movimiento, la aplicación abre la vista de movimientos filtrando automáticamente por ese producto.
@@ -189,7 +190,7 @@ La barra de herramientas superior cuenta con herramientas de filtrado en tiempo 
 - **Casilla "Archivados"**: Al activarla, oculta los productos activos y muestra únicamente el catálogo de productos que fueron archivados.
 - **Casilla "Stock bajo / agotado"**: Muestra exclusivamente los productos con existencias en niveles "Sin stock" o "Bajo".
 - **Búsqueda por texto**: Permite tipear cualquier término; filtra instantáneamente por nombre del producto o por el texto contenido en sus observaciones.
-- **Filtro desplegable de Categoría**: Permite aislar los productos pertenecientes a una categoría específica o ver "Todas las categorías".
+- **Filtro desplegable de Categoría**: Permite aislar los productos pertenecientes a una categoría específica, ver únicamente los productos "Sin categoría" o ver "Todas las categorías".
 - **Botón "Nuevo producto"**: Despliega la ventana de creación.
 
 La tabla de datos lista los productos con su icono de categoría, nombre, observaciones, nombre de categoría, stock total en unidad base y la insignia de estado. Puede ordenar los datos por columnas haciendo clic sobre la cabecera correspondiente.
@@ -283,8 +284,7 @@ Para asentar una operación, pulse **"Nuevo movimiento"** en la barra de herrami
 4. **Presentación**: Seleccione el empaque utilizado. Cada opción muestra su factor de conversión (ej. `Bolsa x 5 (×5)`).
 5. **Cantidad**: Número de unidades o paquetes que ingresan o egresan.
 6. **Proveedor**: Disponible únicamente en Entradas. Seleccione el proveedor responsable o deje en "Sin proveedor".
-7. **Responsable**: Persona que ejecuta o autoriza la operación (si hay un responsable predeterminado en el sistema, aparecerá seleccionado automáticamente).
-8. **Notas**: Observaciones complementarias opcionales (número de remito, factura de compra, destino interno, etc.).
+7. **Notas**: Observaciones complementarias opcionales (número de remito, factura de compra, destino interno, etc.).
 
 ### Cálculo y Previsualización Dinámica de Stock
 Dentro de la misma ventana de registro, el sistema incluye un cuadro de **previsualización en tiempo real**:
@@ -309,16 +309,15 @@ La vista de movimientos ofrece un potente panel de filtros combinables para audi
 +-------------------------------------------------------------------------------------------------------------+
 | [Todos] [Entradas] [Salidas]                                                        [+ Nuevo movimiento]    |
 +-------------------------------------------------------------------------------------------------------------+
-| Buscar: [                ]  Producto: [Todos ▼]  Proveedor: [Todos ▼]  Responsable: [Todos ▼]               |
+| Buscar: [                ]  Producto: [Todos ▼]  Proveedor: [Todos ▼]                                   |
 | Desde:  [DD/MM/AAAA      ]  Hasta:    [DD/MM/AAAA    ]  Estado:      [Todos ▼]                              |
 +-------------------------------------------------------------------------------------------------------------+
 ```
 
 - **Selector Rápido de Tipo**: Botones para ver `Todos`, únicamente `Entradas` o únicamente `Salidas`.
-- **Buscador de Texto**: Coincide en tiempo real con nombre de producto, proveedor, persona responsable o notas.
+- **Buscador de Texto**: Coincide en tiempo real con nombre de producto, proveedor o notas.
 - **Filtro por Producto**: Aísla todas las operaciones del producto elegido.
 - **Filtro por Proveedor**: Muestra las compras realizadas a un proveedor específico.
-- **Filtro por Responsable**: Permite auditar qué movimientos gestionó cada empleado o encargado.
 - **Rango de Fechas (Desde / Hasta)**: Acota las transacciones al período cronológico seleccionado.
 - **Estado**: Permite filtrar entre transacciones `Vigentes` o `Anuladas`.
 - **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **25 filas por página**, garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Utilice los botones `Anterior` y `Siguiente` en el pie de página.
@@ -373,14 +372,12 @@ A diferencia de sistemas rígidos que solo permiten un teléfono, Inventory Mana
 
 ## 8. Configuración y Personalización del Sistema
 
-Haga clic en el icono del engranaje (**⚙**) ubicado en la cabecera superior derecha para abrir la ventana modal de **Configuración**.
+Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barra lateral, junto al botón **Ayuda**, para abrir la ventana modal de **Configuración**.
 
 ```
 +-------------------------------------------------------------------+
 | CONFIGURACIÓN                                                 [X] |
 +-------------------------------------------------------------------+
-| [ ] Responsables archivados                                       |
-|                                                                   |
 | FRANJAS DE STOCK                                                  |
 | Umbral bajo: [ 5.00 ]         Umbral medio: [ 20.00 ]             |
 |                                            [Guardar franjas]      |
@@ -395,11 +392,6 @@ Haga clic en el icono del engranaje (**⚙**) ubicado en la cabecera superior de
 | [+ Nueva categoría]                                               |
 | • [📦 Alimentos]       [✏️] [🗑️]                                    |
 | • [🥤 Bebidas]         [✏️] [🗑️]                                    |
-|                                                                   |
-| RESPONSABLES                                                      |
-| [Nombre de la persona        ] [+ Añadir]                         |
-| • (o) Juan Pérez [Por defecto]              [✏️] [🗑️]              |
-| • ( ) María Gómez                           [✏️] [🗑️]              |
 |                                                                   |
 | AVANZADO (Base de Datos)                                          |
 | [💾 Crear respaldo]   [📂 Restaurar respaldo]                     |
@@ -446,13 +438,6 @@ Las categorías permiten organizar el catálogo y dotar a cada producto de un ic
 #### Eliminación de Categorías:
 Al eliminar una categoría con el icono de papelera, **los productos asociados no se borran**; simplemente pasan al estado "Sin categoría" para salvaguardar sus existencias y datos.
 
-### Gestión de Responsables y Responsable Predeterminado
-Permite registrar a los miembros del equipo que intervienen en los movimientos de mercadería.
-- **Dar de alta**: Escriba el nombre en el campo correspondiente y pulse `+ Añadir`.
-- **Asignar Responsable por Defecto**: Seleccione el botón circular (radio) al lado del nombre deseado. Esta persona aparecerá seleccionada por defecto en cada nuevo formulario de movimiento para agilizar la carga.
-- **Editar**: Cambie el nombre del responsable en cualquier momento pulsando el icono del lápiz.
-- **Archivar y Restaurar**: Si un responsable ya no trabaja en la organización, archívelo con la papelera. Para consultar o reactivar responsables archivados, active la casilla superior **"Responsables archivados"** y pulse **"Restaurar"**.
-
 ### Opciones Avanzadas: Copias de Seguridad (Backup) y Restauración
 Proteja la información de su negocio contra pérdidas fortuitas o traslade su inventario a otra computadora con facilidad:
 
@@ -473,7 +458,7 @@ Proteja la información de su negocio contra pérdidas fortuitas o traslade su i
 Inventory Manager implementa estrictas reglas contables y de software para garantizar la coherencia absoluta de la información:
 
 1. **Unicidad y Normalización Unicode (NFC)**:
-   - Los nombres de productos, proveedores, categorías y personas se normalizan a minúsculas y se colapsan los espacios repetidos para verificar duplicados.
+   - Los nombres de productos, proveedores y categorías se normalizan a minúsculas y se colapsan los espacios repetidos para verificar duplicados.
    - *Importante*: Los acentos (tildes) y la letra `ñ` se consideran caracteres distintos (ej. "Café" y "Cafe" son nombres diferentes).
    - **Nombres en Registros Archivados**: Un nombre reservado por un registro archivado no puede ser reutilizado por un registro nuevo. La aplicación le advertirá con el mensaje:  
      `"Ya existe un producto/proveedor con ese nombre (puede estar archivado)"`  

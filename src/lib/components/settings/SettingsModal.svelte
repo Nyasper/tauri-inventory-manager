@@ -1,14 +1,10 @@
 <script lang="ts">
-  import { personsService } from "$lib/services/persons.service.svelte";
   import { backupService } from "$lib/services/backup.service";
-  import { getPersons } from "$lib/services/db.service";
-  import type { ResponsiblePerson } from "$lib/types";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
-  import PersonFormModal from "$lib/components/persons/PersonFormModal.svelte";
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
@@ -29,15 +25,8 @@
     type CategoryDraft,
   } from "$lib/categories";
 
-  let archivedPersons=$state<ResponsiblePerson[]>([]);
-  let showArchivedPersons=$state(false);
-  async function loadArchivedPersons() { archivedPersons=await getPersons(true); }
-  $effect(()=>{if(showArchivedPersons) loadArchivedPersons();});
-  async function restorePerson(id:number) { await personsService.restore(id); await loadArchivedPersons(); }
   let low = $state("");
   let medium = $state("");
-  let editingId = $state<number | null>(null);
-  let editName = $state("");
   let defaultView = $state("dashboard");
   let editingCat = $state<CategoryDraft | null>(null);
   let busy = $state(false);
@@ -48,7 +37,6 @@
       Number(low) >= 0 &&
       Number(low) < Number(medium),
   );
-  const canSaveEdit = $derived(editName.trim() !== "" && !busy);
 
   const viewOptions: SelectOption[] = [
     { value: "dashboard", label: "Dashboard" },
@@ -104,38 +92,6 @@
     if (ok) await categoriesService.remove(id);
   }
 
-  async function setDefault(id: number) {
-    const person = personsService.items.find((p) => p.id === id);
-    if (!person) return;
-    const ok = await modalService.confirm(
-      `¿Establecer a "${person.name}" como responsable por defecto?`,
-      "Responsable por defecto",
-    );
-    if (ok) await personsService.update(id, person.name, true);
-  }
-
-  function startEdit(id: number, name: string) {
-    editingId = id;
-    editName = name;
-  }
-
-  async function saveEdit() {
-    if (editingId === null) return;
-    const person = personsService.items.find((p) => p.id === editingId);
-    if (!person) return;
-    const newName = editName.trim() || person.name;
-    await personsService.update(editingId, newName, person.is_default);
-    editingId = null;
-  }
-
-  async function removePerson(id: number) {
-    const ok = await modalService.confirm(
-      "¿Archivar esta persona responsable? Su historial se conservará.",
-      "Archivar persona",
-    );
-    if (ok) await personsService.remove(id);
-  }
-
   async function createBackup() {
     if (busy) return;
     busy = true;
@@ -164,12 +120,10 @@
       await Promise.all([
         settingsService.load(),
         categoriesService.load(),
-        personsService.load(),
         suppliersService.load(),
         productsService.load(),
         movementsService.load(),
       ]);
-      await loadArchivedPersons();
       feedback.success("Base de datos restaurada correctamente.");
     } catch (e) {
       feedback.error(e instanceof Error ? e.message : String(e));
@@ -181,8 +135,6 @@
 
 <Modal title="Configuración" onClose={() => modalService.close()} width="md">
   <div class="settings">
-    <section><label><input type="checkbox" bind:checked={showArchivedPersons} /> Responsables archivados</label>
-    {#if showArchivedPersons}{#each archivedPersons as person (person.id)}<p>{person.name} <Button size="sm" variant="secondary" onclick={()=>restorePerson(person.id)}>Restaurar</Button></p>{/each}{#if !archivedPersons.length}<p>No hay responsables archivados.</p>{/if}{/if}</section>
     <section>
       <h3>Franjas de stock</h3>
       <p class="hint">
@@ -290,71 +242,6 @@
                   type="button"
                   aria-label="Eliminar"
                   onclick={() => removeCategory(category.id, category.name)}
-                >
-                  <Trash size={16} />
-                </button>
-              </div>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-
-    <section>
-      <h3>Responsables</h3>
-      <p class="hint">
-        Personas que se pueden asociar a los movimientos de stock.
-      </p>
-
-      <div class="section-action">
-        <Button
-          size="sm"
-          variant="secondary"
-          icon={Plus}
-          onclick={() => modalService.open(PersonFormModal)}
-        >
-          Nuevo responsable
-        </Button>
-      </div>
-
-      {#if personsService.items.length === 0}
-        <p class="empty-note">Sin responsables configurados.</p>
-      {:else}
-        <ul class="people">
-          {#each personsService.items as person (person.id)}
-            <li class="person">
-              {#if editingId === person.id}
-                <Input bind:value={editName} />
-                <Button size="sm" disabled={!canSaveEdit} onclick={saveEdit}>Guardar</Button>
-              {:else}
-                <label class="person-main">
-                  <input
-                    type="radio"
-                    name="default-person"
-                    checked={person.is_default}
-                    onchange={() => setDefault(person.id)}
-                    autocomplete="off"
-                  />
-                  <span>{person.name}</span>
-                  {#if person.is_default}
-                    <span class="default-tag">Por defecto</span>
-                  {/if}
-                </label>
-              {/if}
-              <div class="person-actions">
-                <button
-                  class="icon-btn"
-                  type="button"
-                  aria-label="Editar"
-                  onclick={() => startEdit(person.id, person.name)}
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  class="icon-btn"
-                  type="button"
-                  aria-label="Eliminar"
-                  onclick={() => removePerson(person.id)}
                 >
                   <Trash size={16} />
                 </button>
@@ -520,8 +407,7 @@
     font-weight: 500;
   }
 
-  .cat-actions,
-  .person-actions {
+  .cat-actions {
     display: flex;
     gap: 0.125rem;
   }
@@ -529,46 +415,6 @@
   .empty-note {
     color: var(--text-muted);
     font-size: 0.8125rem;
-  }
-
-  .people {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .person {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-  }
-
-  .person-main {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    flex: 1;
-  }
-
-  .person-main input {
-    accent-color: var(--primary);
-  }
-
-  .default-tag {
-    font-size: 0.7rem;
-    color: var(--primary);
-    background: var(--primary-soft);
-    padding: 0.0625rem 0.375rem;
-    border-radius: 999px;
   }
 
   .icon-btn {

@@ -9,11 +9,6 @@ INSERT INTO suppliers(id,name,name_key,contact,notes) VALUES
   (2,'Mayorista Central','mayorista central','["ventas@central.example","2900 1234"]','Pedidos desde 12 unidades'),
   (3,'Limpiezas del Valle','limpiezas del valle','["099 333 444","pedidos@valle.example"]','Especialistas en productos de limpieza');
 
-INSERT INTO responsible_persons(id,name,name_key,is_default) VALUES
-  (1,'Ana Pérez','ana pérez',1),
-  (2,'Carlos Gómez','carlos gómez',0),
-  (3,'Lucía Martín','lucía martín',0);
-
 INSERT INTO products(id,name,name_key,description,category_id,base_presentation_id,stock,created_at,updated_at) VALUES
   (1,'Agua Mineral 500ml','agua mineral 500ml','Agua sin gas en botella',1,1,102,datetime('now','-10 days'),datetime('now','-1 day')),
   (2,'Café Molido 250g','café molido 250g','Café tostado de origen',2,3,45,datetime('now','-9 days'),datetime('now','-2 days')),
@@ -30,19 +25,19 @@ INSERT INTO presentations(id,product_id,name,name_key,factor) VALUES
   (9,5,'Paquete','paquete',1),(10,5,'Caja x12','caja x12',12),
   (11,6,'Botella','botella',1),(12,6,'Caja x6','caja x6',6);
 
-INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes,created_at) VALUES
-  (1,'in',120,1,'Botella','Agua Mineral 500ml',1,120,1,'Distribuidora Norte',1,'Ana Pérez','Compra inicial',datetime('now','-10 days')),
-  (1,'out',18,1,'Botella','Agua Mineral 500ml',1,18,NULL,NULL,2,'Carlos Gómez','Consumo interno',datetime('now','-1 day')),
-  (2,'in',60,3,'Paquete','Café Molido 250g',1,60,2,'Mayorista Central',1,'Ana Pérez','Compra inicial',datetime('now','-9 days')),
-  (2,'out',15,3,'Paquete','Café Molido 250g',1,15,NULL,NULL,3,'Lucía Martín','Consumo de oficina',datetime('now','-2 days')),
-  (3,'in',48,5,'Botella','Detergente 1L',1,48,3,'Limpiezas del Valle',1,'Ana Pérez','Compra inicial',datetime('now','-8 days')),
-  (3,'out',18,5,'Botella','Detergente 1L',1,18,NULL,NULL,2,'Carlos Gómez','Uso de limpieza',datetime('now','-3 days')),
-  (4,'in',24,7,'Unidad','Jabón de Manos',1,24,3,'Limpiezas del Valle',1,'Ana Pérez','Compra inicial',datetime('now','-7 days')),
-  (4,'out',6,7,'Unidad','Jabón de Manos',1,6,NULL,NULL,3,'Lucía Martín','Reposición de baños',datetime('now','-2 days')),
-  (5,'in',48,9,'Paquete','Galletas Variadas',1,48,2,'Mayorista Central',1,'Ana Pérez','Compra inicial',datetime('now','-6 days')),
-  (5,'out',12,9,'Paquete','Galletas Variadas',1,12,NULL,NULL,2,'Carlos Gómez','Reunión de equipo',datetime('now','-1 day')),
-  (6,'in',30,11,'Botella','Shampoo 400ml',1,30,3,'Limpiezas del Valle',1,'Ana Pérez','Compra inicial',datetime('now','-5 days')),
-  (6,'out',6,11,'Botella','Shampoo 400ml',1,6,NULL,NULL,3,'Lucía Martín','Entrega interna',datetime('now'));
+INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,created_at) VALUES
+  (1,'in',120,1,'Botella','Agua Mineral 500ml',1,120,1,'Distribuidora Norte','Compra inicial',datetime('now','-10 days')),
+  (1,'out',18,1,'Botella','Agua Mineral 500ml',1,18,NULL,NULL,'Consumo interno',datetime('now','-1 day')),
+  (2,'in',60,3,'Paquete','Café Molido 250g',1,60,2,'Mayorista Central','Compra inicial',datetime('now','-9 days')),
+  (2,'out',15,3,'Paquete','Café Molido 250g',1,15,NULL,NULL,'Consumo de oficina',datetime('now','-2 days')),
+  (3,'in',48,5,'Botella','Detergente 1L',1,48,3,'Limpiezas del Valle','Compra inicial',datetime('now','-8 days')),
+  (3,'out',18,5,'Botella','Detergente 1L',1,18,NULL,NULL,'Uso de limpieza',datetime('now','-3 days')),
+  (4,'in',24,7,'Unidad','Jabón de Manos',1,24,3,'Limpiezas del Valle','Compra inicial',datetime('now','-7 days')),
+  (4,'out',6,7,'Unidad','Jabón de Manos',1,6,NULL,NULL,'Reposición de baños',datetime('now','-2 days')),
+  (5,'in',48,9,'Paquete','Galletas Variadas',1,48,2,'Mayorista Central','Compra inicial',datetime('now','-6 days')),
+  (5,'out',12,9,'Paquete','Galletas Variadas',1,12,NULL,NULL,'Reunión de equipo',datetime('now','-1 day')),
+  (6,'in',30,11,'Botella','Shampoo 400ml',1,30,3,'Limpiezas del Valle','Compra inicial',datetime('now','-5 days')),
+  (6,'out',6,11,'Botella','Shampoo 400ml',1,6,NULL,NULL,'Entrega interna',datetime('now'));
 
 -- Datos adicionales para poblar la aplicación con un inventario más realista.
 INSERT INTO categories(id,name,name_key,color,icon) VALUES
@@ -59,13 +54,6 @@ INSERT INTO suppliers(id,name,name_key,contact,notes) VALUES
   (8,'Café & Más','café & más','["pedidos@cafeymas.example","097 888 999"]','Tostado semanal'),
   (9,'Importadora del Plata','importadora del plata','["compras@plata.example"]','Importaciones mensuales'),
   (10,'Lácteos del Prado','lácteos del prado','["099 123 987"]','Cadena de frío');
-
-INSERT INTO responsible_persons(id,name,name_key,is_default) VALUES
-  (4,'Diego Rodríguez','diego rodríguez',0),
-  (5,'Sofía Silva','sofía silva',0),
-  (6,'Martín Fernández','martín fernández',0),
-  (7,'Valentina López','valentina lópez',0),
-  (8,'Jorge Sosa','jorge sosa',0);
 
 INSERT INTO products(id,name,name_key,description,category_id,base_presentation_id,stock,created_at,updated_at) VALUES
   (7,'Arroz Blanco 1kg','arroz blanco 1kg','Arroz largo fino',2,13,68,datetime('now','-20 days'),datetime('now','-1 day')),
@@ -111,24 +99,24 @@ INSERT INTO presentations(id,product_id,name,name_key,factor) VALUES
   (49,25,'Paquete','paquete',1),(50,25,'Caja x20','caja x20',20),
   (51,26,'Paquete','paquete',1),(52,26,'Bulto x10','bulto x10',10);
 
-INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes,created_at) VALUES
-  (7,'in',80,13,'Paquete','Arroz Blanco 1kg',1,80,4,'Alimentos del Sur',4,'Diego Rodríguez','Reposición mensual',datetime('now','-20 days')),(7,'out',12,13,'Paquete','Arroz Blanco 1kg',1,12,NULL,NULL,5,'Sofía Silva','Consumo comedor',datetime('now','-1 day')),
-  (8,'in',24,15,'Botella','Aceite de Girasol 900ml',1,24,4,'Alimentos del Sur',1,'Ana Pérez','Compra mayorista',datetime('now','-19 days')),(8,'out',12,15,'Botella','Aceite de Girasol 900ml',1,12,NULL,NULL,6,'Martín Fernández','Cocina',datetime('now','-2 days')),
-  (9,'in',10,18,'Caja x10','Yerba Mate 1kg',10,100,8,'Café & Más',4,'Diego Rodríguez','Compra por caja',datetime('now','-18 days')),(9,'out',96,17,'Paquete','Yerba Mate 1kg',1,96,NULL,NULL,2,'Carlos Gómez','Consumo oficina',datetime('now')),
-  (10,'in',3,20,'Pack x12','Leche Entera 1L',12,36,10,'Lácteos del Prado',5,'Sofía Silva','Entrega refrigerada',datetime('now','-17 days')),(10,'out',5,19,'Caja','Leche Entera 1L',1,5,NULL,NULL,7,'Valentina López','Desayuno',datetime('now','-1 day')),
-  (11,'in',24,22,'Caja x24','Atún en Lata 170g',24,576,4,'Alimentos del Sur',1,'Ana Pérez','Compra inicial',datetime('now','-16 days')),(11,'out',576,21,'Lata','Atún en Lata 170g',1,576,NULL,NULL,8,'Jorge Sosa','Donación',datetime('now','-3 days')),
-  (12,'in',4,24,'Bulto x8','Papel Higiénico x4',8,32,5,'Higiene Total',5,'Sofía Silva','Stock de baños',datetime('now','-15 days')),(12,'out',10,23,'Pack','Papel Higiénico x4',1,10,NULL,NULL,3,'Lucía Martín','Reposición',datetime('now','-1 day')),
-  (13,'in',12,26,'Pack x6','Toallas de Papel',6,72,5,'Higiene Total',4,'Diego Rodríguez','Compra por volumen',datetime('now','-14 days')),(13,'out',65,25,'Rollo','Toallas de Papel',1,65,NULL,NULL,6,'Martín Fernández','Cocina',datetime('now')),
-  (14,'in',60,27,'Botella','Lavandina 1L',1,60,3,'Limpiezas del Valle',1,'Ana Pérez','Reposición',datetime('now','-13 days')),(14,'out',5,27,'Botella','Lavandina 1L',1,5,NULL,NULL,2,'Carlos Gómez','Limpieza general',datetime('now','-2 days')),
-  (15,'in',20,30,'Pack x10','Esponja Multiuso',10,200,5,'Higiene Total',5,'Sofía Silva','Compra por pack',datetime('now','-12 days')),(15,'out',191,29,'Unidad','Esponja Multiuso',1,191,NULL,NULL,7,'Valentina López','Uso diario',datetime('now','-1 day')),
-  (16,'in',24,32,'Caja x12','Alcohol en Gel 500ml',12,288,5,'Higiene Total',4,'Diego Rodríguez','Prevención',datetime('now','-11 days')),(16,'out',272,31,'Botella','Alcohol en Gel 500ml',1,272,NULL,NULL,8,'Jorge Sosa','Distribución',datetime('now')),
-  (17,'in',60,33,'Unidad','Cuaderno A4',1,60,6,'Papelería 360',6,'Martín Fernández','Material de oficina',datetime('now','-10 days')),(17,'out',17,33,'Unidad','Cuaderno A4',1,17,NULL,NULL,3,'Lucía Martín','Entrega a equipo',datetime('now','-1 day')),
-  (18,'in',20,36,'Pallet x5','Resma A4 500 hojas',5,100,6,'Papelería 360',6,'Martín Fernández','Compra trimestral',datetime('now','-9 days')),(18,'out',82,35,'Resma','Resma A4 500 hojas',1,82,NULL,NULL,5,'Sofía Silva','Impresiones',datetime('now','-2 days')),
-  (19,'in',150,38,'Caja x50','Lapicera Azul',50,7500,6,'Papelería 360',7,'Valentina López','Compra por caja',datetime('now','-8 days')),(19,'out',7374,37,'Unidad','Lapicera Azul',1,7374,NULL,NULL,4,'Diego Rodríguez','Consumo general',datetime('now')),
-  (20,'in',24,40,'Caja x12','Marcador Permanente',12,288,6,'Papelería 360',6,'Martín Fernández','Material de oficina',datetime('now','-7 days')),(20,'out',285,39,'Unidad','Marcador Permanente',1,285,NULL,NULL,2,'Carlos Gómez','Uso en depósitos',datetime('now','-1 day')),
-  (21,'in',20,42,'Caja x10','Memoria USB 32GB',10,200,7,'Tecno Oficina',8,'Jorge Sosa','Accesorios',datetime('now','-6 days')),(21,'out',186,41,'Unidad','Memoria USB 32GB',1,186,NULL,NULL,5,'Sofía Silva','Asignaciones',datetime('now','-1 day')),
-  (22,'in',10,44,'Pack x5','Cable HDMI 2m',5,50,7,'Tecno Oficina',8,'Jorge Sosa','Accesorios audiovisuales',datetime('now','-5 days')),(22,'out',42,43,'Unidad','Cable HDMI 2m',1,42,NULL,NULL,6,'Martín Fernández','Salas de reunión',datetime('now')),
-  (23,'in',30,46,'Caja x20','Pilas AA x4',20,600,9,'Importadora del Plata',4,'Diego Rodríguez','Compra de baterías',datetime('now','-4 days')),(23,'out',573,45,'Blister','Pilas AA x4',1,573,NULL,NULL,7,'Valentina López','Periféricos',datetime('now','-1 day')),
-  (24,'in',72,48,'Caja x24','Barra de Cereal',24,1728,4,'Alimentos del Sur',5,'Sofía Silva','Snack saludable',datetime('now','-3 days')),(24,'out',1664,47,'Unidad','Barra de Cereal',1,1664,NULL,NULL,3,'Lucía Martín','Consumo oficina',datetime('now')),
-  (25,'in',20,50,'Caja x20','Galletas de Agua',20,400,4,'Alimentos del Sur',1,'Ana Pérez','Compra mensual',datetime('now','-2 days')),(25,'out',389,49,'Paquete','Galletas de Agua',1,389,NULL,NULL,8,'Jorge Sosa','Reunión',datetime('now')),
-  (26,'in',5,52,'Bulto x10','Azúcar 1kg',10,50,4,'Alimentos del Sur',5,'Sofía Silva','Abastecimiento cocina',datetime('now','-1 day')),(26,'out',12,51,'Paquete','Azúcar 1kg',1,12,NULL,NULL,6,'Martín Fernández','Cafetería',datetime('now'));
+INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,created_at) VALUES
+  (7,'in',80,13,'Paquete','Arroz Blanco 1kg',1,80,4,'Alimentos del Sur','Reposición mensual',datetime('now','-20 days')),(7,'out',12,13,'Paquete','Arroz Blanco 1kg',1,12,NULL,NULL,'Consumo comedor',datetime('now','-1 day')),
+  (8,'in',24,15,'Botella','Aceite de Girasol 900ml',1,24,4,'Alimentos del Sur','Compra mayorista',datetime('now','-19 days')),(8,'out',12,15,'Botella','Aceite de Girasol 900ml',1,12,NULL,NULL,'Cocina',datetime('now','-2 days')),
+  (9,'in',10,18,'Caja x10','Yerba Mate 1kg',10,100,8,'Café & Más','Compra por caja',datetime('now','-18 days')),(9,'out',96,17,'Paquete','Yerba Mate 1kg',1,96,NULL,NULL,'Consumo oficina',datetime('now')),
+  (10,'in',3,20,'Pack x12','Leche Entera 1L',12,36,10,'Lácteos del Prado','Entrega refrigerada',datetime('now','-17 days')),(10,'out',5,19,'Caja','Leche Entera 1L',1,5,NULL,NULL,'Desayuno',datetime('now','-1 day')),
+  (11,'in',24,22,'Caja x24','Atún en Lata 170g',24,576,4,'Alimentos del Sur','Compra inicial',datetime('now','-16 days')),(11,'out',576,21,'Lata','Atún en Lata 170g',1,576,NULL,NULL,'Donación',datetime('now','-3 days')),
+  (12,'in',4,24,'Bulto x8','Papel Higiénico x4',8,32,5,'Higiene Total','Stock de baños',datetime('now','-15 days')),(12,'out',10,23,'Pack','Papel Higiénico x4',1,10,NULL,NULL,'Reposición',datetime('now','-1 day')),
+  (13,'in',12,26,'Pack x6','Toallas de Papel',6,72,5,'Higiene Total','Compra por volumen',datetime('now','-14 days')),(13,'out',65,25,'Rollo','Toallas de Papel',1,65,NULL,NULL,'Cocina',datetime('now')),
+  (14,'in',60,27,'Botella','Lavandina 1L',1,60,3,'Limpiezas del Valle','Reposición',datetime('now','-13 days')),(14,'out',5,27,'Botella','Lavandina 1L',1,5,NULL,NULL,'Limpieza general',datetime('now','-2 days')),
+  (15,'in',20,30,'Pack x10','Esponja Multiuso',10,200,5,'Higiene Total','Compra por pack',datetime('now','-12 days')),(15,'out',191,29,'Unidad','Esponja Multiuso',1,191,NULL,NULL,'Uso diario',datetime('now','-1 day')),
+  (16,'in',24,32,'Caja x12','Alcohol en Gel 500ml',12,288,5,'Higiene Total','Prevención',datetime('now','-11 days')),(16,'out',272,31,'Botella','Alcohol en Gel 500ml',1,272,NULL,NULL,'Distribución',datetime('now')),
+  (17,'in',60,33,'Unidad','Cuaderno A4',1,60,6,'Papelería 360','Material de oficina',datetime('now','-10 days')),(17,'out',17,33,'Unidad','Cuaderno A4',1,17,NULL,NULL,'Entrega a equipo',datetime('now','-1 day')),
+  (18,'in',20,36,'Pallet x5','Resma A4 500 hojas',5,100,6,'Papelería 360','Compra trimestral',datetime('now','-9 days')),(18,'out',82,35,'Resma','Resma A4 500 hojas',1,82,NULL,NULL,'Impresiones',datetime('now','-2 days')),
+  (19,'in',150,38,'Caja x50','Lapicera Azul',50,7500,6,'Papelería 360','Compra por caja',datetime('now','-8 days')),(19,'out',7374,37,'Unidad','Lapicera Azul',1,7374,NULL,NULL,'Consumo general',datetime('now')),
+  (20,'in',24,40,'Caja x12','Marcador Permanente',12,288,6,'Papelería 360','Material de oficina',datetime('now','-7 days')),(20,'out',285,39,'Unidad','Marcador Permanente',1,285,NULL,NULL,'Uso en depósitos',datetime('now','-1 day')),
+  (21,'in',20,42,'Caja x10','Memoria USB 32GB',10,200,7,'Tecno Oficina','Accesorios',datetime('now','-6 days')),(21,'out',186,41,'Unidad','Memoria USB 32GB',1,186,NULL,NULL,'Asignaciones',datetime('now','-1 day')),
+  (22,'in',10,44,'Pack x5','Cable HDMI 2m',5,50,7,'Tecno Oficina','Accesorios audiovisuales',datetime('now','-5 days')),(22,'out',42,43,'Unidad','Cable HDMI 2m',1,42,NULL,NULL,'Salas de reunión',datetime('now')),
+  (23,'in',30,46,'Caja x20','Pilas AA x4',20,600,9,'Importadora del Plata','Compra de baterías',datetime('now','-4 days')),(23,'out',573,45,'Blister','Pilas AA x4',1,573,NULL,NULL,'Periféricos',datetime('now','-1 day')),
+  (24,'in',72,48,'Caja x24','Barra de Cereal',24,1728,4,'Alimentos del Sur','Snack saludable',datetime('now','-3 days')),(24,'out',1664,47,'Unidad','Barra de Cereal',1,1664,NULL,NULL,'Consumo oficina',datetime('now')),
+  (25,'in',20,50,'Caja x20','Galletas de Agua',20,400,4,'Alimentos del Sur','Compra mensual',datetime('now','-2 days')),(25,'out',389,49,'Paquete','Galletas de Agua',1,389,NULL,NULL,'Reunión',datetime('now')),
+  (26,'in',5,52,'Bulto x10','Azúcar 1kg',10,50,4,'Alimentos del Sur','Abastecimiento cocina',datetime('now','-1 day')),(26,'out',12,51,'Paquete','Azúcar 1kg',1,12,NULL,NULL,'Cafetería',datetime('now'));

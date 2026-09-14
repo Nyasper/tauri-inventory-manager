@@ -206,7 +206,7 @@
             </li>
             <li>
               <strong>Movimientos recientes:</strong> Lista las últimas 5 operaciones asentadas, detallando
-              tipo (Entrada verde / Salida roja), cantidad en su presentación, responsable y fecha. Si el
+              tipo (Entrada verde / Salida roja), cantidad en su presentación y fecha. Si el
               movimiento fue anulado, se resalta de forma transparente.
             </li>
           </ul>
@@ -365,7 +365,7 @@
           <h3>Filtros y Paginación</h3>
           <p>
             La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas), buscador de texto,
-            selectores de producto, proveedor y responsable, filtro por rango de fechas (Desde / Hasta), y
+            selectores de producto y proveedor, filtro por rango de fechas (Desde / Hasta), y
             filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma paginada a 25 registros
             por página.
           </p>
@@ -438,14 +438,6 @@
               <p>
                 Personaliza el catálogo de categorías con colores distintivos y un catálogo de más de
                 60 iconos. Al eliminar una categoría, sus productos pasan a "Sin categoría" sin perderse.
-              </p>
-            </div>
-
-            <div class="info-card">
-              <h3>Responsables de Stock</h3>
-              <p>
-                Da de alta a los operarios o supervisores. Puedes marcar a uno como <em>"Por defecto"</em>
-                para que aparezca seleccionado automáticamente en cada nuevo movimiento.
               </p>
             </div>
 

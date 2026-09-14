@@ -57,14 +57,12 @@ try {
       movements: number;
       categories: number;
       suppliers: number;
-      persons: number;
     }, []>(`
       SELECT
         (SELECT count(*) FROM products) AS products,
         (SELECT count(*) FROM movements) AS movements,
         (SELECT count(*) FROM categories) AS categories,
-        (SELECT count(*) FROM suppliers) AS suppliers,
-        (SELECT count(*) FROM responsible_persons) AS persons
+        (SELECT count(*) FROM suppliers) AS suppliers
     `)
     .get();
 

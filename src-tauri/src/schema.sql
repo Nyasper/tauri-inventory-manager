@@ -7,13 +7,6 @@ CREATE TABLE IF NOT EXISTS suppliers (
  name_key TEXT NOT NULL UNIQUE CHECK(length(name_key)>0), contact TEXT, notes TEXT,
  archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1))
 );
-CREATE TABLE IF NOT EXISTS responsible_persons (
- id INTEGER PRIMARY KEY, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
- name_key TEXT NOT NULL UNIQUE CHECK(length(name_key)>0),
- is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0,1)),
- archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)), CHECK(archived=0 OR is_default=0)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS one_default_person ON responsible_persons(is_default) WHERE is_default=1;
 CREATE TABLE IF NOT EXISTS products (
  id INTEGER PRIMARY KEY, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
  name_key TEXT NOT NULL UNIQUE CHECK(length(name_key)>0), description TEXT,
@@ -39,7 +32,6 @@ CREATE TABLE IF NOT EXISTS movements (
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
  supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
- responsible_person_id INTEGER NOT NULL REFERENCES responsible_persons(id), person_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
  FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),
@@ -51,7 +43,6 @@ CREATE TABLE IF NOT EXISTS movements (
 CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id);
-CREATE INDEX IF NOT EXISTS movements_person ON movements(responsible_person_id);
 CREATE INDEX IF NOT EXISTS products_category ON products(category_id);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO settings(key,value) VALUES

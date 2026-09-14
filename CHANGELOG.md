@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-14
+
+### Removed
+
+- The responsible persons feature: catalog and default responsible, the required "Responsable" field in stock movements, the responsible column and filter in the movements view, the archived-responsibles section in settings, the inline creation from the movement form, and the `list_persons` command. Existing databases are migrated on startup: `movements` is rebuilt without `responsible_person_id`/`person_name` and the `responsible_persons` table is dropped.
+
+### Changed
+
+- User manual, in-app help, README and tests updated to reflect the removal.
+
 ## [0.9.0] - 2026-09-13
 
 ### Added

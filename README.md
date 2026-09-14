@@ -7,13 +7,13 @@ Para consultar la documentación completa de uso y todas las características en
 ## Features
 
 - Products with categories and flexible presentations (units of measure with conversion factors).
-- Stock movements (in/out) that adjust product stock, with suppliers and responsible persons.
+- Stock movements (in/out) that adjust product stock, with suppliers.
 - List and grid views, search and category filters.
 - Stock status (out/low/medium/high) with configurable thresholds.
 - Light/dark theme persisted in local storage.
 - SQLite persistence with validated Rust commands and read-only frontend queries.
 - Unique normalized product, supplier, category and presentation names.
-- Archive/restore products, suppliers and responsible persons without losing history.
+- Archive/restore products and suppliers without losing history.
 - Multiple contact lines per supplier.
 - Auditable movement cancellation and inventory adjustments with mandatory reasons.
 - Movement filters and database pagination (25 rows per page).
@@ -51,4 +51,4 @@ Each product has exactly one base presentation with factor 1. Editing preserves 
 
 Stock cannot become negative. Quantities, factors and resulting base quantities support up to six decimal places, with a maximum of 1,000,000,000. Stock updates round to six decimal places to avoid floating-point residue. A product must have zero stock before archiving. Inventory adjustments require a reason. Cancellation retains the original movement, records a reason and reverses stock atomically; it is rejected if the reversal would make stock negative or the product is archived.
 
-The Rust tests cover normalized duplicates, rollback, invalid references and quantities, simultaneous withdrawals, cancellation, historical snapshots, archiving, default responsible persons, decimal stock and repeated initialization. UI validation is checked with Svelte Check and the production build.
+The Rust tests cover normalized duplicates, rollback, invalid references and quantities, simultaneous withdrawals, cancellation, historical snapshots, archiving, legacy database migrations, decimal stock and repeated initialization. UI validation is checked with Svelte Check and the production build.

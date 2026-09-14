@@ -68,13 +68,6 @@ pub struct CategoryRow {
     pub icon: Option<String>,
 }
 
-#[derive(Serialize, FromRow)]
-pub struct PersonRow {
-    pub id: i64,
-    pub name: String,
-    pub is_default: bool,
-}
-
 #[derive(Serialize)]
 pub struct SettingsRow {
     pub stock_low_threshold: f64,
@@ -102,8 +95,6 @@ pub struct MovementRow {
     pub base_quantity: f64,
     pub supplier_id: Option<i64>,
     pub supplier_name: Option<String>,
-    pub responsible_person_id: Option<i64>,
-    pub person_name: Option<String>,
     pub notes: Option<String>,
     pub reason: Option<String>,
     pub kind: String,
@@ -129,8 +120,6 @@ pub struct MovementFilters {
     pub product: Option<i64>,
     #[serde(default)]
     pub supplier: Option<i64>,
-    #[serde(default)]
-    pub person: Option<i64>,
     #[serde(default)]
     pub from: Option<String>,
     #[serde(default)]
@@ -203,19 +192,6 @@ pub(crate) async fn list_categories_db(db: &Db) -> Result<Vec<CategoryRow>, Stri
     .map_err(query_error)
 }
 
-pub(crate) async fn list_persons_db(db: &Db, archived: bool) -> Result<Vec<PersonRow>, String> {
-    sqlx::query_as::<_, PersonRow>(
-        "SELECT id, name, is_default
-         FROM responsible_persons
-         WHERE archived = ?
-         ORDER BY name COLLATE NOCASE",
-    )
-    .bind(archived)
-    .fetch_all(db)
-    .await
-    .map_err(query_error)
-}
-
 pub(crate) async fn page_movements_db(
     db: &Db,
     filters: &MovementFilters,
@@ -223,7 +199,7 @@ pub(crate) async fn page_movements_db(
     let mut query = QueryBuilder::<Sqlite>::new(
         "SELECT id, product_id, type AS movement_type, quantity, presentation_id,
                 presentation_name, product_name, factor, base_quantity, supplier_id,
-                supplier_name, responsible_person_id, person_name, notes, reason, kind,
+                supplier_name, notes, reason, kind,
                 created_at, cancelled_at, cancellation_reason,
                 count(*) OVER () AS total_count
          FROM movements",
@@ -242,8 +218,6 @@ pub(crate) async fn page_movements_db(
             .push("(product_name LIKE ")
             .push_bind(pattern.clone())
             .push(" ESCAPE '\\' OR supplier_name LIKE ")
-            .push_bind(pattern.clone())
-            .push(" ESCAPE '\\' OR person_name LIKE ")
             .push_bind(pattern.clone())
             .push(" ESCAPE '\\' OR notes LIKE ")
             .push_bind(pattern)
@@ -273,13 +247,6 @@ pub(crate) async fn page_movements_db(
             .push(separator)
             .push("supplier_id=")
             .push_bind(supplier);
-        separator = " AND ";
-    }
-    if let Some(person) = filters.person {
-        query
-            .push(separator)
-            .push("responsible_person_id=")
-            .push_bind(person);
         separator = " AND ";
     }
     if let Some(from) = filters.from.as_deref().filter(|value| !value.is_empty()) {
@@ -423,15 +390,6 @@ pub async fn list_suppliers(
 pub async fn list_categories(state: State<'_, DbState>) -> Result<Vec<CategoryRow>, String> {
     let pool = state.pool().read().await;
     list_categories_db(&pool).await
-}
-
-#[tauri::command]
-pub async fn list_persons(
-    state: State<'_, DbState>,
-    archived: bool,
-) -> Result<Vec<PersonRow>, String> {
-    let pool = state.pool().read().await;
-    list_persons_db(&pool, archived).await
 }
 
 #[tauri::command]

@@ -5,7 +5,6 @@
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { personsService } from "$lib/services/persons.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
@@ -13,7 +12,6 @@
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
-  import PersonFormModal from "$lib/components/persons/PersonFormModal.svelte";
   import { Plus } from "@lucide/svelte";
 
   let { initialProductId = "" }: { initialProductId?: string } = $props();
@@ -26,7 +24,6 @@
   let type = $state<MovementType>("in");
   let quantity = $state(1);
   let supplierId = $state("");
-  let personId = $state("");
   let notes = $state("");
   let saving = $state(false);
   let error = $state("");
@@ -47,11 +44,8 @@
 
   const validation = $derived.by(() => {
     if (loading) return "";
-    if (personsService.items.length === 0)
-      return "No hay responsables configurados. Añádelos en Configuración.";
     if (!productId) return "Selecciona un producto.";
     if (!presentationId) return "Selecciona una presentación.";
-    if (!personId) return "Selecciona un responsable.";
     if (!Number.isFinite(quantity) || quantity <= 0) return "La cantidad debe ser mayor que cero.";
     if (type === "out") {
       if (availableUnits !== null && availableUnits < 1)
@@ -85,12 +79,6 @@
       label: s.name,
     }))],
   );
-  const personOptions = $derived(
-    personsService.items.map((p) => ({
-      value: String(p.id),
-      label: p.name,
-    })),
-  );
   const typeOptions: SelectOption[] = [
     { value: "in", label: "Entrada" },
     { value: "out", label: "Salida" },
@@ -123,24 +111,10 @@
     };
   });
 
-  let defaultApplied = false;
-  $effect(() => {
-    const def = personsService.defaultPerson;
-    if (def && !defaultApplied) { defaultApplied = true; personId = String(def.id); }
-  });
-
   function openNewSupplier() {
     modalService.open(SupplierFormModal, {
       onCreated: (id: number) => {
         supplierId = String(id);
-      },
-    });
-  }
-
-  function openNewPerson() {
-    modalService.open(PersonFormModal, {
-      onCreated: (id: number) => {
-        personId = String(id);
       },
     });
   }
@@ -151,7 +125,7 @@
     const presId = presentationId ? Number(presentationId) : null;
     const qty = quantity;
 
-    if (!pid || presId === null || !personId) return;
+    if (!pid || presId === null) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
 
     saving = true;
@@ -163,7 +137,6 @@
         quantity: qty,
         presentation_id: presId,
         supplier_id: type === "in" && supplierId ? Number(supplierId) : null,
-        responsible_person_id: Number(personId),
         notes: notes.trim() || null,
         adjustment, reason: adjustment ? reason.trim() : null,
       });
@@ -228,20 +201,6 @@
         </Button>
       </div>
     {/if}
-
-    <div class="field-row">
-      <div class="field-select">
-        <Select
-          label="Responsable"
-          bind:value={personId}
-          options={personOptions}
-          placeholder="Selecciona un responsable"
-        />
-      </div>
-      <Button variant="secondary" icon={Plus} onclick={openNewPerson}>
-        Nuevo
-      </Button>
-    </div>
 
     <Textarea
       label="Notas"

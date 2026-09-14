@@ -44,7 +44,7 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
         )
         .await?;
     sqlx::raw_sql(SCHEMA).execute(&pool).await?;
-    migrate_movements_responsible(&pool).await?;
+    migrate_remove_persons(&pool).await?;
     Ok(pool)
 }
 
@@ -57,7 +57,6 @@ CREATE TABLE movements_new (
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
  supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
- responsible_person_id INTEGER NOT NULL REFERENCES responsible_persons(id), person_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
  FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),
@@ -67,65 +66,51 @@ CREATE TABLE movements_new (
        (cancelled_at IS NOT NULL AND cancellation_reason IS NOT NULL AND length(trim(cancellation_reason))>0))
 )"#;
 
-const MOVEMENTS_COLUMNS: &str = "id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes,reason,kind,created_at,cancelled_at,cancellation_reason";
+const MOVEMENTS_COLUMNS: &str = "id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,reason,kind,created_at,cancelled_at,cancellation_reason";
 
-/// Versiones anteriores permitían movimientos sin responsable. Rellena los NULL
-/// con el responsable por defecto (o el primero disponible) y reconstruye la
-/// tabla para que `responsible_person_id` sea NOT NULL.
-async fn migrate_movements_responsible(db: &Db) -> Result<(), sqlx::Error> {
+/// Versiones anteriores asociaban cada movimiento a un responsable.
+/// Reconstruye la tabla sin esas columnas y elimina el catálogo de responsables.
+async fn migrate_remove_persons(db: &Db) -> Result<(), sqlx::Error> {
     let columns = sqlx::query("PRAGMA table_info(movements)")
         .fetch_all(db)
         .await?;
-    let nullable = columns.iter().any(|row| {
-        row.get::<String, _>("name") == "responsible_person_id" && row.get::<i64, _>("notnull") == 0
+    let has_columns = columns.iter().any(|row| {
+        matches!(
+            row.get::<String, _>("name").as_str(),
+            "responsible_person_id" | "person_name"
+        )
     });
-    if !nullable {
+    let has_table: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='responsible_persons')",
+    )
+    .fetch_one(db)
+    .await?;
+    if !has_columns && !has_table {
         return Ok(());
     }
     let mut tx = db.begin().await?;
-    let existing: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM responsible_persons ORDER BY is_default DESC, archived ASC, id ASC LIMIT 1",
-    )
-    .fetch_optional(&mut *tx)
-    .await?;
-    let person = match existing {
-        Some(id) => id,
-        None => {
-            let result = sqlx::query(
-                "INSERT INTO responsible_persons(name,name_key,is_default) VALUES('Responsable','responsable',1)",
-            )
+    if has_columns {
+        sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
+        sqlx::query(&format!(
+            "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
+        ))
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("DROP TABLE movements").execute(&mut *tx).await?;
+        sqlx::query("ALTER TABLE movements_new RENAME TO movements")
             .execute(&mut *tx)
             .await?;
-            result.last_insert_rowid()
+        for index in [
+            "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
+            "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
+        ] {
+            sqlx::query(index).execute(&mut *tx).await?;
         }
-    };
-    sqlx::query("UPDATE movements SET responsible_person_id=? WHERE responsible_person_id IS NULL")
-        .bind(person)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query(
-        "UPDATE movements SET person_name=(SELECT name FROM responsible_persons WHERE id=movements.responsible_person_id) WHERE person_name IS NULL OR trim(person_name)=''",
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
-    sqlx::query(&format!(
-        "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
-    ))
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query("DROP TABLE movements").execute(&mut *tx).await?;
-    sqlx::query("ALTER TABLE movements_new RENAME TO movements")
-        .execute(&mut *tx)
-        .await?;
-    for index in [
-        "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
-        "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
-        "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
-        "CREATE INDEX IF NOT EXISTS movements_person ON movements(responsible_person_id)",
-    ] {
-        sqlx::query(index).execute(&mut *tx).await?;
     }
+    sqlx::query("DROP TABLE IF EXISTS responsible_persons")
+        .execute(&mut *tx)
+        .await?;
     tx.commit().await?;
     Ok(())
 }
@@ -158,7 +143,7 @@ fn error(e: sqlx::Error) -> String {
             } else if db.message().contains("presentations.") {
                 "una presentación de este producto"
             } else {
-                "un responsable"
+                "un registro"
             };
             return format!("Ya existe {entity} con ese nombre (puede estar archivado).");
         }
@@ -336,8 +321,6 @@ pub struct CatalogInput {
     notes: Option<String>,
     color: Option<String>,
     icon: Option<String>,
-    #[serde(default)]
-    is_default: bool,
 }
 #[tauri::command]
 pub async fn save_catalog(db: State<'_, DbState>, input: CatalogInput) -> Result<i64, String> {
@@ -352,11 +335,6 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, String> {
             .bind(input.id).bind(display).bind(key).bind(input.contact).bind(input.notes).execute(&mut *tx).await,
         "category" => sqlx::query("INSERT INTO categories(id,name,name_key,color,icon) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,name_key=excluded.name_key,color=excluded.color,icon=excluded.icon")
             .bind(input.id).bind(display).bind(key).bind(input.color).bind(input.icon).execute(&mut *tx).await,
-        "person" => {
-            if input.is_default { sqlx::query("UPDATE responsible_persons SET is_default=0 WHERE is_default=1").execute(&mut *tx).await.map_err(error)?; }
-            sqlx::query("INSERT INTO responsible_persons(id,name,name_key,is_default) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,name_key=excluded.name_key,is_default=excluded.is_default")
-                .bind(input.id).bind(display).bind(key).bind(input.is_default).execute(&mut *tx).await
-        },
         _ => return Err("Tipo de registro inválido.".into())
     }.map_err(error)?;
     tx.commit().await.map_err(error)?;
@@ -378,8 +356,6 @@ async fn archive_record_db(db: &Db, kind: String, id: i64, restore: bool) -> Res
         ("product", true) => "UPDATE products SET archived=0 WHERE id=?",
         ("supplier", false) => "UPDATE suppliers SET archived=1 WHERE id=?",
         ("supplier", true) => "UPDATE suppliers SET archived=0 WHERE id=?",
-        ("person", false) => "UPDATE responsible_persons SET archived=1,is_default=0 WHERE id=?",
-        ("person", true) => "UPDATE responsible_persons SET archived=0 WHERE id=?",
         ("category", false) => "DELETE FROM categories WHERE id=?",
         _ => return Err("Operación inválida.".into()),
     };
@@ -405,7 +381,6 @@ pub struct MovementInput {
     quantity: f64,
     presentation_id: i64,
     supplier_id: Option<i64>,
-    responsible_person_id: Option<i64>,
     notes: Option<String>,
     #[serde(default)]
     adjustment: bool,
@@ -421,9 +396,6 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
     if !["in", "out"].contains(&input.movement_type.as_str()) {
         return Err("Tipo de movimiento inválido.".into());
     }
-    if input.responsible_person_id.is_none() {
-        return Err("Selecciona un responsable.".into());
-    }
     if input.movement_type == "out" && input.supplier_id.is_some() {
         return Err("Una salida no admite proveedor.".into());
     }
@@ -437,30 +409,18 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
     let base = input.quantity * factor;
     positive(base)?;
     let base = (base * 1e6).round() / 1e6;
-    let mut names = Vec::new();
-    for (id, sql) in [
-        (
-            input.supplier_id,
-            "SELECT name FROM suppliers WHERE id=? AND archived=0",
-        ),
-        (
-            input.responsible_person_id,
-            "SELECT name FROM responsible_persons WHERE id=? AND archived=0",
-        ),
-    ] {
-        names.push(if let Some(id) = id {
-            Some(
-                sqlx::query_scalar::<_, String>(sql)
-                    .bind(id)
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(error)?
-                    .ok_or("El proveedor o responsable no está disponible.")?,
-            )
-        } else {
-            None
-        });
-    }
+    let supplier_name = if let Some(id) = input.supplier_id {
+        Some(
+            sqlx::query_scalar::<_, String>("SELECT name FROM suppliers WHERE id=? AND archived=0")
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(error)?
+                .ok_or("El proveedor no está disponible.")?,
+        )
+    } else {
+        None
+    };
     let delta = if input.movement_type == "in" {
         base
     } else {
@@ -470,10 +430,10 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), String>
         .bind(delta).bind(input.product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 {
         return Err("Stock insuficiente o cantidad fuera del límite permitido.".into());
     }
-    sqlx::query("INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,responsible_person_id,person_name,notes,kind,reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    sqlx::query("INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,kind,reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
         .bind(input.product_id).bind(input.movement_type).bind(input.quantity).bind(input.presentation_id)
         .bind(row.get::<String,_>("name")).bind(row.get::<String,_>("product_name")).bind(factor).bind(base)
-        .bind(input.supplier_id).bind(&names[0]).bind(input.responsible_person_id).bind(&names[1]).bind(input.notes)
+        .bind(input.supplier_id).bind(&supplier_name).bind(input.notes)
         .bind(if input.adjustment {"adjustment"} else {"regular"}).bind(input.reason)
         .execute(&mut *tx).await.map_err(error)?;
     tx.commit().await.map_err(error)
@@ -568,10 +528,9 @@ fn looks_like_sqlite(path: &Path) -> bool {
 }
 
 /// Tables that a valid backup of this application must contain.
-const BACKUP_TABLES: [&str; 7] = [
+const BACKUP_TABLES: [&str; 6] = [
     "categories",
     "suppliers",
-    "responsible_persons",
     "products",
     "presentations",
     "movements",
@@ -591,7 +550,7 @@ async fn validate_backup(path: &Path) -> Result<(), String> {
         .await
         .map_err(|_| "No se pudo abrir el archivo de respaldo.".to_string())?;
     let found: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('categories','suppliers','responsible_persons','products','presentations','movements','settings')",
+        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('categories','suppliers','products','presentations','movements','settings')",
     )
     .fetch_one(&mut conn)
     .await
@@ -714,7 +673,7 @@ mod tests {
             }],
         }
     }
-    fn catalog(kind: &str, id: Option<i64>, name: &str, default: bool) -> CatalogInput {
+    fn catalog(kind: &str, id: Option<i64>, name: &str) -> CatalogInput {
         CatalogInput {
             kind: kind.into(),
             id,
@@ -723,20 +682,9 @@ mod tests {
             notes: None,
             color: None,
             icon: None,
-            is_default: default,
         }
     }
-    const TEST_PERSON: i64 = 999999;
     async fn fixture(db: &Db, name: &str) -> (i64, i64) {
-        sqlx::query(
-            "INSERT OR IGNORE INTO responsible_persons(id,name,name_key,is_default) VALUES(?,?,?,0)",
-        )
-        .bind(TEST_PERSON)
-        .bind("Test Person")
-        .bind("test person")
-        .execute(db)
-        .await
-        .unwrap();
         let id = save_product_db(db, product(None, name, None))
             .await
             .unwrap();
@@ -754,7 +702,6 @@ mod tests {
             movement_type: kind.into(),
             quantity,
             supplier_id: None,
-            responsible_person_id: Some(TEST_PERSON),
             notes: None,
             adjustment: false,
             reason: None,
@@ -768,24 +715,63 @@ mod tests {
             .unwrap()
     }
     #[test]
-    fn movements_require_responsible_person() {
+    fn legacy_databases_drop_responsible_persons_and_keep_movements() {
         tauri::async_runtime::block_on(async {
-            let db = connect(Path::new(":memory:")).await.unwrap();
+            let dir = temp_dir("migrate-persons");
+            let live = dir.join("inventory.db");
+            let db = connect(&live).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            let mut input = movement(water, "in", 4.0);
+            input.notes = Some("Compra inicial".into());
+            create_movement_db(&db, input).await.unwrap();
+            sqlx::raw_sql(
+                "CREATE TABLE responsible_persons (
+                   id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE,
+                   is_default INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0
+                 );
+                 INSERT INTO responsible_persons(id,name,name_key,is_default) VALUES(1,'Ana','ana',1);
+                 ALTER TABLE movements ADD COLUMN responsible_person_id INTEGER REFERENCES responsible_persons(id);
+                 ALTER TABLE movements ADD COLUMN person_name TEXT;
+                 UPDATE movements SET responsible_person_id=1, person_name='Ana';",
+            )
+            .execute(&db)
+            .await
+            .unwrap();
+            db.close().await;
+
+            let migrated = connect(&live).await.unwrap();
             let columns = sqlx::query("PRAGMA table_info(movements)")
-                .fetch_all(&db)
+                .fetch_all(&migrated)
                 .await
                 .unwrap();
-            let notnull = columns
-                .iter()
-                .find(|row| row.get::<String, _>("name") == "responsible_person_id")
-                .map(|row| row.get::<i64, _>("notnull"))
-                .unwrap();
-            assert_eq!(notnull, 1);
-
-            let a = fixture(&db, "Agua").await;
-            let mut input = movement(a, "in", 1.0);
-            input.responsible_person_id = None;
-            assert!(create_movement_db(&db, input).await.is_err());
+            assert!(columns.iter().all(|row| {
+                !matches!(
+                    row.get::<String, _>("name").as_str(),
+                    "responsible_person_id" | "person_name"
+                )
+            }));
+            let persons_table: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='responsible_persons')",
+            )
+            .fetch_one(&migrated)
+            .await
+            .unwrap();
+            assert!(!persons_table);
+            let (product_name, notes): (String, Option<String>) =
+                sqlx::query_as("SELECT product_name,notes FROM movements WHERE id=1")
+                    .fetch_one(&migrated)
+                    .await
+                    .unwrap();
+            assert_eq!(product_name, "Agua");
+            assert_eq!(notes.as_deref(), Some("Compra inicial"));
+            assert_eq!(stock(&migrated, water.0).await, 4.0);
+            assert!(sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&migrated)
+                .await
+                .unwrap()
+                .is_empty());
+            migrated.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
         });
     }
     #[test]
@@ -801,16 +787,16 @@ mod tests {
             save_product_db(&db, product(Some(a.0), "Café Molido", Some(a.1)))
                 .await
                 .unwrap();
-            for kind in ["supplier", "category", "person"] {
-                let id = save_catalog_db(&db, catalog(kind, None, "  ÁRBOL  Norte ", false))
+            for kind in ["supplier", "category"] {
+                let id = save_catalog_db(&db, catalog(kind, None, "  ÁRBOL  Norte "))
                     .await
                     .unwrap();
                 assert!(
-                    save_catalog_db(&db, catalog(kind, None, "a\u{301}rbol norte", false))
+                    save_catalog_db(&db, catalog(kind, None, "a\u{301}rbol norte"))
                         .await
                         .is_err()
                 );
-                save_catalog_db(&db, catalog(kind, Some(id), "Árbol Norte", false))
+                save_catalog_db(&db, catalog(kind, Some(id), "Árbol Norte"))
                     .await
                     .unwrap();
             }
@@ -957,7 +943,7 @@ mod tests {
         tauri::async_runtime::block_on(async {
             let db = connect(Path::new(":memory:")).await.unwrap();
             let a = fixture(&db, "Agua").await;
-            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor", false))
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor"))
                 .await
                 .unwrap();
             let mut input = movement(a, "in", 5.0);
@@ -968,7 +954,7 @@ mod tests {
                 .unwrap();
             save_catalog_db(
                 &db,
-                catalog("supplier", Some(supplier), "Proveedor nuevo", false),
+                catalog("supplier", Some(supplier), "Proveedor nuevo"),
             )
             .await
             .unwrap();
@@ -1036,34 +1022,9 @@ mod tests {
         });
     }
     #[test]
-    fn default_person_and_repeated_initialization() {
+    fn repeated_initialization_is_idempotent() {
         tauri::async_runtime::block_on(async {
             let db = connect(Path::new(":memory:")).await.unwrap();
-            let a = save_catalog_db(&db, catalog("person", None, "Ana", true))
-                .await
-                .unwrap();
-            save_catalog_db(&db, catalog("person", None, "Juan", true))
-                .await
-                .unwrap();
-            assert!(save_catalog_db(&db, catalog("person", None, "Ana", true))
-                .await
-                .is_err());
-            assert_eq!(
-                sqlx::query_scalar::<_, String>(
-                    "SELECT name FROM responsible_persons WHERE is_default=1"
-                )
-                .fetch_one(&db)
-                .await
-                .unwrap(),
-                "Juan"
-            );
-            assert!(
-                sqlx::query("UPDATE responsible_persons SET is_default=1 WHERE id=?")
-                    .bind(a)
-                    .execute(&db)
-                    .await
-                    .is_err()
-            );
             fixture(&db, "Agua").await;
             sqlx::query("UPDATE settings SET value='8' WHERE key='stock_low_threshold'")
                 .execute(&db)
@@ -1254,7 +1215,7 @@ mod tests {
             use crate::queries::list_products_db;
 
             let db = connect(Path::new(":memory:")).await.unwrap();
-            let category = save_catalog_db(&db, catalog("category", None, "Bebidas", false))
+            let category = save_catalog_db(&db, catalog("category", None, "Bebidas"))
                 .await
                 .unwrap();
             let mut input = product(None, "Agua", None);
@@ -1414,7 +1375,7 @@ mod tests {
                     .is_none()
             );
 
-            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor", false))
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor"))
                 .await
                 .unwrap();
             archive_record_db(&db, "supplier".into(), supplier, false)
@@ -1425,9 +1386,11 @@ mod tests {
                 .unwrap()
                 .unwrap();
             assert_eq!(archived.archived, 1);
-            assert!(find_duplicate_db(&db, "person", "Proveedor", None)
-                .await
-                .is_err());
+            assert!(
+                find_duplicate_db(&db, "unknown", "Proveedor", None)
+                    .await
+                    .is_err()
+            );
 
             let defaults = get_settings_db(&db).await.unwrap();
             assert_eq!(defaults.stock_low_threshold, 5.0);
