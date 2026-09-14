@@ -502,7 +502,8 @@
                 <h3>Contraseña de Administrador</h3>
               </div>
               <p>
-                Cambia la contraseña que protege la eliminación masiva de movimientos (inicial
+                Cambia la contraseña que protege las eliminaciones permanentes: la eliminación masiva
+                de movimientos y el borrado definitivo de productos y proveedores archivados (inicial
                 <code>admin</code>), ingresando la clave actual y la nueva dos veces. La eliminación en
                 lote se realiza desde el botón <em>"Eliminar movimientos"</em> al pie de la tabla de
                 Movimientos y no modifica el stock.

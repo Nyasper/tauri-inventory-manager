@@ -259,8 +259,8 @@
       <h3>Avanzado</h3>
       <p class="hint">
         Crea una copia de seguridad de la base de datos o restáurala desde un
-        archivo. También puedes cambiar la contraseña que protege la eliminación
-        de movimientos.
+        archivo. También puedes cambiar la contraseña de administrador, que
+        protege la eliminación de movimientos, productos y proveedores.
       </p>
       <div class="backup-actions">
         <Button

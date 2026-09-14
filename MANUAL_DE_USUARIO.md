@@ -490,7 +490,7 @@ Proteja la información de su negocio contra pérdidas fortuitas o traslade su i
 - **Copia de Seguridad Preventiva Automática**: Antes de reemplazar los datos, la aplicación genera automáticamente una copia de resguardo de emergencia (`pre-restore-backup.db`) en el directorio de la aplicación. Si el archivo estuviese corrupto, el sistema recupera automáticamente sus datos previos para evitar cualquier pérdida.
 
 ### Cambio de Contraseña de Administrador
-La contraseña protege la **eliminación masiva de movimientos** (ver [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)) y solo puede cambiarse desde aquí. Se guarda como texto plano en la tabla `settings` de la base de datos local (clave `delete_password`).
+La contraseña de administrador protege las **eliminaciones permanentes**: la **eliminación masiva de movimientos** (ver [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)) y la **eliminación definitiva de productos y proveedores archivados**. Solo puede cambiarse desde aquí. Se guarda como texto plano en la tabla `settings` de la base de datos local (clave `delete_password`).
 
 1. Abra **Configuración (⚙) › Avanzado** y pulse **"Cambiar contraseña de administrador"**.
 2. Complete la **Contraseña actual**.

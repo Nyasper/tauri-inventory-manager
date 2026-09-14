@@ -43,7 +43,9 @@
   }}
 >
   <p class="hint">
-    La contraseña protege la eliminación de movimientos. La inicial es «admin».
+    La contraseña de administrador protege la eliminación masiva de movimientos
+    y la eliminación definitiva de productos y proveedores archivados. La
+    inicial es «admin».
   </p>
   <div>
     <Input label="Contraseña actual" type="password" bind:value={oldPassword} />

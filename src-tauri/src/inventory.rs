@@ -572,7 +572,8 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Stri
     }
     tx.commit().await.map_err(error)
 }
-/// Contraseña en texto plano que protege la eliminación de movimientos.
+/// Contraseña en texto plano que protege las eliminaciones: movimientos en
+/// lote y borrado definitivo de productos y proveedores archivados.
 const DEFAULT_DELETE_PASSWORD: &str = "admin";
 
 async fn delete_password_db(db: &Db) -> Result<String, String> {
