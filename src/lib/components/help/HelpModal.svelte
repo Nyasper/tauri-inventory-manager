@@ -20,6 +20,7 @@
     Info,
     Check,
     DatabaseBackup,
+    Trash,
   } from "@lucide/svelte";
 
   type SectionId =
@@ -306,6 +307,11 @@
               Si aún quedan existencias, realiza una Salida o Ajuste antes de archivar.
             </li>
             <li>
+              <strong>Eliminación definitiva:</strong> Con la casilla <em>"Archivados"</em> activa puedes
+              restaurar el producto o eliminarlo para siempre. Sus movimientos se conservan en el historial
+              marcados como <em>"Producto eliminado"</em>.
+            </li>
+            <li>
               <strong>Recuperación de duplicados:</strong> Si intentas registrar un producto con un nombre
               que ya existe (incluso si está archivado), el sistema te ofrecerá el botón directo
               <em>"Ver registro existente (archivado)"</em> para restaurarlo con un solo clic.
@@ -318,6 +324,8 @@
             <code>+</code> registrar una entrada directa, <code>−</code> registrar una salida
             con el producto preseleccionado, <code>Movimientos</code> para ver su historial,
             <code>Lápiz</code> para editar y <code>Papelera</code> para archivar (si el stock es cero).
+            En la vista <em>"Archivados"</em>, cada fila ofrece <em>"Restaurar"</em> y el icono de
+            papelera para eliminarlo definitivamente.
           </p>
         </div>
 
@@ -372,10 +380,12 @@
           <div class="tip-box">
             <Info size={18} />
             <div>
-              <strong>Los movimientos no se eliminan físicamente.</strong> Si se cometió un error, pulsa el
-              icono de papelera en la tabla para <strong>Anular</strong>. Deberás ingresar un motivo de anulación
-              obligatorio. El sistema revertirá el stock de forma atómica y mantendrá el registro original
-              para fines de auditoría.
+              Si se cometió un error, pulsa el icono de papelera en la tabla para <strong>Anular</strong>.
+              Deberás ingresar un motivo de anulación obligatorio. El sistema revertirá el stock de forma
+              atómica y mantendrá el registro original para fines de auditoría.
+              <br />
+              Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde
+              <em>Configuración &gt; Avanzado &gt; "Eliminar movimientos"</em> con contraseña.
             </div>
           </div>
 
@@ -385,6 +395,11 @@
             selectores de producto y proveedor, filtro por rango de fechas (Desde / Hasta), y
             filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma paginada a 25 registros
             por página.
+          </p>
+          <p>
+            Los movimientos de productos eliminados definitivamente conservan su nombre y muestran la
+            etiqueta <em>"Producto eliminado"</em>; siguen apareciendo en la búsqueda por texto aunque ya no
+            estén disponibles en el filtro por producto.
           </p>
         </div>
 
@@ -425,8 +440,8 @@
         <div class="topic">
           <h2><Settings size={20} class="topic-icon" /> Configuración y Opciones Avanzadas</h2>
           <p class="lead">
-            Ajusta los parámetros globales de la aplicación, límites de stock, estética y respaldos
-            de la base de datos.
+            Ajusta los parámetros globales de la aplicación, límites de stock, estética, respaldos
+            de la base de datos y eliminación masiva de movimientos.
           </p>
 
           <div class="card-grid">
@@ -473,6 +488,18 @@
                 copia de seguridad preventiva automática antes de sobreescribir.
               </p>
             </div>
+
+            <div class="info-card">
+              <div class="card-header">
+                <Trash size={18} class="accent-icon" />
+                <h3>Eliminar Movimientos</h3>
+              </div>
+              <p>
+                Purga los <strong>N movimientos más recientes o más antiguos</strong> del historial. Requiere la
+                contraseña de eliminación (inicial <code>admin</code>), que puedes cambiar en la misma ventana
+                con la clave actual y la nueva dos veces. El stock actual no cambia.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -516,10 +543,11 @@
             <details class="faq-item">
               <summary>¿Puedo eliminar un movimiento si me equivoqué en la cantidad o producto?</summary>
               <div class="faq-body">
-                Los movimientos no se eliminan físicamente para mantener la auditoría intacta. En su lugar,
-                debes <strong>Anular el movimiento</strong> haciendo clic en el icono de papelera en la tabla
-                de Movimientos e ingresando el motivo. El stock se revertirá automáticamente y podrás asentar
-                el movimiento correcto.
+                Lo correcto es <strong>Anular el movimiento</strong> haciendo clic en el icono de papelera en la
+                tabla de Movimientos e ingresando el motivo; el stock se revertirá automáticamente y podrás
+                asentar el movimiento correcto. Si necesitas purgar el historial, un administrador puede usar
+                <em>Configuración &gt; Avanzado &gt; "Eliminar movimientos"</em> con contraseña: esa purga es
+                irreversible y no modifica el stock.
               </div>
             </details>
 

@@ -7,6 +7,9 @@
 <span class="name" title={movement.product_name ?? "—"}>
   {movement.product_name ?? "—"}
 </span>
+{#if movement.product_id === null}
+  <span class="deleted">Producto eliminado</span>
+{/if}
 {#if movement.notes}
   <span class="notes" title={movement.notes}>{movement.notes}</span>
 {/if}
@@ -22,6 +25,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .deleted {
+    display: inline-block;
+    margin-top: 0.125rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 0.6875rem;
+    font-weight: 500;
   }
 
   .notes {

@@ -154,6 +154,16 @@
       await productsService.remove(product.id);
     }
   }
+
+  async function removePermanently(product: Product) {
+    const ok = await modalService.confirm(
+      `¿Eliminar definitivamente el producto "${product.name}"? Esta acción no se puede deshacer. Sus movimientos se conservarán marcados como "producto eliminado".`,
+      "Eliminar definitivamente",
+    );
+    if (!ok) return;
+    await productsService.removePermanently(product.id);
+    await archive.reload();
+  }
 </script>
 
 <div class="toolbar">
@@ -206,7 +216,21 @@
     >
       {#snippet actions(product)}
       {#if product.archived}
-        <Button size="sm" onclick={() => openEdit(product)}>Restaurar</Button>
+        <div class="actions">
+          <Button size="sm" onclick={() => openEdit(product)}>Restaurar</Button>
+          <button
+            class="icon-btn danger"
+            type="button"
+            title="Eliminar definitivamente"
+            aria-label={`Eliminar definitivamente ${product.name}`}
+            onclick={(e) => {
+              e.stopPropagation();
+              removePermanently(product);
+            }}
+          >
+            <Trash size={16} />
+          </button>
+        </div>
       {:else}
         <div class="actions">
           <button

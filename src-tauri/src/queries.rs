@@ -84,11 +84,11 @@ pub struct DuplicateRow {
 #[derive(Serialize, FromRow)]
 pub struct MovementRow {
     pub id: i64,
-    pub product_id: i64,
+    pub product_id: Option<i64>,
     #[serde(rename = "type")]
     pub movement_type: String,
     pub quantity: f64,
-    pub presentation_id: i64,
+    pub presentation_id: Option<i64>,
     pub presentation_name: String,
     pub product_name: String,
     pub factor: f64,

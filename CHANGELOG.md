@@ -6,8 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-14
+
 ### Added
 
+- Permanent deletion of archived products from the "Archivados" view; their movements are preserved and marked as "Producto eliminado", and existing databases migrate automatically to allow it.
+- Batch movement deletion from Settings › Advanced, choosing between the N most recent or the N oldest movements. The operation requires a password stored in the database (initially `admin`), which can be changed from the same modal by entering the current password and the new one twice.
 - "Sin categoría" option in the product category filter to list only products without a category.
 - Quick "−" action in the product table to register an outbound movement with the product preselected.
 - Quick "+" action in the supplier table to register an inbound movement with the supplier preselected.
@@ -25,9 +29,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Application icon replaced with the new box icon (executable, installers and favicon), and the old clean-icon assets were removed.
 - Sidebar brand now shows the box icon in the accent color with a transparent background and reads "Inventario", and the visible product name changed to "Gestor de Inventario" (window title, document title, header, help modal and backup error). The bundle product name is unchanged.
 - Dashboard low-stock and recent-movements panels now show up to 10 items instead of 5.
+- Movements of permanently deleted products are preserved: the history keeps the product name snapshot and shows a "Producto eliminado" badge, no longer links back to the product, and cancelling them does not affect stock. Existing databases migrate automatically on startup.
 
 ### Fixed
 
+- The "Archivados" checkbox in the products and suppliers views now actually filters and syncs with the `?archived=1` URL parameter.
 - The global right-click context menu is disabled again, after the handler was lost in an earlier layout refactor.
 
 ## [0.10.0] - 2026-09-14

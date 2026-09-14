@@ -1,6 +1,7 @@
 import type { Product } from "$lib/types";
 import {
   archiveProduct,
+  deleteProduct,
   getProducts,
   restoreProduct,
   saveProduct,
@@ -36,6 +37,11 @@ class ProductsService {
 
   async restore(id: number): Promise<void> {
     await restoreProduct(id);
+    await this.load();
+  }
+
+  async removePermanently(id: number): Promise<void> {
+    await deleteProduct(id);
     await this.load();
   }
 }

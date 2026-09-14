@@ -1,3 +1,5 @@
+import { untrack } from "svelte";
+import { goto } from "$app/navigation";
 import { page } from "$app/state";
 
 /**
@@ -15,7 +17,8 @@ export class ArchivedList<T> {
   constructor(load: (archived: boolean) => Promise<T[]>) {
     this.#load = load;
     $effect(() => {
-      this.active = page.url.searchParams.get("archived") === "1";
+      const active = page.url.searchParams.get("archived") === "1";
+      untrack(() => this.#setActive(active));
     });
   }
 
@@ -24,9 +27,23 @@ export class ArchivedList<T> {
   }
 
   set active(value: boolean) {
+    this.#setActive(value);
+    this.#syncUrl(value);
+  }
+
+  #setActive(value: boolean): void {
     if (this.#active === value) return;
     this.#active = value;
     if (value) void this.reload();
+  }
+
+  #syncUrl(value: boolean): void {
+    const url = page.url;
+    if ((url.searchParams.get("archived") === "1") === value) return;
+    const next = new URL(url);
+    if (value) next.searchParams.set("archived", "1");
+    else next.searchParams.delete("archived");
+    void goto(`${next.pathname}${next.search}`, { replaceState: true, noScroll: true });
   }
 
   async reload(): Promise<void> {

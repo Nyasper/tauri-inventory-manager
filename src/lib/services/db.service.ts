@@ -119,6 +119,14 @@ export function restoreProduct(id: number): Promise<void> {
   );
 }
 
+export function deleteProduct(id: number): Promise<void> {
+  return invoke(
+    "delete_product",
+    { id },
+    "Producto eliminado definitivamente.",
+  );
+}
+
 export function findProductDuplicate(
   name: string,
   currentId?: number,
@@ -168,6 +176,28 @@ export function createMovement(input: MovementInput): Promise<void> {
 
 export function cancelMovement(id: number, reason: string): Promise<void> {
   return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
+}
+
+export type MovementDeleteMode = "recent" | "oldest";
+
+/** Borra movimientos en lote; el stock de los productos no se modifica. */
+export function deleteMovements(
+  mode: MovementDeleteMode,
+  count: number,
+  password: string,
+): Promise<number> {
+  return invoke<number>("delete_movements", { mode, count, password });
+}
+
+export function changeDeletePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<void> {
+  return invoke(
+    "change_delete_password",
+    { oldPassword, newPassword },
+    "Contraseña actualizada.",
+  );
 }
 
 /* ------------------------------ Proveedores ------------------------------ */

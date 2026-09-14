@@ -49,6 +49,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Vista por Defecto al Iniciar](#vista-por-defecto-al-iniciar)
    - [Administración de Categorías (Colores e Iconos)](#administración-de-categorías-colores-e-iconos)
    - [Opciones Avanzadas: Copias de Seguridad (Backup) y Restauración](#opciones-avanzadas-copias-de-seguridad-backup-y-restauración)
+   - [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)
 9. [Reglas de Integridad y Validación de Datos](#9-reglas-de-integridad-y-validación-de-datos)
 10. [Preguntas Frecuentes y Solución de Problemas (FAQ)](#10-preguntas-frecuentes-y-solución-de-problemas-faq)
 
@@ -117,7 +118,7 @@ Permite el desplazamiento inmediato entre los 4 módulos esenciales:
 - **Proveedores (`/suppliers`)**: Directorio de suministradores y datos de contacto comercial.
 
 En la parte inferior de la barra lateral se encuentran dos accesos directos:
-- **Ajustes (⚙)**: Abre la ventana modal de parámetros globales (límites, colores, categorías y respaldos).
+- **Ajustes (⚙)**: Abre la ventana modal de parámetros globales (límites, colores, categorías, respaldos y eliminación de movimientos en lote).
 - **Ayuda (?)**: Abre este manual de usuario.
 
 ### Cabecera (Header) y Controles Globales
@@ -258,7 +259,7 @@ Para editar un producto existente, haga clic directamente sobre su fila en la ta
 > 2. **No se puede modificar el factor de una presentación ya utilizada**: Si una presentación ya intervino en movimientos previos, su factor no puede alterarse. Si necesita un factor nuevo (por ejemplo, una caja que ahora viene de 20 unidades en vez de 24), cree una **nueva presentación** (ej. "Caja x 20") y retire la anterior.
 
 ### Archivado y Restauración de Productos
-En Inventory Manager los registros no se destruyen físicamente, para evitar que los reportes y movimientos pasados queden huérfanos. En su lugar, se utiliza el **Archivado (Borrado Lógico)**.
+En Inventory Manager los registros se archivan (borrado lógico) para evitar que los reportes y movimientos pasados queden huérfanos. Un producto archivado puede restaurarse o eliminarse definitivamente.
 
 - **Requisito para Archivar**: Un producto **solo se puede archivar si su stock actual es exactamente 0.00**. Si aún posee mercadería en existencia, el botón de papelera permanecerá deshabilitado. Deberá registrar un movimiento de Salida o Ajuste antes de poder archivarlo.
 - **Cómo archivar**: Haga clic en el icono de papelera (`Archivar`). El sistema solicitará confirmación mediante un diálogo de seguridad.
@@ -266,6 +267,7 @@ En Inventory Manager los registros no se destruyen físicamente, para evitar que
   1. Marque la casilla **"Archivados"** en la barra superior.
   2. Localice el producto en la lista.
   3. Presione el botón **"Restaurar"**. El producto volverá inmediatamente al catálogo activo con todo su historial intacto.
+- **Cómo eliminar definitivamente**: Con la casilla **"Archivados"** activa, pulse el icono de papelera (`Eliminar definitivamente`) junto al botón "Restaurar". La acción es irreversible y libera el nombre del producto; sus movimientos se conservan en el historial marcados como **"Producto eliminado"**.
 
 ### Acciones Rápidas por Producto
 En el extremo derecho de cada fila de la tabla de productos encontrará botones de acción directa:
@@ -274,6 +276,7 @@ En el extremo derecho de cada fila de la tabla de productos encontrará botones 
 - **`Movimientos` (Icono de reloj con flecha)**: Navega directamente a la tabla de Movimientos, aplicando el filtro exclusivo para ver todo el historial de este producto.
 - **`Lápiz` (Editar)**: Abre el editor de producto y presentaciones.
 - **`Papelera` (Archivar)**: Archiva el producto (habilitado solo si el stock es cero).
+- **`Restaurar` / `Papelera` (vista Archivados)**: Restaura el producto al catálogo activo o lo elimina definitivamente (irreversible, conservando sus movimientos).
 
 ---
 
@@ -332,13 +335,14 @@ La vista de movimientos ofrece un potente panel de filtros combinables para audi
 - **Selector Rápido de Tipo**: Botones para ver `Todos`, únicamente `Entradas` o únicamente `Salidas`.
 - **Buscador de Texto**: Coincide en tiempo real con nombre de producto, proveedor o notas.
 - **Filtro por Producto**: Aísla todas las operaciones del producto elegido.
+- **Productos eliminados**: Los movimientos de productos eliminados definitivamente conservan su nombre y muestran la etiqueta `Producto eliminado`; ya no aparecen en el filtro por producto, pero sí en la búsqueda por texto.
 - **Filtro por Proveedor**: Muestra las compras realizadas a un proveedor específico.
 - **Rango de Fechas (Desde / Hasta)**: Acota las transacciones al período cronológico seleccionado.
 - **Estado**: Permite filtrar entre transacciones `Vigentes` o `Anuladas`.
 - **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **25 filas por página**, garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Utilice los botones `Anterior` y `Siguiente` en el pie de página.
 
 ### Anulación Segura y Auditable de Movimientos
-Los movimientos de stock **nunca se eliminan** de la base de datos. Si se cometió un error de tipeo o se devolvió una mercadería, el movimiento debe ser **Anulado**.
+Por regla general, los movimientos de stock **no se eliminan**: si se cometió un error de tipeo o se devolvió una mercadería, el movimiento debe ser **Anulado**. La única excepción es la **Eliminación Masiva** disponible para administradores desde Configuración › Avanzado, que purga registros del historial (ver [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)).
 
 #### Procedimiento de Anulación:
 1. Localice el movimiento en la tabla y presione el icono rojo de papelera (`Anular movimiento`).
@@ -412,7 +416,7 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 | • [🥤 Bebidas]         [✏️] [🗑️]                                    |
 |                                                                   |
 | AVANZADO (Base de Datos)                                          |
-| [💾 Crear respaldo]   [📂 Restaurar respaldo]                     |
+| [💾 Crear respaldo] [📂 Restaurar respaldo] [🗑️ Eliminar movimientos] |
 +-------------------------------------------------------------------+
 ```
 
@@ -469,6 +473,28 @@ Proteja la información de su negocio contra pérdidas fortuitas o traslade su i
 - **Verificación de Seguridad Previa**: La aplicación verifica que el archivo sea un respaldo válido y compatible con la estructura del sistema.
 - **Copia de Seguridad Preventiva Automática**: Antes de reemplazar los datos, la aplicación genera automáticamente una copia de resguardo de emergencia (`pre-restore-backup.db`) en el directorio de la aplicación. Si el archivo estuviese corrupto, el sistema recupera automáticamente sus datos previos para evitar cualquier pérdida.
 
+### Eliminación Masiva de Movimientos en Lote
+La sección **Avanzado** incluye el botón **"Eliminar movimientos"**, pensado para tareas de mantenimiento del historial. Abre una ventana modal con dos secciones: eliminación en lote y cambio de contraseña.
+
+#### Borrado en Lote:
+1. En **Configuración (⚙) › Avanzado**, pulse **"Eliminar movimientos"**.
+2. Elija el criterio **"Desde"**:
+   - **Más recientes**: elimina los últimos movimientos registrados.
+   - **Más antiguos**: elimina los movimientos más antiguos del historial.
+3. Indique la **Cantidad** de movimientos a eliminar.
+4. Ingrese la **contraseña** de eliminación (la inicial es `admin`).
+5. Confirme la operación en el diálogo de seguridad.
+
+> **Importante**: La eliminación es **definitiva e irreversible**, incluye tanto movimientos vigentes como anulados y **no modifica el stock actual** de los productos: solo recorta el historial. Si la cantidad indicada supera los movimientos existentes, se eliminan todos los disponibles.
+
+#### Cambio de Contraseña:
+La contraseña se guarda como texto plano en la tabla `settings` de la base de datos local (clave `delete_password`). Para cambiarla:
+1. En la misma ventana, complete **Contraseña actual**.
+2. Escriba la **Nueva contraseña** y repítala en **Repetir nueva contraseña**.
+3. Pulse **"Cambiar contraseña"**. La nueva clave regirá para las próximas eliminaciones.
+
+> **Sugerencia de seguridad**: Cambie la contraseña inicial `admin` y tenga presente que, al viajar dentro del archivo `inventory.db`, la clave también se incluye en los respaldos.
+
 ---
 
 ## 9. Reglas de Integridad y Validación de Datos
@@ -509,7 +535,7 @@ Porque el producto ya posee movimientos de stock registrados en el historial. Mo
 Para poder archivar un producto, su **stock debe ser estrictamente cero (0)**. Esto previene que mercadería física quede olvidada u oculta en el sistema. Registre un movimiento de Salida o Ajuste de inventario para llevar el stock a cero; una vez en cero, el botón de papelera se habilitará automáticamente.
 
 ### ¿Puedo eliminar un movimiento si me equivoqué en la cantidad?
-No se pueden borrar movimientos para preservar la trazabilidad histórica. Lo que debe hacer es **Anular el movimiento** (icono de papelera en la tabla de Movimientos) indicando el motivo. El sistema revertirá el stock automáticamente. Luego podrá registrar el movimiento correcto.
+Para preservar la trazabilidad histórica, lo correcto es **Anular el movimiento** (icono de papelera en la tabla de Movimientos) indicando el motivo; el sistema revertirá el stock automáticamente y luego podrá registrar el movimiento correcto. Si necesita purgar el historial (por ejemplo, tras usar datos de demostración), un administrador puede usar la **Eliminación Masiva** en **Configuración (⚙) › Avanzado**, protegida con contraseña. Tenga en cuenta que esa purga es irreversible y no altera el stock.
 
 ### ¿Qué ocurre si intento anular una Entrada de stock pero ya no tengo suficiente mercadería?
 El sistema impedirá la anulación con el mensaje:  

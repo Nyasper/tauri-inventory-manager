@@ -46,10 +46,10 @@ export interface Movement {
   reason: string | null;
   factor: number;
   id: number;
-  product_id: number;
+  product_id: number | null;
   type: MovementType;
   quantity: number;
-  presentation_id: number;
+  presentation_id: number | null;
   base_quantity: number;
   supplier_id: number | null;
   notes: string | null;

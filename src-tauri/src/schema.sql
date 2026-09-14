@@ -25,16 +25,16 @@ CREATE TABLE IF NOT EXISTS presentations (
  UNIQUE(product_id,name_key), UNIQUE(product_id,id)
 );
 CREATE TABLE IF NOT EXISTS movements (
- id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+ id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
  type TEXT NOT NULL CHECK(type IN ('in','out')),
- quantity REAL NOT NULL CHECK(quantity>0 AND quantity<=1000000000), presentation_id INTEGER NOT NULL,
+ quantity REAL NOT NULL CHECK(quantity>0 AND quantity<=1000000000), presentation_id INTEGER,
  presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
- supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
+ supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL, supplier_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
- FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),
+ FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id) ON DELETE SET NULL,
  CHECK(type='in' OR supplier_id IS NULL),
  CHECK(kind='regular' OR (reason IS NOT NULL AND length(trim(reason))>0)),
  CHECK((cancelled_at IS NULL AND cancellation_reason IS NULL) OR
@@ -46,7 +46,8 @@ CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id);
 CREATE INDEX IF NOT EXISTS products_category ON products(category_id);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO settings(key,value) VALUES
- ('stock_low_threshold','5'),('stock_medium_threshold','20'),('default_view','dashboard');
+ ('stock_low_threshold','5'),('stock_medium_threshold','20'),('default_view','dashboard'),
+ ('delete_password','admin');
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_base ON presentations(product_id) WHERE factor=1 AND archived=0;
 CREATE TRIGGER IF NOT EXISTS validate_product_base BEFORE UPDATE OF base_presentation_id ON products
 WHEN NOT EXISTS(SELECT 1 FROM presentations WHERE id=NEW.base_presentation_id AND product_id=NEW.id AND factor=1 AND archived=0)

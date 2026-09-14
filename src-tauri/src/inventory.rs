@@ -45,21 +45,22 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
         .await?;
     sqlx::raw_sql(SCHEMA).execute(&pool).await?;
     migrate_remove_persons(&pool).await?;
+    migrate_allow_deleted_products(&pool).await?;
     Ok(pool)
 }
 
 const MOVEMENTS_TABLE: &str = r#"
 CREATE TABLE movements_new (
- id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+ id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
  type TEXT NOT NULL CHECK(type IN ('in','out')),
- quantity REAL NOT NULL CHECK(quantity>0 AND quantity<=1000000000), presentation_id INTEGER NOT NULL,
+ quantity REAL NOT NULL CHECK(quantity>0 AND quantity<=1000000000), presentation_id INTEGER,
  presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
  factor REAL NOT NULL CHECK(factor>0 AND factor<=1000000000),
  base_quantity REAL NOT NULL CHECK(base_quantity>0 AND base_quantity<=1000000000),
  supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT,
  notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular' CHECK(kind IN ('regular','adjustment')),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
- FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id),
+ FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id) ON DELETE SET NULL,
  CHECK(type='in' OR supplier_id IS NULL),
  CHECK(kind='regular' OR (reason IS NOT NULL AND length(trim(reason))>0)),
  CHECK((cancelled_at IS NULL AND cancellation_reason IS NULL) OR
@@ -67,6 +68,31 @@ CREATE TABLE movements_new (
 )"#;
 
 const MOVEMENTS_COLUMNS: &str = "id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,reason,kind,created_at,cancelled_at,cancellation_reason";
+
+/// Reconstruye `movements` con la definición actual, incluidas las claves
+/// foráneas opcionales que permiten conservar movimientos de productos
+/// eliminados.
+async fn replace_movements_table(db: &Db) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
+    sqlx::query(&format!(
+        "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
+    ))
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query("DROP TABLE movements").execute(&mut *tx).await?;
+    sqlx::query("ALTER TABLE movements_new RENAME TO movements")
+        .execute(&mut *tx)
+        .await?;
+    for index in [
+        "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
+        "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
+    ] {
+        sqlx::query(index).execute(&mut *tx).await?;
+    }
+    tx.commit().await
+}
 
 /// Versiones anteriores asociaban cada movimiento a un responsable.
 /// Reconstruye la tabla sin esas columnas y elimina el catálogo de responsables.
@@ -88,31 +114,37 @@ async fn migrate_remove_persons(db: &Db) -> Result<(), sqlx::Error> {
     if !has_columns && !has_table {
         return Ok(());
     }
-    let mut tx = db.begin().await?;
     if has_columns {
-        sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
-        sqlx::query(&format!(
-            "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
-        ))
-        .execute(&mut *tx)
-        .await?;
-        sqlx::query("DROP TABLE movements").execute(&mut *tx).await?;
-        sqlx::query("ALTER TABLE movements_new RENAME TO movements")
-            .execute(&mut *tx)
-            .await?;
-        for index in [
-            "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
-            "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
-            "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
-        ] {
-            sqlx::query(index).execute(&mut *tx).await?;
-        }
+        replace_movements_table(db).await?;
     }
     sqlx::query("DROP TABLE IF EXISTS responsible_persons")
-        .execute(&mut *tx)
+        .execute(db)
         .await?;
-    tx.commit().await?;
     Ok(())
+}
+
+/// Bases anteriores impedían borrar productos o proveedores con movimientos.
+/// Reconstruye `movements` con `product_id`/`presentation_id` opcionales y el
+/// proveedor limpio al eliminarse, para conservar el historial marcado como
+/// "producto/proveedor eliminado".
+async fn migrate_allow_deleted_products(db: &Db) -> Result<(), sqlx::Error> {
+    let columns = sqlx::query("PRAGMA table_info(movements)")
+        .fetch_all(db)
+        .await?;
+    let product_required = columns.iter().any(|row| {
+        row.get::<String, _>("name") == "product_id" && row.get::<i64, _>("notnull") == 1
+    });
+    let keys = sqlx::query("PRAGMA foreign_key_list(movements)")
+        .fetch_all(db)
+        .await?;
+    let supplier_set_null = keys.iter().any(|row| {
+        row.get::<String, _>("from") == "supplier_id"
+            && row.get::<String, _>("on_delete") == "SET NULL"
+    });
+    if !product_required && supplier_set_null {
+        return Ok(());
+    }
+    replace_movements_table(db).await
 }
 
 /// Loads the same SQL used by `bun run seed` so its integrity is covered by Rust tests.
@@ -373,6 +405,40 @@ async fn archive_record_db(db: &Db, kind: String, id: i64, restore: bool) -> Res
     }
     Ok(())
 }
+#[tauri::command]
+pub async fn delete_product(db: State<'_, DbState>, id: i64) -> Result<(), String> {
+    let db = db.0.read().await;
+    delete_product_db(&db, id).await
+}
+/// Elimina definitivamente un producto archivado. Sus movimientos se
+/// conservan: las claves foráneas se limpian y el historial queda marcado como
+/// "producto eliminado" gracias a los snapshots de nombre.
+async fn delete_product_db(db: &Db, id: i64) -> Result<(), String> {
+    let mut tx = db.begin().await.map_err(error)?;
+    let row = sqlx::query("SELECT archived, stock FROM products WHERE id=?")
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(error)?
+        .ok_or("El producto no existe.")?;
+    if row.get::<i64, _>("archived") != 1 {
+        return Err("Solo se pueden eliminar definitivamente productos archivados.".into());
+    }
+    if row.get::<f64, _>("stock") != 0.0 {
+        return Err("El producto aún tiene stock. Registra un ajuste antes de eliminarlo.".into());
+    }
+    sqlx::query("DELETE FROM presentations WHERE product_id=?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?;
+    sqlx::query("DELETE FROM products WHERE id=?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?;
+    tx.commit().await.map_err(error)
+}
 #[derive(Deserialize)]
 pub struct MovementInput {
     product_id: i64,
@@ -455,18 +521,122 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Stri
         .fetch_one(&mut *tx)
         .await
         .map_err(error)?;
-    let base: f64 = row.get("base_quantity");
-    let delta = if row.get::<String, _>("type") == "in" {
-        -base
-    } else {
-        base
-    };
-    if sqlx::query("UPDATE products SET stock=round(stock+?,6),updated_at=datetime('now') WHERE id=? AND archived=0 AND round(stock+?,6)>=0 AND round(stock+?,6)<=1000000000")
-        .bind(delta).bind(row.get::<i64,_>("product_id")).bind(delta).bind(delta).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 {
-        return Err("No se puede anular: stock insuficiente o producto archivado.".into());
+    // Los movimientos de productos eliminados conservan su registro, pero ya
+    // no tienen stock que revertir.
+    if let Some(product_id) = row.get::<Option<i64>, _>("product_id") {
+        let base: f64 = row.get("base_quantity");
+        let delta = if row.get::<String, _>("type") == "in" {
+            -base
+        } else {
+            base
+        };
+        if sqlx::query("UPDATE products SET stock=round(stock+?,6),updated_at=datetime('now') WHERE id=? AND archived=0 AND round(stock+?,6)>=0 AND round(stock+?,6)<=1000000000")
+            .bind(delta).bind(product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 {
+            return Err("No se puede anular: stock insuficiente o producto archivado.".into());
+        }
     }
     tx.commit().await.map_err(error)
 }
+/// Contraseña en texto plano que protege la eliminación de movimientos.
+const DEFAULT_DELETE_PASSWORD: &str = "admin";
+
+async fn delete_password_db(db: &Db) -> Result<String, String> {
+    let value =
+        sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key='delete_password'")
+            .fetch_optional(db)
+            .await
+            .map_err(error)?;
+    Ok(value.unwrap_or_else(|| DEFAULT_DELETE_PASSWORD.into()))
+}
+
+/// Valida la contraseña de administración que protege las eliminaciones.
+async fn check_delete_password(db: &Db, password: &str) -> Result<(), String> {
+    if password.trim() != delete_password_db(db).await? {
+        return Err("Contraseña incorrecta.".into());
+    }
+    Ok(())
+}
+
+/// Borra en lote los movimientos más recientes o más antiguos. El stock de
+/// los productos no se modifica: el historial se recorta sin revertir efectos.
+#[tauri::command]
+pub async fn delete_movements(
+    db: State<'_, DbState>,
+    mode: String,
+    count: i64,
+    password: String,
+) -> Result<i64, String> {
+    let db = db.0.read().await;
+    delete_movements_db(&db, mode, count, password).await
+}
+async fn delete_movements_db(
+    db: &Db,
+    mode: String,
+    count: i64,
+    password: String,
+) -> Result<i64, String> {
+    if !["recent", "oldest"].contains(&mode.as_str()) {
+        return Err("Modo de eliminación inválido.".into());
+    }
+    if !(1..=1_000_000_000).contains(&count) {
+        return Err("Indica una cantidad válida de movimientos.".into());
+    }
+    if password.trim() != delete_password_db(db).await? {
+        return Err("Contraseña incorrecta.".into());
+    }
+    let order = if mode == "recent" {        "created_at DESC, id DESC"
+    } else {
+        "created_at ASC, id ASC"
+    };
+    let mut tx = db.begin().await.map_err(error)?;
+    let ids: Vec<i64> =
+        sqlx::query_scalar(&format!("SELECT id FROM movements ORDER BY {order} LIMIT ?"))
+            .bind(count)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(error)?;
+    let mut deleted = 0;
+    for id in ids {
+        deleted += sqlx::query("DELETE FROM movements WHERE id=?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(error)?
+            .rows_affected();
+    }
+    tx.commit().await.map_err(error)?;
+    Ok(deleted as i64)
+}
+
+#[tauri::command]
+pub async fn change_delete_password(
+    db: State<'_, DbState>,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    let db = db.0.read().await;
+    change_delete_password_db(&db, old_password, new_password).await
+}
+async fn change_delete_password_db(
+    db: &Db,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    if old_password.trim() != delete_password_db(db).await? {
+        return Err("La contraseña actual es incorrecta.".into());
+    }
+    let new_password = new_password.trim();
+    if new_password.is_empty() || new_password.chars().count() > 200 {
+        return Err("La nueva contraseña debe tener entre 1 y 200 caracteres.".into());
+    }
+    sqlx::query("INSERT INTO settings(key,value) VALUES('delete_password',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        .bind(new_password)
+        .execute(db)
+        .await
+        .map_err(error)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn save_settings(
     db: State<'_, DbState>,
@@ -999,6 +1169,124 @@ mod tests {
         });
     }
     #[test]
+    fn archived_products_can_be_deleted_keeping_their_movements() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let a = fixture(&db, "Agua").await;
+            create_movement_db(&db, movement(a, "in", 5.0)).await.unwrap();
+            create_movement_db(&db, movement(a, "out", 5.0)).await.unwrap();
+            // Solo se eliminan productos archivados.
+            assert!(delete_product_db(&db, a.0).await.is_err());
+            archive_record_db(&db, "product".into(), a.0, false)
+                .await
+                .unwrap();
+            delete_product_db(&db, a.0).await.unwrap();
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM products")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM presentations")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+            let rows = sqlx::query(
+                "SELECT product_id,presentation_id,product_name FROM movements ORDER BY id",
+            )
+            .fetch_all(&db)
+            .await
+            .unwrap();
+            assert_eq!(rows.len(), 2);
+            for row in &rows {
+                assert_eq!(row.get::<Option<i64>, _>("product_id"), None);
+                assert_eq!(row.get::<Option<i64>, _>("presentation_id"), None);
+                assert_eq!(row.get::<String, _>("product_name"), "Agua");
+            }
+            assert!(sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&db)
+                .await
+                .unwrap()
+                .is_empty());
+            // Anular un movimiento de un producto eliminado no revierte stock.
+            let id: i64 = sqlx::query_scalar("SELECT id FROM movements ORDER BY id LIMIT 1")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+            cancel_movement_db(&db, id, "Error de carga".into())
+                .await
+                .unwrap();
+        });
+    }
+    #[test]
+    fn legacy_movements_with_required_product_become_deletable() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("migrate-deleted-products");
+            let live = dir.join("inventory.db");
+            let db = connect(&live).await.unwrap();
+            let a = fixture(&db, "Agua").await;
+            create_movement_db(&db, movement(a, "in", 2.0)).await.unwrap();
+            // Reconstruye la tabla con la definición anterior, que exigía
+            // producto y presentación que existieran siempre.
+            sqlx::raw_sql(
+                "CREATE TABLE movements_old (
+                   id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+                   type TEXT NOT NULL, quantity REAL NOT NULL, presentation_id INTEGER NOT NULL,
+                   presentation_name TEXT NOT NULL, product_name TEXT NOT NULL,
+                   factor REAL NOT NULL, base_quantity REAL NOT NULL,
+ supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL, supplier_name TEXT,
+                   notes TEXT, reason TEXT, kind TEXT NOT NULL DEFAULT 'regular',
+                   created_at TEXT NOT NULL DEFAULT (datetime('now')), cancelled_at TEXT, cancellation_reason TEXT,
+                   FOREIGN KEY(product_id,presentation_id) REFERENCES presentations(product_id,id)
+                 );
+                 INSERT INTO movements_old
+                   (id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,kind,created_at)
+                 SELECT id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,kind,created_at FROM movements;
+                 DROP TABLE movements;
+                 ALTER TABLE movements_old RENAME TO movements;",
+            )
+            .execute(&db)
+            .await
+            .unwrap();
+            db.close().await;
+
+            let migrated = connect(&live).await.unwrap();
+            let columns = sqlx::query("PRAGMA table_info(movements)")
+                .fetch_all(&migrated)
+                .await
+                .unwrap();
+            assert!(columns.iter().any(|row| {
+                row.get::<String, _>("name") == "product_id"
+                    && row.get::<i64, _>("notnull") == 0
+            }));
+            create_movement_db(&migrated, movement(a, "out", 2.0))
+                .await
+                .unwrap();
+            archive_record_db(&migrated, "product".into(), a.0, false)
+                .await
+                .unwrap();
+            delete_product_db(&migrated, a.0).await.unwrap();
+            let (product_id, name): (Option<i64>, String) =
+                sqlx::query_as("SELECT product_id,product_name FROM movements LIMIT 1")
+                    .fetch_one(&migrated)
+                    .await
+                    .unwrap();
+            assert_eq!(product_id, None);
+            assert_eq!(name, "Agua");
+            assert!(sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&migrated)
+                .await
+                .unwrap()
+                .is_empty());
+            migrated.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
     fn fractional_stock_reaches_exact_zero() {
         tauri::async_runtime::block_on(async {
             let db = connect(Path::new(":memory:")).await.unwrap();
@@ -1021,6 +1309,117 @@ mod tests {
                 .unwrap();
         });
     }
+    #[test]
+    fn deleting_movements_requires_password_and_keeps_stock() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            for quantity in [1.0, 2.0, 3.0] {
+                create_movement_db(&db, movement(water, "in", quantity))
+                    .await
+                    .unwrap();
+            }
+            let coffee = fixture(&db, "Café").await;
+            create_movement_db(&db, movement(coffee, "in", 5.0))
+                .await
+                .unwrap();
+            cancel_movement_db(&db, 1, "Compra duplicada".into())
+                .await
+                .unwrap();
+
+            assert!(
+                delete_movements_db(&db, "recent".into(), 1, "clave".into())
+                    .await
+                    .is_err()
+            );
+            assert!(
+                delete_movements_db(&db, "invalid".into(), 1, "admin".into())
+                    .await
+                    .is_err()
+            );
+            assert!(
+                delete_movements_db(&db, "recent".into(), 0, "admin".into())
+                    .await
+                    .is_err()
+            );
+
+            assert_eq!(
+                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                    .await
+                    .unwrap(),
+                1
+            );
+            let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM movements ORDER BY id")
+                .fetch_all(&db)
+                .await
+                .unwrap();
+            assert_eq!(ids, vec![1, 2, 3]);
+
+            // Cancelled movements are included and stock is never modified.
+            assert_eq!(stock(&db, water.0).await, 5.0);
+            assert_eq!(stock(&db, coffee.0).await, 5.0);
+
+            assert_eq!(
+                delete_movements_db(&db, "oldest".into(), 10, "admin".into())
+                    .await
+                    .unwrap(),
+                3
+            );
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM movements")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+            assert_eq!(stock(&db, water.0).await, 5.0);
+            assert_eq!(
+                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                    .await
+                    .unwrap(),
+                0
+            );
+        });
+    }
+
+    #[test]
+    fn delete_password_can_be_changed_with_the_current_one() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            assert_eq!(delete_password_db(&db).await.unwrap(), "admin");
+            assert!(
+                change_delete_password_db(&db, "otra".into(), "nueva".into())
+                    .await
+                    .is_err()
+            );
+            assert!(
+                change_delete_password_db(&db, "admin".into(), "   ".into())
+                    .await
+                    .is_err()
+            );
+            change_delete_password_db(&db, "admin".into(), "  nueva  ".into())
+                .await
+                .unwrap();
+            assert_eq!(delete_password_db(&db).await.unwrap(), "nueva");
+
+            let water = fixture(&db, "Agua").await;
+            create_movement_db(&db, movement(water, "in", 1.0))
+                .await
+                .unwrap();
+            assert!(
+                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                    .await
+                    .is_err()
+            );
+            assert_eq!(
+                delete_movements_db(&db, "recent".into(), 1, "nueva".into())
+                    .await
+                    .unwrap(),
+                1
+            );
+        });
+    }
+
     #[test]
     fn repeated_initialization_is_idempotent() {
         tauri::async_runtime::block_on(async {
@@ -1269,7 +1668,7 @@ mod tests {
             .await
             .unwrap();
             assert_eq!(found.total, 1);
-            assert_eq!(found.items[0].product_id, coffee.0);
+            assert_eq!(found.items[0].product_id, Some(coffee.0));
 
             let by_product = page_movements_db(
                 &db,

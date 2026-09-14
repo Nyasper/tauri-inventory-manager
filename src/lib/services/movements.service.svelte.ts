@@ -2,7 +2,9 @@ import type { Movement } from "$lib/types";
 import {
   cancelMovement,
   createMovement,
+  deleteMovements,
   getMovements,
+  type MovementDeleteMode,
   type MovementFilters,
   type MovementInput,
 } from "$lib/services/db.service";
@@ -40,6 +42,16 @@ class MovementsService {
   async remove(id: number, reason: string): Promise<void> {
     await cancelMovement(id, reason);
     await this.load();
+  }
+
+  async deleteBatch(
+    mode: MovementDeleteMode,
+    count: number,
+    password: string,
+  ): Promise<number> {
+    const deleted = await deleteMovements(mode, count, password);
+    await this.load();
+    return deleted;
   }
 }
 

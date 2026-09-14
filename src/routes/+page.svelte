@@ -172,7 +172,7 @@
       {:else}
         <div class="rows">
           {#each recentMovements as movement (movement.id)}
-            <button class="row" type="button" onclick={() => goto(`/movements?product=${movement.product_id}`)}>
+            <button class="row" type="button" onclick={() => { if (movement.product_id !== null) goto(`/movements?product=${movement.product_id}`); }}>
               {#if movement.cancelled_at}<span>Anulado</span>{/if}
               {#if movement.type === "in"}
                 <Badge bg="var(--success)" color="#ffffff">
