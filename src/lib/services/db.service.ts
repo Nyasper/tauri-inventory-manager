@@ -83,7 +83,7 @@ interface SupplierRow {
 }
 
 /** Ejecuta un comando de Tauri y, si se indica, muestra un aviso de éxito. */
-async function call<T>(
+async function invoke<T>(
   command: string,
   args?: Record<string, unknown>,
   successMessage?: string,
@@ -96,19 +96,19 @@ async function call<T>(
 /* ------------------------------- Productos ------------------------------- */
 
 export function getProducts(archived = false): Promise<Product[]> {
-  return call<Product[]>("list_products", { archived });
+  return invoke<Product[]>("list_products", { archived });
 }
 
 export function getPresentations(productId: number): Promise<Presentation[]> {
-  return call<Presentation[]>("list_presentations", { productId });
+  return invoke<Presentation[]>("list_presentations", { productId });
 }
 
 export function saveProduct(input: ProductInput): Promise<number> {
-  return call<number>("save_product", { input }, "Producto guardado.");
+  return invoke<number>("save_product", { input }, "Producto guardado.");
 }
 
 export function archiveProduct(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "product", id, restore: false },
     "Producto archivado.",
@@ -116,7 +116,7 @@ export function archiveProduct(id: number): Promise<void> {
 }
 
 export function restoreProduct(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "product", id, restore: true },
     "Producto restaurado.",
@@ -127,7 +127,7 @@ export function findProductDuplicate(
   name: string,
   currentId?: number,
 ): Promise<DuplicateRecord | null> {
-  return call<DuplicateRecord | null>("find_duplicate", {
+  return invoke<DuplicateRecord | null>("find_duplicate", {
     kind: "product",
     name,
     currentId: currentId ?? null,
@@ -164,15 +164,15 @@ function toQuery(filters: MovementFilters): MovementQuery {
 export function getMovements(
   filters: MovementFilters = {},
 ): Promise<MovementPage> {
-  return call<MovementPage>("page_movements", { filters: toQuery(filters) });
+  return invoke<MovementPage>("page_movements", { filters: toQuery(filters) });
 }
 
 export function createMovement(input: MovementInput): Promise<void> {
-  return call("create_movement", { input }, "Movimiento registrado.");
+  return invoke("create_movement", { input }, "Movimiento registrado.");
 }
 
 export function cancelMovement(id: number, reason: string): Promise<void> {
-  return call("cancel_movement", { id, reason }, "Movimiento anulado.");
+  return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
 }
 
 /* ------------------------------ Proveedores ------------------------------ */
@@ -204,7 +204,7 @@ function contactPayload(contacts: string[]): string | null {
 }
 
 export async function getSuppliers(archived = false): Promise<Supplier[]> {
-  const rows = await call<SupplierRow[]>("list_suppliers", { archived });
+  const rows = await invoke<SupplierRow[]>("list_suppliers", { archived });
   return rows.map(({ contact, ...supplier }) => ({
     ...supplier,
     contacts: parseContacts(contact),
@@ -215,7 +215,7 @@ export function saveSupplier(
   id: number | null,
   data: SupplierInput,
 ): Promise<number> {
-  return call<number>(
+  return invoke<number>(
     "save_catalog",
     {
       input: {
@@ -231,7 +231,7 @@ export function saveSupplier(
 }
 
 export function archiveSupplier(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "supplier", id, restore: false },
     "Proveedor archivado.",
@@ -239,7 +239,7 @@ export function archiveSupplier(id: number): Promise<void> {
 }
 
 export function restoreSupplier(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "supplier", id, restore: true },
     "Proveedor restaurado.",
@@ -250,7 +250,7 @@ export function findSupplierDuplicate(
   name: string,
   currentId?: number,
 ): Promise<DuplicateRecord | null> {
-  return call<DuplicateRecord | null>("find_duplicate", {
+  return invoke<DuplicateRecord | null>("find_duplicate", {
     kind: "supplier",
     name,
     currentId: currentId ?? null,
@@ -260,7 +260,7 @@ export function findSupplierDuplicate(
 /* ------------------------------ Responsables ----------------------------- */
 
 export function getPersons(archived = false): Promise<ResponsiblePerson[]> {
-  return call<ResponsiblePerson[]>("list_persons", { archived });
+  return invoke<ResponsiblePerson[]>("list_persons", { archived });
 }
 
 export function savePerson(
@@ -268,7 +268,7 @@ export function savePerson(
   name: string,
   isDefault: boolean,
 ): Promise<number> {
-  return call<number>(
+  return invoke<number>(
     "save_catalog",
     { input: { kind: "person", id, name, is_default: isDefault } },
     "Responsable guardado.",
@@ -276,7 +276,7 @@ export function savePerson(
 }
 
 export function archivePerson(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "person", id, restore: false },
     "Responsable archivado.",
@@ -284,7 +284,7 @@ export function archivePerson(id: number): Promise<void> {
 }
 
 export function restorePerson(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "person", id, restore: true },
     "Responsable restaurado.",
@@ -294,7 +294,7 @@ export function restorePerson(id: number): Promise<void> {
 /* ------------------------------- Categorías ------------------------------ */
 
 export function getCategories(): Promise<Category[]> {
-  return call<Category[]>("list_categories");
+  return invoke<Category[]>("list_categories");
 }
 
 export function saveCategory(
@@ -303,7 +303,7 @@ export function saveCategory(
   color: string | null,
   icon: string | null,
 ): Promise<number> {
-  return call<number>(
+  return invoke<number>(
     "save_catalog",
     { input: { kind: "category", id, name, color, icon } },
     "Categoría guardada.",
@@ -311,7 +311,7 @@ export function saveCategory(
 }
 
 export function archiveCategory(id: number): Promise<void> {
-  return call(
+  return invoke(
     "archive_record",
     { kind: "category", id, restore: false },
     "Categoría eliminada.",
@@ -321,18 +321,18 @@ export function archiveCategory(id: number): Promise<void> {
 /* -------------------------------- Ajustes -------------------------------- */
 
 export function getSettings(): Promise<AppSettings> {
-  return call<AppSettings>("get_settings");
+  return invoke<AppSettings>("get_settings");
 }
 
 export function saveSettingsThresholds(
   low: number,
   medium: number,
 ): Promise<void> {
-  return call("save_settings", { low, medium }, "Umbrales guardados.");
+  return invoke("save_settings", { low, medium }, "Umbrales guardados.");
 }
 
 export function saveSettingsDefaultView(view: DefaultView): Promise<void> {
-  return call(
+  return invoke(
     "save_settings",
     { view },
     "Vista por defecto actualizada.",
@@ -342,9 +342,9 @@ export function saveSettingsDefaultView(view: DefaultView): Promise<void> {
 /* --------------------------------- Backup -------------------------------- */
 
 export function backupDatabase(destPath: string): Promise<void> {
-  return call("backup_database", { destPath });
+  return invoke("backup_database", { destPath });
 }
 
 export function restoreDatabase(srcPath: string): Promise<void> {
-  return call("restore_database", { srcPath });
+  return invoke("restore_database", { srcPath });
 }
