@@ -119,90 +119,104 @@
   ];
 </script>
 
-<div class="toolbar">
-  <div class="type-filter">
-    {#each filters as filter (filter.value)}
-      <button
-        class="filter-btn"
-        class:active={typeFilter === filter.value}
-        type="button"
-        onclick={() => (typeFilter = filter.value)}
-      >
-        {filter.label}
-      </button>
-    {/each}
+<div class="page">
+  <div class="toolbar">
+    <div class="type-filter">
+      {#each filters as filter (filter.value)}
+        <button
+          class="filter-btn"
+          class:active={typeFilter === filter.value}
+          type="button"
+          onclick={() => (typeFilter = filter.value)}
+        >
+          {filter.label}
+        </button>
+      {/each}
+    </div>
+
+    <div class="spacer"></div>
+
+    <Button icon={Plus} onclick={openNew}>Nuevo movimiento</Button>
   </div>
 
-  <div class="spacer"></div>
+  <div class="filter-grid">
+    <label>
+      Buscar
+      <input
+        class="field"
+        bind:value={searchInput}
+        placeholder="Producto, proveedor, notas…"
+        aria-label="Buscar movimientos"
+      />
+    </label>
+    <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...productOptions]} /></div>
+    <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...supplierOptions]} /></div>
+    <label>Desde<input class="field" type="date" bind:value={from} /></label>
+    <label>Hasta<input class="field" type="date" bind:value={to} /></label>
+    <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>
+  </div>
 
-  <Button icon={Plus} onclick={openNew}>Nuevo movimiento</Button>
-</div>
-
-<div class="filter-grid">
-  <label>
-    Buscar
-    <input
-      class="field"
-      bind:value={searchInput}
-      placeholder="Producto, proveedor, notas…"
-      aria-label="Buscar movimientos"
-    />
-  </label>
-  <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...productOptions]} /></div>
-  <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...supplierOptions]} /></div>
-  <label>Desde<input class="field" type="date" bind:value={from} /></label>
-  <label>Hasta<input class="field" type="date" bind:value={to} /></label>
-  <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>
-</div>
-{#if movementsService.error}
-  <p role="alert" class="error">{movementsService.error}</p><Button onclick={()=>movementsService.load()}>Reintentar</Button>
-{:else if movementsService.loading && movementsService.items.length === 0}
-  <p role="status">Cargando movimientos…</p>
-{:else if movementsService.items.length === 0}
-  <EmptyState
-    icon={ArrowLeftRight}
-    title="No hay movimientos para estos filtros"
-    description="Registra entradas y salidas de stock para llevar el control del inventario."
-    actionLabel="Nuevo movimiento"
-    onAction={openNew}
-  />
-{:else}
   <div class="table-state" class:updating={movementsService.loading}>
-    {#if movementsService.loading}
+    {#if movementsService.loading && movementsService.items.length > 0}
       <span class="updating-label" role="status">Actualizando…</span>
     {/if}
-    <DataTable
-      {table}
-      showSearch={false}
-      searchPlaceholder="Buscar movimientos..."
-      emptyText="No hay movimientos que coincidan con el filtro."
-    >
-      {#snippet actions(movement)}
-        <button
-          class="icon-btn danger"
-          type="button"
-          title={movement.cancelled_at ? "Movimiento anulado" : "Anular movimiento"}
-          aria-label="Anular movimiento"
-          disabled={!!movement.cancelled_at}
-          onclick={() => removeMovement(movement)}
-        >
-          <Undo2 size={16} />
-        </button>
-      {/snippet}
-    </DataTable>
+    {#if movementsService.error}
+      <div class="state">
+        <p role="alert" class="error">{movementsService.error}</p>
+        <Button onclick={()=>movementsService.load()}>Reintentar</Button>
+      </div>
+    {:else if movementsService.loading && movementsService.items.length === 0}
+      <p role="status">Cargando movimientos…</p>
+    {:else if movementsService.items.length === 0}
+      <EmptyState
+        icon={ArrowLeftRight}
+        title="No hay movimientos para estos filtros"
+        description="Registra entradas y salidas de stock para llevar el control del inventario."
+        actionLabel="Nuevo movimiento"
+        onAction={openNew}
+      />
+    {:else}
+      <DataTable
+        fill
+        {table}
+        showSearch={false}
+        searchPlaceholder="Buscar movimientos..."
+        emptyText="No hay movimientos que coincidan con el filtro."
+      >
+        {#snippet actions(movement)}
+          <button
+            class="icon-btn danger"
+            type="button"
+            title={movement.cancelled_at ? "Movimiento anulado" : "Anular movimiento"}
+            aria-label="Anular movimiento"
+            disabled={!!movement.cancelled_at}
+            onclick={() => removeMovement(movement)}
+          >
+            <Undo2 size={16} />
+          </button>
+        {/snippet}
+      </DataTable>
+    {/if}
   </div>
-{/if}
 
-<div class="pagination">
-  <Button variant="secondary" icon={Trash} onclick={() => modalService.open(DeleteMovementsModal)}>
-    Eliminar movimientos
-  </Button>
-  <div class="spacer"></div>
-  <Button variant="secondary" disabled={currentPage===0 || movementsService.loading} onclick={()=>currentPage--}>Anterior</Button>
-  <span>Página {currentPage+1} · {movementsService.total} movimientos</span>
-  <Button variant="secondary" disabled={(currentPage+1)*25>=movementsService.total || movementsService.loading} onclick={()=>currentPage++}>Siguiente</Button>
+  <div class="pagination">
+    <Button variant="secondary" icon={Trash} onclick={() => modalService.open(DeleteMovementsModal)}>
+      Eliminar movimientos
+    </Button>
+    <div class="spacer"></div>
+    <Button variant="secondary" disabled={currentPage===0 || movementsService.loading} onclick={()=>currentPage--}>Anterior</Button>
+    <span>Página {currentPage+1} · {movementsService.total} movimientos</span>
+    <Button variant="secondary" disabled={(currentPage+1)*25>=movementsService.total || movementsService.loading} onclick={()=>currentPage++}>Siguiente</Button>
+  </div>
 </div>
 <style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
   .toolbar {
     display: flex;
     align-items: center;
@@ -260,7 +274,18 @@
 
   .table-state {
     position: relative;
+    flex: 1;
     min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .table-state.updating {

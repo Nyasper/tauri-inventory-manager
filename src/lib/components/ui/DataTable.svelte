@@ -13,6 +13,7 @@
     onRowClick,
     actions,
     fixed = false,
+    fill = false,
   }: {
     table: AppTable<TData>;
     searchPlaceholder?: string;
@@ -21,6 +22,7 @@
     onRowClick?: (row: TData) => void;
     actions?: Snippet<[TData]>;
     fixed?: boolean;
+    fill?: boolean;
   } = $props();
 
   function isCentered(column: {
@@ -30,7 +32,7 @@
   }
 </script>
 
-<div class="table-wrap">
+<div class="table-wrap" class:fill>
   {#if showSearch}
     <div class="search">
       <Search size={16} />
@@ -137,6 +139,26 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .table-wrap.fill {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .table-wrap.fill table {
+    flex: 0 0 auto;
+    overflow: visible;
+    border-radius: 0;
+  }
+
+  .table-wrap.fill thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: none;
+    box-shadow: inset 0 -1px 0 var(--border);
   }
 
   .search {
