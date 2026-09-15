@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a construir (por ejemplo v0.12.0)"
+        required: true
+        type: string
 
 jobs:
   changelog:
@@ -11,12 +17,14 @@ jobs:
     outputs:
       body: ${{ steps.notes.outputs.body }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
       - uses: oven-sh/setup-bun@v2
       - name: Extract changelog
         id: notes
         env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           {
             echo "body<<EOF"
@@ -32,45 +40,62 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Linux: instaladores Debian/Fedora y AppImage portable.
           - platform: ubuntu-22.04
-            args: "--bundles deb,rpm"
-            uploadPlainBinary: false
+            args: "--bundles deb,rpm,appimage"
+          # Windows: instalador NSIS.
           - platform: windows-latest
             args: "--bundles nsis"
-            uploadPlainBinary: false
+          # Windows: ejecutable portable (sin instalador).
           - platform: windows-latest
             args: "--no-bundle"
             uploadPlainBinary: true
+            releaseAssetNamePattern: "[name]_[version]_[platform]_[arch]-portable[ext]"
+          # macOS: binario universal (Intel + Apple Silicon) con .dmg.
+          - platform: macos-latest
+            args: "--target universal-apple-darwin --bundles app,dmg"
+            targets: "aarch64-apple-darwin,x86_64-apple-darwin"
 
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2 xdg-utils
 
       - name: Install frontend dependencies
         run: bun install
 
       - name: Build and publish
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Inventory Manager ${{ github.ref_name }}"
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: "Inventory Manager ${{ inputs.tag || github.ref_name }}"
           releaseBody: ${{ needs.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
+          retryAttempts: 2
           args: ${{ matrix.args }}
           uploadPlainBinary: ${{ matrix.uploadPlainBinary }}
+          releaseAssetNamePattern: ${{ matrix.releaseAssetNamePattern }}

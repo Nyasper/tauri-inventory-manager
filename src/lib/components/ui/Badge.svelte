@@ -14,12 +14,7 @@
   } = $props();
 </script>
 
-<span
-  class="badge"
-  class:uniform
-  style:background={bg ?? null}
-  style:color={color ?? null}
->
+<span class={["badge", { uniform }]} style:background={bg ?? null} style:color={color ?? null}>
   {@render children()}
 </span>
 

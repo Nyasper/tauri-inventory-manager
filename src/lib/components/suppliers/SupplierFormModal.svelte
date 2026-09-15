@@ -20,9 +20,21 @@
 
   const initial = untrack(() => supplier);
 
+  interface ContactDraft {
+    key: number;
+    value: string;
+  }
+
+  let nextContactKey = 0;
+  function newContact(value = ""): ContactDraft {
+    return { key: nextContactKey++, value };
+  }
+
   let name = $state(initial?.name ?? "");
-  let contacts = $state<string[]>(
-    initial?.contacts.length ? [...initial.contacts] : [""],
+  let contacts = $state<ContactDraft[]>(
+    initial?.contacts.length
+      ? initial.contacts.map((contact) => newContact(contact))
+      : [newContact()],
   );
   let notes = $state(initial?.notes ?? "");
   let saving = $state(false);
@@ -43,7 +55,7 @@
     try {
       const data = {
         name: name.trim(),
-        contacts,
+        contacts: contacts.map((contact) => contact.value),
         notes: notes.trim() || null,
       };
       if (initial) {
@@ -64,7 +76,7 @@
 <Modal
   title={initial ? "Editar proveedor" : "Nuevo proveedor"}
   onClose={() => modalService.close()}
-  dirty={dirty}
+  {dirty}
   busy={saving}
   width="md"
 >
@@ -77,17 +89,17 @@
           size="sm"
           variant="secondary"
           icon={Plus}
-          onclick={() => (contacts = [...contacts, ""])}
+          onclick={() => (contacts = [...contacts, newContact()])}
         >
           Añadir
         </Button>
       </div>
-      {#each contacts as _, index (index)}
+      {#each contacts as contact, index (contact.key)}
         <div class="contact-row">
           <div class="contact-field">
             <Input
               label={index === 0 ? "Contacto principal" : `Contacto ${index + 1}`}
-              bind:value={contacts[index]}
+              bind:value={contact.value}
               placeholder="Teléfono, email, WhatsApp..."
             />
           </div>
@@ -97,8 +109,7 @@
             title="Quitar contacto"
             aria-label={`Quitar contacto ${index + 1}`}
             disabled={contacts.length === 1}
-            onclick={() =>
-              (contacts = contacts.filter((_, contactIndex) => contactIndex !== index))}
+            onclick={() => (contacts = contacts.filter((item) => item.key !== contact.key))}
           >
             <Trash size={16} />
           </button>

@@ -23,31 +23,44 @@
 
   const initial = untrack(() => product);
 
+  interface DraftPresentation extends PresentationInput {
+    key: number;
+  }
+
+  let nextPresentationKey = 0;
+  function newPresentation(name = "", factor = 1): DraftPresentation {
+    return { key: nextPresentationKey++, name, factor };
+  }
+
   let name = $state(initial?.name ?? "");
   let description = $state(initial?.description ?? "");
-  let categoryId = $state(
-    initial?.category_id != null ? String(initial.category_id) : "",
-  );
-  let presentations = $state<PresentationInput[]>([
-    { name: "Unidad", factor: 1 },
-  ]);
+  let categoryId = $state(initial?.category_id != null ? String(initial.category_id) : "");
+  let presentations = $state<DraftPresentation[]>([newPresentation("Unidad", 1)]);
   let saving = $state(false);
   let loading = $state(!!initial?.id);
   let loadFailed = $state(false);
   let error = $state("");
 
-  const snapshot = () =>
-    JSON.stringify({ name, description, categoryId, presentations });
+  const snapshot = () => JSON.stringify({ name, description, categoryId, presentations });
   let baseline = $state<string | null>(initial?.id ? null : snapshot());
   const dirty = $derived(baseline !== null && snapshot() !== baseline);
 
   if (initial?.id) {
-    getPresentations(initial.id).then((rows) => {
-      presentations = rows.length
-        ? rows.map((r) => ({ id: r.id, name: r.name, factor: r.factor }))
-        : [{ name: "Unidad", factor: 1 }];
-      baseline = snapshot();
-    }).catch((e) => { loadFailed = true; error = String(e); baseline = snapshot(); }).finally(() => { loading = false; });
+    getPresentations(initial.id)
+      .then((rows) => {
+        presentations = rows.length
+          ? rows.map((r) => ({ ...newPresentation(r.name, r.factor), id: r.id }))
+          : [newPresentation("Unidad", 1)];
+        baseline = snapshot();
+      })
+      .catch((e) => {
+        loadFailed = true;
+        error = String(e);
+        baseline = snapshot();
+      })
+      .finally(() => {
+        loading = false;
+      });
   }
 
   const categoryOptions = $derived([
@@ -85,7 +98,7 @@
   const canSave = $derived(validation === "" && !saving && !loading && !loadFailed);
 
   function addPresentation() {
-    presentations.push({ name: "", factor: 1 });
+    presentations.push(newPresentation("", 1));
   }
 
   function removePresentation(index: number) {
@@ -94,27 +107,18 @@
   }
 
   async function save() {
-    if (saving || loading || loadFailed) return;
-    if (!name.trim()) {
-      error = "El nombre es obligatorio.";
-      return;
-    }
+    if (!canSave) return;
 
-    const valid = presentations.map((p) => ({ ...p, name: p.name.trim(), factor: Number(p.factor) }));
-    if (valid.some((p) => !p.name || !Number.isFinite(p.factor) || p.factor <= 0)) {
-      error = "Cada presentación necesita nombre y factor positivo.";
-      return;
-    }
-    if (valid.filter((p) => p.factor === 1).length !== 1) {
-      error = "Debe haber exactamente una presentación base con factor 1.";
-      return;
-    }
     const input: ProductInput = {
       id: initial?.id ?? null,
       name: name.trim(),
       description: description.trim() || null,
       category_id: categoryId ? Number(categoryId) : null,
-      presentations: valid,
+      presentations: presentations.map(({ id, name: presentationName, factor }) => ({
+        id,
+        name: presentationName.trim(),
+        factor: Number(factor),
+      })),
     };
 
     saving = true;
@@ -133,7 +137,7 @@
 <Modal
   title={initial ? "Editar producto" : "Nuevo producto"}
   onClose={() => modalService.close()}
-  dirty={dirty}
+  {dirty}
   busy={saving}
   width="lg"
 >
@@ -146,15 +150,9 @@
       <div class="span-2">
         <div class="category-row">
           <div class="category-select">
-            <Select
-              label="Categoría"
-              bind:value={categoryId}
-              options={categoryOptions}
-            />
+            <Select label="Categoría" bind:value={categoryId} options={categoryOptions} />
           </div>
-          <Button variant="secondary" icon={Plus} onclick={openNewCategory}>
-            Nueva
-          </Button>
+          <Button variant="secondary" icon={Plus} onclick={openNewCategory}>Nueva</Button>
         </div>
       </div>
       <div class="span-2">
@@ -169,16 +167,14 @@
     <section class="presentations">
       <div class="section-head">
         <h3>Presentaciones</h3>
-        <Button size="sm" variant="secondary" icon={Plus} onclick={addPresentation}>
-          Añadir
-        </Button>
+        <Button size="sm" variant="secondary" icon={Plus} onclick={addPresentation}>Añadir</Button>
       </div>
       <p class="hint">
-        La presentación con factor 1 es la unidad base en la que se cuenta el
-        stock. Se admiten hasta 6 decimales.
+        La presentación con factor 1 es la unidad base en la que se cuenta el stock. Se admiten
+        hasta 6 decimales.
       </p>
 
-      {#each presentations as presentation, index (index)}
+      {#each presentations as presentation, index (presentation.key)}
         <div class="pres-row">
           <div class="pres-name">
             <Input bind:value={presentation.name} placeholder="Ej. Caja, Botella" />

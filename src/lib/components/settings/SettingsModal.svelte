@@ -17,19 +17,12 @@
   import { feedback } from "$lib/services/feedback.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
-  import {
-    accentService,
-    ACCENTS,
-  } from "$lib/services/accent.service.svelte";
-  import {
-    CATEGORY_COLORS,
-    newCategoryDraft,
-    type CategoryDraft,
-  } from "$lib/categories";
+  import { accentService, ACCENTS } from "$lib/services/accent.service.svelte";
+  import { CATEGORY_COLORS, newCategoryDraft, type CategoryDraft } from "$lib/categories";
 
-  let low = $state("");
-  let medium = $state("");
-  let defaultView = $state("dashboard");
+  let low: string = $derived(String(settingsService.settings.stock_low_threshold));
+  let medium: string = $derived(String(settingsService.settings.stock_medium_threshold));
+  let defaultView: string = $derived(settingsService.settings.default_view);
   let editingCat = $state<CategoryDraft | null>(null);
   let busy = $state(false);
 
@@ -59,15 +52,6 @@
     ACCENTS.find((a) => a.id === accentService.accent)?.label ?? "",
   );
 
-  $effect(() => {
-    low = String(settingsService.settings.stock_low_threshold);
-    medium = String(settingsService.settings.stock_medium_threshold);
-  });
-
-  $effect(() => {
-    defaultView = settingsService.settings.default_view;
-  });
-
   async function saveDefaultView() {
     await settingsService.saveDefaultView(defaultView as DefaultView);
   }
@@ -75,7 +59,12 @@
   async function saveThresholds() {
     const lowValue = Number(low);
     const mediumValue = Number(medium);
-    if (!Number.isFinite(lowValue) || !Number.isFinite(mediumValue) || lowValue < 0 || mediumValue <= lowValue) {
+    if (
+      !Number.isFinite(lowValue) ||
+      !Number.isFinite(mediumValue) ||
+      lowValue < 0 ||
+      mediumValue <= lowValue
+    ) {
       throw new Error("Los límites deben cumplir: 0 ≤ bajo < medio.");
     }
     await settingsService.saveThresholds(lowValue, mediumValue);
@@ -143,19 +132,11 @@
   }
 </script>
 
-<Modal
-  title="Configuración"
-  onClose={() => modalService.close()}
-  dirty={dirty}
-  busy={busy}
-  width="md"
->
+<Modal title="Configuración" onClose={() => modalService.close()} {dirty} {busy} width="md">
   <div class="settings">
     <section>
       <h3>Límites de stock</h3>
-      <p class="hint">
-        Define los límites para clasificar el estado de stock de cada producto.
-      </p>
+      <p class="hint">Define los límites para clasificar el estado de stock de cada producto.</p>
       <div class="thresholds">
         <div>
           <Input label="Límite bajo" type="number" bind:value={low} />
@@ -165,7 +146,9 @@
         </div>
       </div>
       <div class="section-action">
-        <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}>Guardar límites</Button>
+        <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}
+          >Guardar límites</Button
+        >
       </div>
       {#if !thresholdsValid}
         <p class="validation" role="status">Los límites deben cumplir: 0 ≤ bajo &lt; medio.</p>
@@ -174,15 +157,12 @@
 
     <section>
       <h3>Color de acento</h3>
-      <p class="hint">
-        Personaliza el color de énfasis de toda la aplicación.
-      </p>
+      <p class="hint">Personaliza el color de énfasis de toda la aplicación.</p>
       <div class="accents">
         {#each ACCENTS as accent (accent.id)}
           <button
             type="button"
-            class="swatch"
-            class:active={accentService.accent === accent.id}
+            class={["swatch", { active: accentService.accent === accent.id }]}
             style="--swatch: {accent.light.primary}"
             aria-label={accent.label}
             title={accent.label}
@@ -195,26 +175,18 @@
 
     <section>
       <h3>Vista por defecto</h3>
-      <p class="hint">
-        Vista que se muestra al abrir la aplicación.
-      </p>
-      <Select
-        bind:value={defaultView}
-        options={viewOptions}
-        onchange={saveDefaultView}
-      />
+      <p class="hint">Vista que se muestra al abrir la aplicación.</p>
+      <Select bind:value={defaultView} options={viewOptions} onchange={saveDefaultView} />
     </section>
 
     <section>
       <h3>Categorías</h3>
-      <p class="hint">
-        Los productos muestran el icono y el color de su categoría.
-      </p>
+      <p class="hint">Los productos muestran el icono y el color de su categoría.</p>
 
       {#if editingCat}
         <div class="cat-editor">
           <CategoryEditor
-            draft={editingCat}
+            bind:draft={editingCat}
             onSaved={() => (editingCat = null)}
             onCancel={() => (editingCat = null)}
           />
@@ -232,7 +204,10 @@
       {:else}
         <ul class="cats">
           {#each categoriesService.items as category (category.id)}
-            {@const Icon = category.icon && category.icon in ICONS ? ICONS[category.icon as IconName] : ICONS.box}
+            {const Icon =
+              category.icon && category.icon in ICONS
+                ? ICONS[category.icon as IconName]
+                : ICONS.box}
             <li class="cat">
               <span
                 class="cat-tile"
@@ -249,8 +224,7 @@
                   title="Editar categoría"
                   aria-label="Editar categoría"
                   onclick={() =>
-                    startEditCategory(category.id, category.name, category.color, category.icon)
-                  }
+                    startEditCategory(category.id, category.name, category.color, category.icon)}
                 >
                   <Pencil size={16} />
                 </button>
@@ -273,9 +247,9 @@
     <section>
       <h3>Avanzado</h3>
       <p class="hint">
-        Crea una copia de seguridad de la base de datos o restáurala desde un
-        archivo. También puedes cambiar la contraseña de administrador, que
-        protege la eliminación de movimientos, productos y proveedores.
+        Crea una copia de seguridad de la base de datos o restáurala desde un archivo. También
+        puedes cambiar la contraseña de administrador, que protege la eliminación de movimientos,
+        productos y proveedores.
       </p>
       <div class="backup-actions">
         <Button
@@ -287,13 +261,7 @@
         >
           Crear respaldo
         </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          icon={Upload}
-          disabled={busy}
-          onclick={restoreBackup}
-        >
+        <Button size="sm" variant="secondary" icon={Upload} disabled={busy} onclick={restoreBackup}>
           Restaurar respaldo
         </Button>
         <Button
@@ -360,7 +328,7 @@
 
   .section-action {
     margin-top: 0.75rem;
-    margin-bottom: 0.40rem;
+    margin-bottom: 0.4rem;
     display: flex;
     justify-content: flex-end;
   }

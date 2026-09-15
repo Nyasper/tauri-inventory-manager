@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
-  import type { Movement } from "$lib/types";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
@@ -43,7 +42,7 @@
         );
         return status === "low" || status === "out";
       })
-      .sort((a,b)=>a.stock-b.stock)
+      .sort((a, b) => a.stock - b.stock)
       .slice(0, PANEL_SIZE),
   );
 
@@ -103,11 +102,27 @@
 </script>
 
 <div class="dashboard">
-  {#if productsService.loading || movementsService.loading || suppliersService.loading}<p role="status">Cargando inventario…</p>{/if}
-  {#if productsService.error || movementsService.error || suppliersService.error}<p class="error" role="alert">No se pudo cargar el inventario.</p><button onclick={()=>{productsService.load();movementsService.load({});suppliersService.load();}}>Reintentar</button>{/if}
+  {#if productsService.loading || movementsService.loading || suppliersService.loading}<p
+      role="status"
+    >
+      Cargando inventario…
+    </p>{/if}
+  {#if productsService.error || movementsService.error || suppliersService.error}<p
+      class="error"
+      role="alert"
+    >
+      No se pudo cargar el inventario.
+    </p>
+    <button
+      onclick={() => {
+        productsService.load();
+        movementsService.load({});
+        suppliersService.load();
+      }}>Reintentar</button
+    >{/if}
   <section class="stats">
     {#each stats as stat (stat.label)}
-      {@const Icon = stat.icon}
+      {const Icon = stat.icon}
       <button class="stat-card tone-{stat.tone}" type="button" onclick={() => goto(stat.href)}>
         <span class="stat-icon">
           <Icon size={20} />
@@ -162,9 +177,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Movimientos recientes</h2>
-        <button class="link" type="button" onclick={() => goto("/movements")}>
-          Ver todos
-        </button>
+        <button class="link" type="button" onclick={() => goto("/movements")}> Ver todos </button>
       </div>
 
       {#if recentMovements.length === 0 && !movementsService.loading && !movementsService.error}
@@ -172,7 +185,13 @@
       {:else}
         <div class="rows">
           {#each recentMovements as movement (movement.id)}
-            <button class="row" type="button" onclick={() => { if (movement.product_id !== null) goto(`/movements?product=${movement.product_id}`); }}>
+            <button
+              class="row"
+              type="button"
+              onclick={() => {
+                if (movement.product_id !== null) goto(`/movements?product=${movement.product_id}`);
+              }}
+            >
               {#if movement.cancelled_at}<span>Anulado</span>{/if}
               {#if movement.type === "in"}
                 <Badge uniform bg="var(--success)" color="#ffffff">
@@ -187,7 +206,9 @@
                 {movement.product_name ?? "—"}
               </span>
               <span class="row-meta">
-                <span class="row-stock">{formatNumber(movement.quantity)} {movement.presentation_name}</span>
+                <span class="row-stock"
+                  >{formatNumber(movement.quantity)} {movement.presentation_name}</span
+                >
                 <span class="row-date">{formatDate(movement.created_at)}</span>
               </span>
             </button>

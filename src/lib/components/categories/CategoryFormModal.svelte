@@ -17,15 +17,6 @@
   }
 </script>
 
-<Modal
-  title="Nueva categoría"
-  onClose={() => modalService.close()}
-  dirty={dirty}
-  width="md"
->
-  <CategoryEditor
-    {draft}
-    onSaved={handleSaved}
-    onCancel={() => modalService.requestClose()}
-  />
+<Modal title="Nueva categoría" onClose={() => modalService.close()} {dirty} width="md">
+  <CategoryEditor bind:draft onSaved={handleSaved} onCancel={() => modalService.requestClose()} />
 </Modal>

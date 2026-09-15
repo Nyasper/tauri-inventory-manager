@@ -26,10 +26,13 @@
   suppliersService.load();
 
   function handleError(event: PromiseRejectionEvent) {
-    event.preventDefault(); feedback.error(String(event.reason));
+    event.preventDefault();
+    feedback.error(String(event.reason));
   }
 
   function handleContextMenu(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, textarea, [contenteditable='true']")) return;
     event.preventDefault();
   }
 
@@ -57,7 +60,12 @@
 </div>
 
 <ModalHost />
-{#if feedback.message}<div class="toast" class:error={feedback.isError} role={feedback.isError ? "alert" : "status"}><span class="toast-message">{feedback.message}</span><button aria-label="Cerrar aviso" onclick={()=>feedback.message=""}>×</button></div>{/if}
+{#if feedback.message}
+  <div class={["toast", { error: feedback.isError }]} role={feedback.isError ? "alert" : "status"}>
+    <span class="toast-message">{feedback.message}</span>
+    <button aria-label="Cerrar aviso" onclick={() => (feedback.message = "")}>×</button>
+  </div>
+{/if}
 
 <style>
   .app {

@@ -65,7 +65,6 @@ import {
   Plug,
   Plus,
   Printer,
-  Refrigerator,
   RefreshCw,
   Salad,
   Scan,

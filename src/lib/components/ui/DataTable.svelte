@@ -11,6 +11,7 @@
     emptyText = "No hay resultados",
     showSearch = true,
     onRowClick,
+    rowClickable,
     actions,
     fixed = false,
     fill = false,
@@ -20,19 +21,22 @@
     emptyText?: string;
     showSearch?: boolean;
     onRowClick?: (row: TData) => void;
+    rowClickable?: (row: TData) => boolean;
     actions?: Snippet<[TData]>;
     fixed?: boolean;
     fill?: boolean;
   } = $props();
 
-  function isCentered(column: {
-    columnDef: { meta?: AppColumnMeta | null };
-  }): boolean {
+  function isClickable(row: TData): boolean {
+    return !!onRowClick && (rowClickable?.(row) ?? true);
+  }
+
+  function isCentered(column: { columnDef: { meta?: AppColumnMeta | null } }): boolean {
     return column.columnDef.meta?.align === "center";
   }
 </script>
 
-<div class="table-wrap" class:fill>
+<div class={["table-wrap", { fill }]}>
   {#if showSearch}
     <div class="search">
       <Search size={16} />
@@ -43,19 +47,18 @@
         aria-label={searchPlaceholder}
         autocomplete="off"
         value={table.atoms.globalFilter.get() ?? ""}
-        oninput={(event) =>
-          table.setGlobalFilter(event.currentTarget.value)}
+        oninput={(event) => table.setGlobalFilter(event.currentTarget.value)}
       />
     </div>
   {/if}
 
-  <table class="table" class:fixed>
+  <table class={["table", { fixed }]}>
     <thead>
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
         <tr>
           {#each headerGroup.headers as header (header.id)}
             <th
-              class:center={isCentered(header.column)}
+              class={{ center: isCentered(header.column) }}
               style:width={header.column.columnDef.meta?.width}
             >
               {#if !header.isPlaceholder && header.column.getCanSort()}
@@ -88,25 +91,28 @@
     <tbody>
       {#each table.getRowModel().rows as row (row.id)}
         <tr
-          class:clickable={!!onRowClick}
-          tabindex={onRowClick ? 0 : undefined}
+          class={{ clickable: isClickable(row.original) }}
+          tabindex={isClickable(row.original) ? 0 : undefined}
           onkeydown={(event) => {
             if (
-              onRowClick &&
+              isClickable(row.original) &&
               event.target === event.currentTarget &&
               (event.key === "Enter" || event.key === " ")
             ) {
               event.preventDefault();
-              onRowClick(row.original);
+              onRowClick?.(row.original);
             }
           }}
           onclick={(event) => {
-            if (!(event.target as HTMLElement).closest("button,a,input,select,textarea"))
+            if (
+              isClickable(row.original) &&
+              !(event.target as HTMLElement).closest("button,a,input,select,textarea")
+            )
               onRowClick?.(row.original);
           }}
         >
           {#each row.getAllCells() as cell (cell.id)}
-            <td class:center={isCentered(cell.column)}>
+            <td class={{ center: isCentered(cell.column) }}>
               <FlexRender {cell} />
             </td>
           {/each}
@@ -121,10 +127,7 @@
       {/each}
       {#if table.getRowModel().rows.length === 0}
         <tr>
-          <td
-            class="empty"
-            colspan={table.getAllLeafColumns().length + (actions ? 1 : 0)}
-          >
+          <td class="empty" colspan={table.getAllLeafColumns().length + (actions ? 1 : 0)}>
             {emptyText}
           </td>
         </tr>

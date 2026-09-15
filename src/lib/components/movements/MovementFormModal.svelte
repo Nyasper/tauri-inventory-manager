@@ -30,11 +30,29 @@
   let loading = $state(false);
   let presentationId = $state("");
   let type = $state<MovementType>(untrack(() => initialType));
-  let quantity = $state(1);
+  let quantityInput = $state(1);
   let supplierId = $state(untrack(() => initialSupplierId));
   let notes = $state("");
   let saving = $state(false);
   let error = $state("");
+
+  const selectedProduct = $derived(productsService.items.find((p) => p.id === Number(productId)));
+  const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
+
+  const availableUnits = $derived(
+    selectedProduct && selectedPresentation && selectedPresentation.factor > 0
+      ? Math.floor((selectedProduct.stock + 1e-9) / selectedPresentation.factor)
+      : null,
+  );
+  const maxQuantity = $derived(
+    type === "out" && availableUnits !== null ? availableUnits : undefined,
+  );
+  const quantity = $derived(Math.min(quantityInput, maxQuantity ?? Infinity));
+
+  function setQuantity(next: number) {
+    if (!Number.isFinite(next)) return;
+    quantityInput = Math.min(next, maxQuantity ?? Infinity);
+  }
 
   const snapshot = () =>
     JSON.stringify({
@@ -47,24 +65,19 @@
       adjustment,
       reason,
     });
-  let baseline = $state<string | null>(
-    untrack(() => initialProductId) ? null : snapshot(),
-  );
+  let baseline = $state<string | null>(untrack(() => initialProductId) ? null : snapshot());
   let baselineSet = !untrack(() => initialProductId);
   const dirty = $derived(baseline !== null && snapshot() !== baseline);
 
-  const selectedProduct = $derived(productsService.items.find((p) => p.id === Number(productId)));
-  const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
-  const baseQuantity = $derived(Math.round((Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
-  const projected = $derived(Math.round(((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6) / 1e6);
-
-  const availableUnits = $derived(
-    selectedProduct && selectedPresentation && selectedPresentation.factor > 0
-      ? Math.floor((selectedProduct.stock + 1e-9) / selectedPresentation.factor)
-      : null,
+  const baseQuantity = $derived(
+    Math.round(
+      (Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6,
+    ) / 1e6,
   );
-  const maxQuantity = $derived(
-    type === "out" && availableUnits !== null ? availableUnits : undefined,
+  const projected = $derived(
+    Math.round(
+      ((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6,
+    ) / 1e6,
   );
 
   const validation = $derived.by(() => {
@@ -84,13 +97,12 @@
 
   const canSave = $derived(validation === "" && !saving);
 
-  $effect(() => {
-    if (maxQuantity !== undefined && maxQuantity >= 1 && quantity > maxQuantity) {
-      quantity = maxQuantity;
-    }
-  });
-
-  let presentationOptions = $state<SelectOption[]>([]);
+  let presentationOptions = $derived(
+    presentations.map((presentation) => ({
+      value: String(presentation.id),
+      label: `${presentation.name} (×${presentation.factor})`,
+    })),
+  );
 
   const productOptions = $derived(
     productsService.items.map((p) => ({
@@ -98,12 +110,13 @@
       label: p.name,
     })),
   );
-  const supplierOptions = $derived(
-    [{value:"",label:"Sin proveedor"}, ...suppliersService.items.map((s) => ({
+  const supplierOptions = $derived([
+    { value: "", label: "Sin proveedor" },
+    ...suppliersService.items.map((s) => ({
       value: String(s.id),
       label: s.name,
-    }))],
-  );
+    })),
+  ]);
   const typeOptions: SelectOption[] = [
     { value: "in", label: "Entrada" },
     { value: "out", label: "Salida" },
@@ -112,29 +125,37 @@
   $effect(() => {
     const pid = productId ? Number(productId) : null;
     if (!pid) {
-      presentationOptions = [];
       presentationId = "";
+      presentations = [];
       return;
     }
 
     let cancelled = false;
     loading = true;
-    presentationId = ""; presentations = [];
-    getPresentations(pid).then((rows) => {
-      if (cancelled) return;
-      presentations = rows;
-      presentationOptions = rows.map((r) => ({
-        value: String(r.id),
-        label: `${r.name} (×${r.factor})`,
-      }));
-      const base = rows.find((r) => r.factor === 1) ?? rows[0];
-      presentationId = base ? String(base.id) : "";
-      if (!baselineSet) { baselineSet = true; baseline = snapshot(); }
-    }).catch((e) => {
-      if (cancelled) return;
-      error = String(e);
-      if (!baselineSet) { baselineSet = true; baseline = snapshot(); }
-    }).finally(() => { if (!cancelled) loading = false; });
+    presentationId = "";
+    presentations = [];
+    getPresentations(pid)
+      .then((rows) => {
+        if (cancelled) return;
+        presentations = rows;
+        const base = rows.find((r) => r.factor === 1) ?? rows[0];
+        presentationId = base ? String(base.id) : "";
+        if (!baselineSet) {
+          baselineSet = true;
+          baseline = snapshot();
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        error = String(e);
+        if (!baselineSet) {
+          baselineSet = true;
+          baseline = snapshot();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) loading = false;
+      });
 
     return () => {
       cancelled = true;
@@ -168,7 +189,8 @@
         presentation_id: presId,
         supplier_id: type === "in" && supplierId ? Number(supplierId) : null,
         notes: notes.trim() || null,
-        adjustment, reason: adjustment ? reason.trim() : null,
+        adjustment,
+        reason: adjustment ? reason.trim() : null,
       });
       await productsService.load();
       modalService.close();
@@ -183,7 +205,7 @@
 <Modal
   title="Nuevo movimiento"
   onClose={() => modalService.close()}
-  dirty={dirty}
+  {dirty}
   busy={saving}
   width="md"
 >
@@ -204,13 +226,30 @@
       placeholder="Selecciona una presentación"
     />
 
-    <NumberStepper label="Cantidad" bind:value={quantity} min={1} max={maxQuantity} showBounds />
+    <NumberStepper
+      label="Cantidad"
+      bind:value={() => quantity, setQuantity}
+      min={1}
+      max={maxQuantity}
+      showBounds
+    />
 
     {#if selectedProduct && selectedPresentation}
-      <div class="stock-preview" aria-live="polite">
+      <div aria-live="polite">
         <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
-        <p>{Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(baseQuantity) ? baseQuantity : 0} {selectedProduct.base_unit}</p>
-        <p>Resultante: <strong class:error={projected < 0}>{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong></p>
+        <p>
+          {Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(
+            baseQuantity,
+          )
+            ? baseQuantity
+            : 0}
+          {selectedProduct.base_unit}
+        </p>
+        <p>
+          Resultante: <strong class={{ error: projected < 0 }}
+            >{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong
+          >
+        </p>
       </div>
     {/if}
 
@@ -226,23 +265,13 @@
     {#if type === "in"}
       <div class="field-row">
         <div class="field-select">
-          <Select
-            label="Proveedor"
-            bind:value={supplierId}
-            options={supplierOptions}
-          />
+          <Select label="Proveedor" bind:value={supplierId} options={supplierOptions} />
         </div>
-        <Button variant="secondary" icon={Plus} onclick={openNewSupplier}>
-          Nuevo
-        </Button>
+        <Button variant="secondary" icon={Plus} onclick={openNewSupplier}>Nuevo</Button>
       </div>
     {/if}
 
-    <Textarea
-      label="Notas"
-      bind:value={notes}
-      placeholder="Observaciones del movimiento"
-    />
+    <Textarea label="Notas" bind:value={notes} placeholder="Observaciones del movimiento" />
 
     {#if error}
       <p class="error" role="alert">{error}</p>

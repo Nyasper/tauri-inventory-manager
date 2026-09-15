@@ -57,19 +57,11 @@
   });
 
   const dirty = $derived(
-    password !== "" ||
-      mode !== "recent" ||
-      count !== "1" ||
-      from !== "" ||
-      to !== "",
+    password !== "" || mode !== "recent" || Number(count) !== 1 || from !== "" || to !== "",
   );
 
   const canDelete = $derived(
-    filterError === "" &&
-      preview !== null &&
-      preview > 0 &&
-      password.trim() !== "" &&
-      !deleting,
+    filterError === "" && preview !== null && preview > 0 && password.trim() !== "" && !deleting,
   );
 
   // Vista previa con retardo para no consultar en cada tecla del filtro.
@@ -137,9 +129,7 @@
     deleteError = "";
     try {
       const deleted = await movementsService.deleteBatch(filter, password);
-      feedback.success(
-        `Se eliminaron ${deleted} movimiento${deleted === 1 ? "" : "s"}.`,
-      );
+      feedback.success(`Se eliminaron ${deleted} movimiento${deleted === 1 ? "" : "s"}.`);
       modalService.close();
     } catch (e) {
       deleteError = String(e);
@@ -149,15 +139,10 @@
   }
 </script>
 
-<Modal
-  title="Eliminar movimientos"
-  onClose={() => modalService.close()}
-  dirty={dirty}
-  busy={deleting}
->
+<Modal title="Eliminar movimientos" onClose={() => modalService.close()} {dirty} busy={deleting}>
   <p class="hint">
-    Borra movimientos del historial por cantidad (los más recientes o los más
-    antiguos) o por fecha. El stock actual de los productos no cambia.
+    Borra movimientos del historial por cantidad (los más recientes o los más antiguos) o por fecha.
+    El stock actual de los productos no cambia.
   </p>
   <div class="grid">
     <Select label="Qué borrar" bind:value={mode} options={modeOptions} />
@@ -176,11 +161,7 @@
     </div>
   {/if}
   <div class="password">
-    <Input
-      label="Contraseña de administrador"
-      type="password"
-      bind:value={password}
-    />
+    <Input label="Contraseña de administrador" type="password" bind:value={password} />
   </div>
   {#if filterError}
     <p class="validation" role="status">{filterError}</p>
@@ -189,12 +170,7 @@
   {/if}
   {#if deleteError}<p class="error" role="alert">{deleteError}</p>{/if}
   <div class="section-action">
-    <Button
-      variant="danger"
-      icon={Trash}
-      disabled={!canDelete}
-      onclick={remove}
-    >
+    <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={remove}>
       {deleting ? "Eliminando…" : "Eliminar movimientos"}
     </Button>
   </div>

@@ -3,6 +3,7 @@
   import {
     findProductDuplicate,
     findSupplierDuplicate,
+    isDuplicateError,
   } from "$lib/services/db.service";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -21,7 +22,7 @@
   } = $props();
 
   function lookup(): Promise<DuplicateRecord | null> {
-    if (!error.includes("Ya existe")) return Promise.resolve(null);
+    if (!isDuplicateError(error)) return Promise.resolve(null);
     const request =
       kind === "product"
         ? findProductDuplicate(name, currentId)

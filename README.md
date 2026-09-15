@@ -29,6 +29,8 @@ bun run tauri dev
 
 ```bash
 bun run check      # svelte-check (types + runes)
+bun run lint       # ESLint
+bun run format:check
 cargo test --manifest-path src-tauri/Cargo.toml
 bun run build
 ```

@@ -89,6 +89,11 @@ async function invoke<T>(
   return result;
 }
 
+/** Indica si el error devuelto por el backend corresponde a un nombre duplicado. */
+export function isDuplicateError(error: string): boolean {
+  return error.includes("Ya existe");
+}
+
 /* ------------------------------- Productos ------------------------------- */
 
 export function getProducts(archived = false): Promise<Product[]> {
@@ -104,27 +109,15 @@ export function saveProduct(input: ProductInput): Promise<number> {
 }
 
 export function archiveProduct(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "product", id, restore: false },
-    "Producto archivado.",
-  );
+  return invoke("archive_record", { kind: "product", id, restore: false }, "Producto archivado.");
 }
 
 export function restoreProduct(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "product", id, restore: true },
-    "Producto restaurado.",
-  );
+  return invoke("archive_record", { kind: "product", id, restore: true }, "Producto restaurado.");
 }
 
 export function deleteProduct(id: number, password: string): Promise<void> {
-  return invoke(
-    "delete_product",
-    { id, password },
-    "Producto eliminado definitivamente.",
-  );
+  return invoke("delete_product", { id, password }, "Producto eliminado definitivamente.");
 }
 
 export function findProductDuplicate(
@@ -156,17 +149,12 @@ function toQuery(filters: MovementFilters): MovementQuery {
     supplier: filters.supplier ? Number(filters.supplier) : null,
     from: filters.from ? utcDayBoundary(filters.from, false) : null,
     to: filters.to ? utcDayBoundary(filters.to, true) : null,
-    status:
-      filters.status === "active" || filters.status === "cancelled"
-        ? filters.status
-        : null,
+    status: filters.status === "active" || filters.status === "cancelled" ? filters.status : null,
     page: Math.max(0, filters.page ?? 0),
   };
 }
 
-export function getMovements(
-  filters: MovementFilters = {},
-): Promise<MovementPage> {
+export function getMovements(filters: MovementFilters = {}): Promise<MovementPage> {
   return invoke<MovementPage>("page_movements", { filters: toQuery(filters) });
 }
 
@@ -178,12 +166,7 @@ export function cancelMovement(id: number, reason: string): Promise<void> {
   return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
 }
 
-export type MovementDeleteMode =
-  | "recent"
-  | "oldest"
-  | "from"
-  | "until"
-  | "range";
+export type MovementDeleteMode = "recent" | "oldest" | "from" | "until" | "range";
 
 /** Filtro de borrado en lote. `from`/`to` son días locales (`YYYY-MM-DD`). */
 export interface MovementDeleteFilter {
@@ -221,25 +204,15 @@ export function countMovements(filter: MovementDeleteFilter): Promise<number> {
 }
 
 /** Borra movimientos en lote; el stock de los productos no se modifica. */
-export function deleteMovements(
-  filter: MovementDeleteFilter,
-  password: string,
-): Promise<number> {
+export function deleteMovements(filter: MovementDeleteFilter, password: string): Promise<number> {
   return invoke<number>("delete_movements", {
     filter: toDeleteQuery(filter),
     password,
   });
 }
 
-export function changeDeletePassword(
-  oldPassword: string,
-  newPassword: string,
-): Promise<void> {
-  return invoke(
-    "change_delete_password",
-    { oldPassword, newPassword },
-    "Contraseña actualizada.",
-  );
+export function changeDeletePassword(oldPassword: string, newPassword: string): Promise<void> {
+  return invoke("change_delete_password", { oldPassword, newPassword }, "Contraseña actualizada.");
 }
 
 /* ------------------------------ Proveedores ------------------------------ */
@@ -263,9 +236,7 @@ function contactPayload(contacts: string[]): string | null {
     .filter(
       (contact, index, all) =>
         contact &&
-        all.findIndex(
-          (candidate) => candidate.toLowerCase() === contact.toLowerCase(),
-        ) === index,
+        all.findIndex((candidate) => candidate.toLowerCase() === contact.toLowerCase()) === index,
     );
   return unique.length ? JSON.stringify(unique) : null;
 }
@@ -278,10 +249,7 @@ export async function getSuppliers(archived = false): Promise<Supplier[]> {
   }));
 }
 
-export function saveSupplier(
-  id: number | null,
-  data: SupplierInput,
-): Promise<number> {
+export function saveSupplier(id: number | null, data: SupplierInput): Promise<number> {
   return invoke<number>(
     "save_catalog",
     {
@@ -298,27 +266,15 @@ export function saveSupplier(
 }
 
 export function archiveSupplier(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "supplier", id, restore: false },
-    "Proveedor archivado.",
-  );
+  return invoke("archive_record", { kind: "supplier", id, restore: false }, "Proveedor archivado.");
 }
 
 export function restoreSupplier(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "supplier", id, restore: true },
-    "Proveedor restaurado.",
-  );
+  return invoke("archive_record", { kind: "supplier", id, restore: true }, "Proveedor restaurado.");
 }
 
 export function deleteSupplier(id: number, password: string): Promise<void> {
-  return invoke(
-    "delete_supplier",
-    { id, password },
-    "Proveedor eliminado definitivamente.",
-  );
+  return invoke("delete_supplier", { id, password }, "Proveedor eliminado definitivamente.");
 }
 
 export function findSupplierDuplicate(
@@ -352,11 +308,7 @@ export function saveCategory(
 }
 
 export function archiveCategory(id: number): Promise<void> {
-  return invoke(
-    "archive_record",
-    { kind: "category", id, restore: false },
-    "Categoría eliminada.",
-  );
+  return invoke("archive_record", { kind: "category", id, restore: false }, "Categoría eliminada.");
 }
 
 /* -------------------------------- Ajustes -------------------------------- */
@@ -365,19 +317,12 @@ export function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }
 
-export function saveSettingsThresholds(
-  low: number,
-  medium: number,
-): Promise<void> {
+export function saveSettingsThresholds(low: number, medium: number): Promise<void> {
   return invoke("save_settings", { low, medium }, "Límites guardados.");
 }
 
 export function saveSettingsDefaultView(view: DefaultView): Promise<void> {
-  return invoke(
-    "save_settings",
-    { view },
-    "Vista por defecto actualizada.",
-  );
+  return invoke("save_settings", { view }, "Vista por defecto actualizada.");
 }
 
 /* --------------------------------- Backup -------------------------------- */

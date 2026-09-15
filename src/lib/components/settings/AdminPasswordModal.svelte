@@ -19,9 +19,7 @@
       !changing,
   );
 
-  const dirty = $derived(
-    oldPassword !== "" || newPassword !== "" || repeatPassword !== "",
-  );
+  const dirty = $derived(oldPassword !== "" || newPassword !== "" || repeatPassword !== "");
 
   async function updatePassword() {
     if (!canChange) return;
@@ -43,36 +41,26 @@
 <Modal
   title="Cambiar contraseña de administrador"
   onClose={() => modalService.close()}
-  dirty={dirty}
+  {dirty}
   busy={changing}
 >
   <p class="hint">
-    La contraseña de administrador protege la eliminación masiva de movimientos
-    y la eliminación definitiva de productos y proveedores archivados. La
-    inicial es «admin».
+    La contraseña de administrador protege la eliminación masiva de movimientos y la eliminación
+    definitiva de productos y proveedores archivados. La inicial es «admin».
   </p>
   <div>
     <Input label="Contraseña actual" type="password" bind:value={oldPassword} />
   </div>
   <div class="grid">
     <Input label="Nueva contraseña" type="password" bind:value={newPassword} />
-    <Input
-      label="Repetir nueva contraseña"
-      type="password"
-      bind:value={repeatPassword}
-    />
+    <Input label="Repetir nueva contraseña" type="password" bind:value={repeatPassword} />
   </div>
   {#if newPassword !== "" && repeatPassword !== "" && newPassword !== repeatPassword}
     <p class="validation" role="status">Las contraseñas nuevas no coinciden.</p>
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <div class="section-action">
-    <Button
-      variant="secondary"
-      icon={KeyRound}
-      disabled={!canChange}
-      onclick={updatePassword}
-    >
+    <Button variant="secondary" icon={KeyRound} disabled={!canChange} onclick={updatePassword}>
       {changing ? "Cambiando…" : "Cambiar contraseña"}
     </Button>
   </div>

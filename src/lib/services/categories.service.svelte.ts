@@ -1,9 +1,5 @@
 import type { Category } from "$lib/types";
-import {
-  archiveCategory,
-  getCategories,
-  saveCategory,
-} from "$lib/services/db.service";
+import { archiveCategory, getCategories, saveCategory } from "$lib/services/db.service";
 
 class CategoriesService {
   items = $state<Category[]>([]);
@@ -12,22 +8,13 @@ class CategoriesService {
     this.items = await getCategories();
   }
 
-  async create(
-    name: string,
-    color: string | null,
-    icon: string | null,
-  ): Promise<number> {
+  async create(name: string, color: string | null, icon: string | null): Promise<number> {
     const id = await saveCategory(null, name, color, icon);
     await this.load();
     return id;
   }
 
-  async update(
-    id: number,
-    name: string,
-    color: string | null,
-    icon: string | null,
-  ): Promise<void> {
+  async update(id: number, name: string, color: string | null, icon: string | null): Promise<void> {
     await saveCategory(id, name, color, icon);
     await this.load();
   }

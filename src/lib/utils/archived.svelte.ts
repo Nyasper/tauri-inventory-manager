@@ -1,4 +1,5 @@
 import { untrack } from "svelte";
+import { SvelteURL } from "svelte/reactivity";
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
 
@@ -40,7 +41,7 @@ export class ArchivedList<T> {
   #syncUrl(value: boolean): void {
     const url = page.url;
     if ((url.searchParams.get("archived") === "1") === value) return;
-    const next = new URL(url);
+    const next = new SvelteURL(url);
     if (value) next.searchParams.set("archived", "1");
     else next.searchParams.delete("archived");
     void goto(`${next.pathname}${next.search}`, { replaceState: true, noScroll: true });

@@ -20,7 +20,6 @@
   import { Plus, ArrowLeftRight, Trash, Undo2 } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
-
   productsService.load();
 
   const columnHelper = createAppColumnHelper<Movement>();
@@ -28,9 +27,11 @@
   let typeFilter = $state<"all" | MovementType>("all");
   let searchInput = $state("");
   let search = $state("");
-  let productFilter = $state(page.url.searchParams.get("product") ?? "");
-  let supplierFilter = $state(""); let from = $state(""); let to = $state("");
-  let status = $state("all"); let currentPage = $state(0);
+  let productFilter = $derived(page.url.searchParams.get("product") ?? "");
+  let supplierFilter = $state("");
+  let from = $state("");
+  let to = $state("");
+  let status = $state("all");
 
   const productOptions = $derived(
     productsService.items.map((p) => ({ value: String(p.id), label: p.name })),
@@ -40,10 +41,6 @@
   );
 
   $effect(() => {
-    productFilter = page.url.searchParams.get("product") ?? "";
-  });
-
-  $effect(() => {
     const value = searchInput;
     const timer = setTimeout(() => {
       search = value;
@@ -51,25 +48,43 @@
     return () => clearTimeout(timer);
   });
 
-  const query = $derived({search, product:productFilter, supplier:supplierFilter, from,to,status,type:typeFilter});
-  $effect(() => { query; currentPage=0; });
+  const query = $derived({
+    search,
+    product: productFilter,
+    supplier: supplierFilter,
+    from,
+    to,
+    status,
+    type: typeFilter,
+  });
+  const filterKey = $derived(JSON.stringify(query));
+  let pageState = $state<{ key: string; page: number } | null>(null);
+  const currentPage = $derived(
+    pageState !== null && pageState.key === filterKey ? pageState.page : 0,
+  );
+
+  function goToPage(page: number) {
+    pageState = { key: filterKey, page };
+  }
+
+  function reload() {
+    void movementsService.load({ ...query, page: currentPage });
+  }
+
   $effect(() => {
     movementsService.load({ ...query, page: currentPage });
   });
-
 
   const columns = columnHelper.columns([
     columnHelper.accessor((m) => (m.type === "in" ? "Entrada" : "Salida"), {
       id: "type",
       header: () => "Tipo",
       meta: { align: "center" },
-      cell: (info) =>
-        renderComponent(MovementTypeCell, { type: info.row.original.type }),
+      cell: (info) => renderComponent(MovementTypeCell, { type: info.row.original.type }),
     }),
     columnHelper.accessor("product_name", {
       header: () => "Producto",
-      cell: (info) =>
-        renderComponent(MovementProductCell, { movement: info.row.original }),
+      cell: (info) => renderComponent(MovementProductCell, { movement: info.row.original }),
     }),
     columnHelper.accessor("presentation_name", {
       header: () => "Presentación",
@@ -82,13 +97,20 @@
     }),
     columnHelper.accessor("supplier_name", {
       header: () => "Proveedor",
-      cell: (info) =>
-        renderComponent(MovementSupplierCell, { movement: info.row.original }),
+      cell: (info) => renderComponent(MovementSupplierCell, { movement: info.row.original }),
     }),
-    columnHelper.accessor((m) => m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente", {
-      id: "state", header: () => "Estado", meta: { align: "center" },
+    columnHelper.accessor(
+      (m) => (m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente"),
+      {
+        id: "state",
+        header: () => "Estado",
+        meta: { align: "center" },
+      },
+    ),
+    columnHelper.accessor((m) => m.cancellation_reason ?? m.reason ?? m.notes ?? "—", {
+      id: "reason",
+      header: () => "Motivo / notas",
     }),
-    columnHelper.accessor((m) => m.cancellation_reason ?? m.reason ?? m.notes ?? "—", { id:"reason", header:()=>"Motivo / notas" }),
     columnHelper.accessor("created_at", {
       header: () => "Fecha",
       meta: { align: "center" },
@@ -110,7 +132,9 @@
     modalService.open(MovementFormModal);
   }
 
-  function removeMovement(movement: Movement) { modalService.open(CancelMovementModal, { movement }); }
+  function removeMovement(movement: Movement) {
+    modalService.open(CancelMovementModal, { movement });
+  }
 
   const filters: { value: "all" | MovementType; label: string }[] = [
     { value: "all", label: "Todos" },
@@ -124,8 +148,7 @@
     <div class="type-filter">
       {#each filters as filter (filter.value)}
         <button
-          class="filter-btn"
-          class:active={typeFilter === filter.value}
+          class={["filter-btn", { active: typeFilter === filter.value }]}
           type="button"
           onclick={() => (typeFilter = filter.value)}
         >
@@ -149,21 +172,43 @@
         aria-label="Buscar movimientos"
       />
     </label>
-    <div><Select label="Producto" bind:value={productFilter} options={[{value:"",label:"Todos"},...productOptions]} /></div>
-    <div><Select label="Proveedor" bind:value={supplierFilter} options={[{value:"",label:"Todos"},...supplierOptions]} /></div>
+    <div>
+      <Select
+        label="Producto"
+        bind:value={productFilter}
+        options={[{ value: "", label: "Todos" }, ...productOptions]}
+      />
+    </div>
+    <div>
+      <Select
+        label="Proveedor"
+        bind:value={supplierFilter}
+        options={[{ value: "", label: "Todos" }, ...supplierOptions]}
+      />
+    </div>
     <label>Desde<input class="field" type="date" bind:value={from} /></label>
     <label>Hasta<input class="field" type="date" bind:value={to} /></label>
-    <div><Select label="Estado" bind:value={status} options={[{value:"all",label:"Todos"},{value:"active",label:"Vigentes"},{value:"cancelled",label:"Anulados"}]} /></div>
+    <div>
+      <Select
+        label="Estado"
+        bind:value={status}
+        options={[
+          { value: "all", label: "Todos" },
+          { value: "active", label: "Vigentes" },
+          { value: "cancelled", label: "Anulados" },
+        ]}
+      />
+    </div>
   </div>
 
-  <div class="table-state" class:updating={movementsService.loading}>
+  <div class={["table-state", { updating: movementsService.loading }]}>
     {#if movementsService.loading && movementsService.items.length > 0}
       <span class="updating-label" role="status">Actualizando…</span>
     {/if}
     {#if movementsService.error}
       <div class="state">
         <p role="alert" class="error">{movementsService.error}</p>
-        <Button onclick={()=>movementsService.load()}>Reintentar</Button>
+        <Button onclick={reload}>Reintentar</Button>
       </div>
     {:else if movementsService.loading && movementsService.items.length === 0}
       <p role="status">Cargando movimientos…</p>
@@ -180,7 +225,6 @@
         fill
         {table}
         showSearch={false}
-        searchPlaceholder="Buscar movimientos..."
         emptyText="No hay movimientos que coincidan con el filtro."
       >
         {#snippet actions(movement)}
@@ -200,15 +244,32 @@
   </div>
 
   <div class="pagination">
-    <Button variant="secondary" icon={Trash} onclick={() => modalService.open(DeleteMovementsModal)}>
+    <Button
+      variant="secondary"
+      icon={Trash}
+      onclick={() => modalService.open(DeleteMovementsModal)}
+    >
       Eliminar movimientos
     </Button>
     <div class="spacer"></div>
-    <Button variant="secondary" disabled={currentPage===0 || movementsService.loading} onclick={()=>currentPage--}>Anterior</Button>
-    <span>Página {currentPage+1} · {movementsService.total} movimientos</span>
-    <Button variant="secondary" disabled={(currentPage+1)*25>=movementsService.total || movementsService.loading} onclick={()=>currentPage++}>Siguiente</Button>
+    <Button
+      variant="secondary"
+      disabled={currentPage === 0 || movementsService.loading}
+      onclick={() => goToPage(currentPage - 1)}
+    >
+      Anterior
+    </Button>
+    <span>Página {currentPage + 1} · {movementsService.total} movimientos</span>
+    <Button
+      variant="secondary"
+      disabled={(currentPage + 1) * 25 >= movementsService.total || movementsService.loading}
+      onclick={() => goToPage(currentPage + 1)}
+    >
+      Siguiente
+    </Button>
   </div>
 </div>
+
 <style>
   .page {
     display: flex;

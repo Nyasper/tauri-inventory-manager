@@ -17,9 +17,7 @@
 
   suppliersService.load();
   const targetId = $derived(page.url.searchParams.get("id"));
-  const archive = new ArchivedList<Supplier>((archived) =>
-    getSuppliers(archived),
-  );
+  const archive = new ArchivedList<Supplier>((archived) => getSuppliers(archived));
   const visible = $derived(
     (archive.active ? archive.items : suppliersService.items).filter(
       (supplier) => !targetId || supplier.id === Number(targetId),
@@ -84,13 +82,19 @@
 </script>
 
 <div class="toolbar">
-  {#if targetId}<Button variant="secondary" onclick={()=>goto("/suppliers")}>Ver todos</Button>{/if}
+  {#if targetId}<Button variant="secondary" onclick={() => goto("/suppliers")}>Ver todos</Button
+    >{/if}
   <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
   <div class="spacer"></div>
   <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
-{#if suppliersService.error || archive.error}<p role="alert" class="error">{suppliersService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():suppliersService.load()}>Reintentar</Button>
+{#if suppliersService.error || archive.error}<p role="alert" class="error">
+    {suppliersService.error || archive.error}
+  </p>
+  <Button onclick={() => (archive.active ? archive.reload() : suppliersService.load())}
+    >Reintentar</Button
+  >
 {:else if suppliersService.loading || archive.loading}<p role="status">Cargando proveedores…</p>
 {:else if visible.length === 0}
   {#if archive.active}
@@ -109,65 +113,62 @@
     />
   {/if}
 {:else}
-  <DataTable
-    {table}
-    searchPlaceholder="Buscar proveedores..."
-  >
+  <DataTable {table} searchPlaceholder="Buscar proveedores...">
     {#snippet actions(supplier)}
       {#if supplier.archived}
-      <div class="actions">
-        <button
-          class="icon-btn"
-          type="button"
-          title="Restaurar"
-          aria-label={`Restaurar ${supplier.name}`}
-          onclick={() => restore(supplier)}
-        >
-          <Undo2 size={16} />
-        </button>
-        <button
-          class="icon-btn danger"
-          type="button"
-          title="Eliminar definitivamente"
-          aria-label={`Eliminar definitivamente ${supplier.name}`}
-          onclick={() => removePermanently(supplier)}
-        >
-          <Trash size={16} />
-        </button>
-      </div>
+        <div class="actions">
+          <button
+            class="icon-btn"
+            type="button"
+            title="Restaurar"
+            aria-label={`Restaurar ${supplier.name}`}
+            onclick={() => restore(supplier)}
+          >
+            <Undo2 size={16} />
+          </button>
+          <button
+            class="icon-btn danger"
+            type="button"
+            title="Eliminar definitivamente"
+            aria-label={`Eliminar definitivamente ${supplier.name}`}
+            onclick={() => removePermanently(supplier)}
+          >
+            <Trash size={16} />
+          </button>
+        </div>
       {:else}
-      <div class="actions">
-        <button
-          class="icon-btn"
-          type="button"
-          title="Registrar entrada"
-          aria-label={`Registrar entrada de ${supplier.name}`}
-          onclick={() =>
-            modalService.open(MovementFormModal, {
-              initialSupplierId: String(supplier.id),
-            })}
-        >
-          <Plus size={16} />
-        </button>
-        <button
-          class="icon-btn"
-          type="button"
-          title="Editar"
-          aria-label="Editar"
-          onclick={() => openEdit(supplier)}
-        >
-          <Pencil size={16} />
-        </button>
-        <button
-          class="icon-btn danger"
-          type="button"
-          title="Archivar"
-          aria-label="Archivar"
-          onclick={() => removeSupplier(supplier)}
-        >
-          <Archive size={16} />
-        </button>
-      </div>
+        <div class="actions">
+          <button
+            class="icon-btn"
+            type="button"
+            title="Registrar entrada"
+            aria-label={`Registrar entrada de ${supplier.name}`}
+            onclick={() =>
+              modalService.open(MovementFormModal, {
+                initialSupplierId: String(supplier.id),
+              })}
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            type="button"
+            title="Editar"
+            aria-label="Editar"
+            onclick={() => openEdit(supplier)}
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            class="icon-btn danger"
+            type="button"
+            title="Archivar"
+            aria-label="Archivar"
+            onclick={() => removeSupplier(supplier)}
+          >
+            <Archive size={16} />
+          </button>
+        </div>
       {/if}
     {/snippet}
   </DataTable>

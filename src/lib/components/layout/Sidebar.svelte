@@ -48,8 +48,8 @@
 
   <nav class="nav">
     {#each nav as item (item.href)}
-      {@const Icon = item.icon}
-      <a href={item.href} class="nav-item" class:active={isActive(item.href)}>
+      {const Icon = item.icon}
+      <a href={item.href} class={["nav-item", { active: isActive(item.href) }]}>
         <Icon size={18} />
         <span>{item.label}</span>
       </a>

@@ -23,9 +23,7 @@
     ),
   );
 
-  let Icon: Component<LucideProps> | null = $derived(
-    value ? ICONS[value] ?? null : null,
-  );
+  let Icon: Component<LucideProps> | null = $derived(value ? (ICONS[value] ?? null) : null);
 
   const tinted = $derived(!!color && !!value);
 </script>
@@ -37,8 +35,7 @@
 <div class="picker">
   <div class="head">
     <div
-      class="preview"
-      class:tinted
+      class={["preview", { tinted }]}
       style:background={tinted ? color : null}
       style:color={tinted ? "#ffffff" : null}
     >
@@ -49,12 +46,7 @@
       {/if}
     </div>
 
-    <button
-      class="clear"
-      type="button"
-      class:active={!value}
-      onclick={() => (value = null)}
-    >
+    <button class={["clear", { active: !value }]} type="button" onclick={() => (value = null)}>
       <X size={14} />
       Sin icono
     </button>
@@ -66,11 +58,10 @@
         <span class="group-label">{group}</span>
         <div class="options">
           {#each options as option (option.value)}
-            {@const OptionIcon = ICONS[option.value]}
+            {const OptionIcon = ICONS[option.value]}
             <button
               type="button"
-              class="opt"
-              class:active={value === option.value}
+              class={["opt", { active: value === option.value }]}
               title={option.label}
               aria-label={option.label}
               aria-pressed={value === option.value}

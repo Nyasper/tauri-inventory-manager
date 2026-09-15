@@ -19,6 +19,7 @@
   async function save() {
     if (!canSave) return;
     saving = true;
+    error = "";
     try {
       await movementsService.remove(movement.id, reason);
       await productsService.load();
@@ -31,15 +32,10 @@
   }
 </script>
 
-<Modal
-  title="Anular movimiento"
-  onClose={() => modalService.close()}
-  dirty={dirty}
-  busy={saving}
->
+<Modal title="Anular movimiento" onClose={() => modalService.close()} {dirty} busy={saving}>
   <p>
-    Se revertirá el stock de {movement.product_name}. El movimiento y el motivo
-    permanecerán en el historial.
+    Se revertirá el stock de {movement.product_name}. El movimiento y el motivo permanecerán en el
+    historial.
   </p>
   <Textarea label="Motivo obligatorio" bind:value={reason} />
   {#if error}<p role="alert" class="error">{error}</p>{/if}

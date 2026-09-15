@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
@@ -36,11 +36,15 @@
   });
   onDestroy(unregisterGuard);
 
-  onMount(() => {
+  function focusFirstField(node: HTMLElement) {
     const previous = document.activeElement as HTMLElement | null;
-    (dialog.querySelector<HTMLElement>("input,select,textarea,button") ?? dialog).focus();
+    const target =
+      node.querySelector<HTMLElement>(
+        ".body input:not([type='hidden']), .body select, .body textarea, .body button",
+      ) ?? node;
+    target.focus();
     return () => previous?.focus();
-  });
+  }
 
   async function attemptClose() {
     if (closing) return;
@@ -54,14 +58,37 @@
 
   function handleKeydown(event: KeyboardEvent) {
     const dialogs = document.querySelectorAll('[role="dialog"]');
-    if (dialogs[dialogs.length-1] !== dialog) return;
-    if (event.key === "Escape") { event.preventDefault(); void attemptClose(); }
+    if (dialogs[dialogs.length - 1] !== dialog) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      void attemptClose();
+    }
     if (event.key === "Tab") {
-      const items = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(el => el.getClientRects().length);
-      const first = items[0], last = items[items.length-1];
-      if (!first) { event.preventDefault(); dialog.focus(); return; }
-      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      const items = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+        ),
+      ).filter((el) => el.getClientRects().length);
+      const first = items[0],
+        last = items[items.length - 1];
+      if (!first) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first.focus();
+      }
     }
   }
 </script>
@@ -76,7 +103,15 @@
     if (event.target === event.currentTarget) void attemptClose();
   }}
 >
-  <div bind:this={dialog} class="modal modal-{width}" role="dialog" aria-modal="true" aria-labelledby={titleId} tabindex="-1">
+  <div
+    bind:this={dialog}
+    class="modal modal-{width}"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby={titleId}
+    tabindex="-1"
+    {@attach focusFirstField}
+  >
     <header class="header">
       <h2 id={titleId}>{title}</h2>
       <button class="icon-btn" type="button" aria-label="Cerrar" onclick={attemptClose}>

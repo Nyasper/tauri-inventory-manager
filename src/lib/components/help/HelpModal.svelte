@@ -24,13 +24,7 @@
   } from "@lucide/svelte";
 
   type SectionId =
-    | "general"
-    | "dashboard"
-    | "products"
-    | "movements"
-    | "suppliers"
-    | "settings"
-    | "faq";
+    "general" | "dashboard" | "products" | "movements" | "suppliers" | "settings" | "faq";
 
   interface SectionMeta {
     id: SectionId;
@@ -58,7 +52,7 @@
   const filteredSections = $derived.by(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return SECTIONS;
-    return SECTIONS.filter(s => {
+    return SECTIONS.filter((s) => {
       if (s.title.toLowerCase().includes(q)) return true;
       if (s.id.toLowerCase().includes(q)) return true;
       return false;
@@ -87,11 +81,10 @@
 
       <div class="nav-list">
         {#each filteredSections as section (section.id)}
-          {@const Icon = section.icon}
+          {const Icon = section.icon}
           <button
             type="button"
-            class="nav-tab"
-            class:active={activeSection === section.id}
+            class={["nav-tab", { active: activeSection === section.id }]}
             onclick={() => selectSection(section.id)}
           >
             <Icon size={16} />
@@ -117,8 +110,8 @@
         <div class="topic">
           <h2><BookOpen size={20} class="topic-icon" /> Introducción</h2>
           <p class="lead">
-            <strong>Gestor de Inventario</strong> es una aplicación de escritorio diseñada para brindar control
-            total, ágil y seguro sobre las existencias de productos, presentaciones fraccionadas,
+            <strong>Gestor de Inventario</strong> es una aplicación de escritorio diseñada para brindar
+            control total, ágil y seguro sobre las existencias de productos, presentaciones fraccionadas,
             trazabilidad histórica de movimientos y gestión de proveedores.
           </p>
 
@@ -129,9 +122,10 @@
                 <h3>Almacenamiento 100% Local</h3>
               </div>
               <p>
-                Toda la información se almacena localmente en su equipo en el archivo <code>inventory.db</code>.
-                No depende de servidores externos ni sube información a la nube, garantizando máxima
-                privacidad y funcionamiento ininterrumpido sin conexión a internet.
+                Toda la información se almacena localmente en su equipo en el archivo <code
+                  >inventory.db</code
+                >. No depende de servidores externos ni sube información a la nube, garantizando
+                máxima privacidad y funcionamiento ininterrumpido sin conexión a internet.
               </p>
             </div>
 
@@ -141,8 +135,9 @@
                 <h3>Precisión de 6 Decimales</h3>
               </div>
               <p>
-                Cantidades, factores de conversión y saldos admiten hasta 6 lugares decimales
-                (por ejemplo, kilos, litros o fracciones métricas), con un límite de hasta 1.000 millones.
+                Cantidades, factores de conversión y saldos admiten hasta 6 lugares decimales (por
+                ejemplo, kilos, litros o fracciones métricas), con un límite de hasta 1.000
+                millones.
               </p>
             </div>
           </div>
@@ -150,20 +145,23 @@
           <h3>Estructura de la Interfaz</h3>
           <ul class="feature-list">
             <li>
-              <strong>Barra Lateral (Sidebar):</strong> Permite saltar al instante entre el Dashboard,
-              Productos, Movimientos y Proveedores. En su pie se encuentran los accesos a
+              <strong>Barra Lateral (Sidebar):</strong> Permite saltar al instante entre el
+              Dashboard, Productos, Movimientos y Proveedores. En su pie se encuentran los accesos a
               <em>Ajustes</em> y <em>Ayuda</em>.
             </li>
             <li>
-              <strong>Cabecera (Header):</strong> Incluye el conmutador de <em>Modo Claro / Modo Oscuro</em>.
+              <strong>Cabecera (Header):</strong> Incluye el conmutador de
+              <em>Modo Claro / Modo Oscuro</em>.
             </li>
             <li>
-              <strong>Botón de Ayuda (?):</strong> Ubicado abajo a la izquierda del menú para consultar este
-              manual en cualquier momento (también accesible mediante la tecla <strong>F1</strong>).
+              <strong>Botón de Ayuda (?):</strong> Ubicado abajo a la izquierda del menú para
+              consultar este manual en cualquier momento (también accesible mediante la tecla
+              <strong>F1</strong>).
             </li>
             <li>
-              <strong>Protección de cambios sin guardar:</strong> si tocaste un formulario y hay cambios
-              pendientes, al cerrar el modal (clic fuera, <em>X</em>, <em>Escape</em>, Cancelar o
+              <strong>Protección de cambios sin guardar:</strong> si tocaste un formulario y hay
+              cambios pendientes, al cerrar el modal (clic fuera, <em>X</em>, <em>Escape</em>,
+              Cancelar o
               <em>Ctrl + O</em>) se pide confirmación antes de descartarlos.
             </li>
           </ul>
@@ -172,42 +170,47 @@
           <ul class="feature-list">
             {#each shortcuts as shortcut (shortcut.id)}
               <li>
-                <strong>{shortcut.keys}:</strong> {shortcut.description}.
+                <strong>{shortcut.keys}:</strong>
+                {shortcut.description}.
               </li>
             {/each}
           </ul>
           <p class="shortcuts-note">
-            Los atajos de navegación (Ctrl + 1 a Ctrl + 4) se desactivan mientras hay una ventana modal
-            abierta; los demás funcionan en cualquier momento.
+            Los atajos de navegación (Ctrl + 1 a Ctrl + 4) se desactivan mientras hay una ventana
+            modal abierta; los demás funcionan en cualquier momento.
           </p>
 
           <div class="tip-box">
             <Info size={18} />
             <div>
-              <strong>¿Dónde están mis datos?</strong> Se almacenan en la carpeta local de datos de la aplicación
-              (<code>inventory.db</code>). Puedes crear copias de seguridad en cualquier momento desde
+              <strong>¿Dónde están mis datos?</strong> Se almacenan en la carpeta local de datos de
+              la aplicación (<code>inventory.db</code>). Puedes crear copias de seguridad en
+              cualquier momento desde
               <em>Configuración &gt; Avanzado</em>.
             </div>
           </div>
         </div>
-
       {:else if activeSection === "dashboard"}
         <div class="topic">
           <h2><LayoutDashboard size={20} class="topic-icon" /> Panel de Control (Dashboard)</h2>
           <p class="lead">
-            El Dashboard es el centro de supervisión operativa. Ofrece un panorama instantáneo
-            de los indicadores más importantes y accesos directos a las tareas habituales.
+            El Dashboard es el centro de supervisión operativa. Ofrece un panorama instantáneo de
+            los indicadores más importantes y accesos directos a las tareas habituales.
           </p>
 
           <h3>Tarjetas de Indicadores (KPIs)</h3>
           <div class="card-grid">
             <div class="kpi-demo tone-primary">
               <span class="kpi-title">Productos</span>
-              <span class="kpi-desc">Total de productos activos en el catálogo. Clic para ir al listado.</span>
+              <span class="kpi-desc"
+                >Total de productos activos en el catálogo. Clic para ir al listado.</span
+              >
             </div>
             <div class="kpi-demo tone-danger">
               <span class="kpi-title">Stock bajo / agotado</span>
-              <span class="kpi-desc">Artículos en nivel crítico o sin stock. Clic para prefiltrar la lista.</span>
+              <span class="kpi-desc"
+                >Artículos en nivel crítico o sin stock. Clic para prefiltrar la lista.</span
+              >
             </div>
             <div class="kpi-demo tone-primary">
               <span class="kpi-title">Movimientos</span>
@@ -222,30 +225,31 @@
           <h3>Paneles Informativos</h3>
           <ul class="feature-list">
             <li>
-              <strong>Stock por agotarse:</strong> Muestra los 10 productos con menor existencia relativa a
-              sus límites. Cuenta con el enlace <em>"Ver todos"</em> para aislar los productos que
-              precisan reposición urgente.
+              <strong>Stock por agotarse:</strong> Muestra los 10 productos con menor existencia
+              relativa a sus límites. Cuenta con el enlace <em>"Ver todos"</em> para aislar los productos
+              que precisan reposición urgente.
             </li>
             <li>
               <strong>Movimientos recientes:</strong> Lista las últimas 10 operaciones asentadas, detallando
-              tipo (Entrada verde / Salida roja), cantidad en su presentación y fecha. Si el
-              movimiento fue anulado, se resalta de forma transparente.
+              tipo (Entrada verde / Salida roja), cantidad en su presentación y fecha. Si el movimiento
+              fue anulado, se resalta de forma transparente.
             </li>
           </ul>
 
           <h3>Accesos Rápidos Inferiores</h3>
           <p>
-            Al pie del Dashboard dispones de tres botones de acción inmediata: <em>Nuevo producto</em>,
+            Al pie del Dashboard dispones de tres botones de acción inmediata: <em
+              >Nuevo producto</em
+            >,
             <em>Registrar movimiento</em> y <em>Nuevo proveedor</em>.
           </p>
         </div>
-
       {:else if activeSection === "products"}
         <div class="topic">
           <h2><Boxes size={20} class="topic-icon" /> Módulo de Productos e Inventario</h2>
           <p class="lead">
-            Aquí administras el catálogo maestro, las presentaciones comerciales, los niveles de stock
-            y el estado de existencias.
+            Aquí administras el catálogo maestro, las presentaciones comerciales, los niveles de
+            stock y el estado de existencias.
           </p>
 
           <h3>Clasificación de Estados de Stock</h3>
@@ -288,38 +292,43 @@
 
           <h3>Presentaciones y Factores de Conversión</h3>
           <p>
-            Permite contabilizar un mismo artículo en diferentes formatos de compra o venta (unidades,
-            packs, cajas, pallets, kilos, litros).
+            Permite contabilizar un mismo artículo en diferentes formatos de compra o venta
+            (unidades, packs, cajas, pallets, kilos, litros).
           </p>
           <div class="warning-box">
             <TriangleAlert size={18} />
             <div>
-              <strong>Regla fundamental:</strong> Todo producto debe tener <strong>exactamente una presentación base con factor 1</strong>.
-              Todas las demás presentaciones calcularán su stock multiplicando su cantidad por el factor correspondiente
-              (ej. una <em>Caja x 12</em> tiene factor <code>12</code>; ingresar 2 cajas suma 24 unidades base).
+              <strong>Regla fundamental:</strong> Todo producto debe tener
+              <strong>exactamente una presentación base con factor 1</strong>. Todas las demás
+              presentaciones calcularán su stock multiplicando su cantidad por el factor
+              correspondiente (ej. una <em>Caja x 12</em> tiene factor <code>12</code>; ingresar 2
+              cajas suma 24 unidades base).
             </div>
           </div>
 
           <h3>Reglas de Integridad y Protección Histórica</h3>
           <ul class="feature-list">
             <li>
-              <strong>Inmutabilidad de factores usados:</strong> Si un producto ya tiene movimientos
-              registrados, no es posible cambiar su unidad base ni alterar el factor de una presentación
-              ya utilizada. Para un nuevo formato de empaque, crea una nueva presentación.
+              <strong>Inmutabilidad de factores usados:</strong> Si un producto ya tiene movimientos registrados,
+              no es posible cambiar su unidad base ni alterar el factor de una presentación ya utilizada.
+              Para un nuevo formato de empaque, crea una nueva presentación.
             </li>
             <li>
-              <strong>Requisito estricto para archivar:</strong> Un producto <strong>solo puede ser archivado si su stock actual es 0</strong>.
-              Si aún quedan existencias, realiza una Salida o Ajuste antes de archivar.
+              <strong>Requisito estricto para archivar:</strong> Un producto
+              <strong>solo puede ser archivado si su stock actual es 0</strong>. Si aún quedan
+              existencias, realiza una Salida o Ajuste antes de archivar.
             </li>
             <li>
-              <strong>Eliminación definitiva:</strong> Con la casilla <em>"Archivados"</em> activa puedes
-              restaurar el producto o eliminarlo para siempre ingresando la <strong>contraseña de
-              administración</strong>. Sus movimientos se conservan en el historial marcados como
+              <strong>Eliminación definitiva:</strong> Con la casilla <em>"Archivados"</em> activa
+              puedes restaurar el producto o eliminarlo para siempre ingresando la
+              <strong>contraseña de administración</strong>. Sus movimientos se conservan en el
+              historial marcados como
               <em>"Producto eliminado"</em>.
             </li>
             <li>
-              <strong>Recuperación de duplicados:</strong> Si intentas registrar un producto con un nombre
-              que ya existe (incluso si está archivado), el sistema te ofrecerá el botón directo
+              <strong>Recuperación de duplicados:</strong> Si intentas registrar un producto con un
+              nombre que ya existe (incluso si está archivado), el sistema te ofrecerá el botón
+              directo
               <em>"Ver registro existente (archivado)"</em> para restaurarlo con un solo clic.
             </li>
           </ul>
@@ -327,20 +336,19 @@
           <h3>Acciones Rápidas en la Tabla</h3>
           <p>
             Al pasar el cursor sobre un producto dispones de accesos para:
-            <code>+</code> registrar una entrada directa, <code>−</code> registrar una salida
-            con el producto preseleccionado, <code>Movimientos</code> para ver su historial,
-            <code>Lápiz</code> para editar y <code>Papelera</code> para archivar (si el stock es cero).
-            En la vista <em>"Archivados"</em>, cada fila ofrece <em>"Restaurar"</em> y el icono de
-            papelera para eliminarlo definitivamente.
+            <code>+</code> registrar una entrada directa, <code>−</code> registrar una salida con el
+            producto preseleccionado, <code>Movimientos</code> para ver su historial,
+            <code>Lápiz</code> para editar y <code>Papelera</code> para archivar (si el stock es
+            cero). En la vista <em>"Archivados"</em>, cada fila ofrece <em>"Restaurar"</em> y el icono
+            de papelera para eliminarlo definitivamente.
           </p>
         </div>
-
       {:else if activeSection === "movements"}
         <div class="topic">
           <h2><ArrowLeftRight size={20} class="topic-icon" /> Movimientos de Stock y Auditoría</h2>
           <p class="lead">
-            Registra cada entrada o salida de inventario, garantizando trazabilidad total e imposibilidad
-            de saldos negativos.
+            Registra cada entrada o salida de inventario, garantizando trazabilidad total e
+            imposibilidad de saldos negativos.
           </p>
 
           <h3>Tipos de Operación</h3>
@@ -362,8 +370,8 @@
                 <h3>Salida de Stock</h3>
               </div>
               <p>
-                Descuenta existencias del producto. No admite proveedor. Limita el ingreso de cantidades
-                para impedir que el stock quede en números negativos.
+                Descuenta existencias del producto. No admite proveedor. Limita el ingreso de
+                cantidades para impedir que el stock quede en números negativos.
               </p>
             </div>
           </div>
@@ -371,54 +379,56 @@
           <h3>Ajustes de Inventario</h3>
           <p>
             Al marcar la casilla <em>"Ajuste de inventario"</em> en el formulario, el campo
-            <strong>"Motivo del ajuste" se vuelve obligatorio</strong>. Es la forma correcta y auditable
-            de asentar roturas, diferencias de conteo físico, mermas o sobrantes de auditoría.
+            <strong>"Motivo del ajuste" se vuelve obligatorio</strong>. Es la forma correcta y
+            auditable de asentar roturas, diferencias de conteo físico, mermas o sobrantes de
+            auditoría.
           </p>
 
           <h3>Previsualización Dinámica</h3>
           <p>
             El formulario muestra en tiempo real:
-            <code>Stock actual</code> &rarr; <code>Operación (cantidad × factor)</code> &rarr; <code>Stock resultante</code>.
-            Si el resultado fuera negativo, la interfaz advierte en color rojo y desactiva el botón de registro.
+            <code>Stock actual</code> &rarr; <code>Operación (cantidad × factor)</code> &rarr;
+            <code>Stock resultante</code>. Si el resultado fuera negativo, la interfaz advierte en
+            color rojo y desactiva el botón de registro.
           </p>
 
           <h3>Anulación Segura de Movimientos</h3>
           <div class="tip-box">
             <Info size={18} />
             <div>
-              Si se cometió un error, pulsa el icono de papelera en la tabla para <strong>Anular</strong>.
-              Deberás ingresar un motivo de anulación obligatorio. El sistema revertirá el stock de forma
-              atómica y mantendrá el registro original para fines de auditoría.
+              Si se cometió un error, pulsa el icono de papelera en la tabla para <strong
+                >Anular</strong
+              >. Deberás ingresar un motivo de anulación obligatorio. El sistema revertirá el stock
+              de forma atómica y mantendrá el registro original para fines de auditoría.
               <br />
-              Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde el
-              botón <em>"Eliminar movimientos"</em> al pie de la tabla: por cantidad (más recientes o más
-              antiguos) o por fechas (desde una fecha en adelante, hasta una fecha hacia atrás, o un
-              intervalo), con vista previa de cuántos movimientos se borrarán y confirmación con la
-              contraseña de administración.
+              Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde
+              el botón <em>"Eliminar movimientos"</em> al pie de la tabla: por cantidad (más recientes
+              o más antiguos) o por fechas (desde una fecha en adelante, hasta una fecha hacia atrás,
+              o un intervalo), con vista previa de cuántos movimientos se borrarán y confirmación con
+              la contraseña de administración.
             </div>
           </div>
 
           <h3>Filtros y Paginación</h3>
           <p>
-            La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas), buscador de texto,
-            selectores de producto y proveedor, filtro por rango de fechas (Desde / Hasta), y
-            filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma paginada a 25 registros
-            por página.
+            La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas),
+            buscador de texto, selectores de producto y proveedor, filtro por rango de fechas (Desde
+            / Hasta), y filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma
+            paginada a 25 registros por página.
           </p>
           <p>
-            Los movimientos de productos eliminados definitivamente conservan su nombre y muestran la
-            etiqueta <em>"Producto eliminado"</em>; siguen apareciendo en la búsqueda por texto aunque ya no
-            estén disponibles en el filtro por producto. Lo mismo ocurre con los proveedores eliminados,
-            que muestran la etiqueta <em>"Proveedor eliminado"</em>.
+            Los movimientos de productos eliminados definitivamente conservan su nombre y muestran
+            la etiqueta <em>"Producto eliminado"</em>; siguen apareciendo en la búsqueda por texto
+            aunque ya no estén disponibles en el filtro por producto. Lo mismo ocurre con los
+            proveedores eliminados, que muestran la etiqueta <em>"Proveedor eliminado"</em>.
           </p>
         </div>
-
       {:else if activeSection === "suppliers"}
         <div class="topic">
           <h2><Truck size={20} class="topic-icon" /> Módulo de Proveedores</h2>
           <p class="lead">
-            Centraliza los datos de fabricantes, distribuidores y contactos comerciales asociados
-            a las compras de mercadería.
+            Centraliza los datos de fabricantes, distribuidores y contactos comerciales asociados a
+            las compras de mercadería.
           </p>
 
           <h3>Características Principales</h3>
@@ -427,30 +437,32 @@
               <strong>Nombre único:</strong> Identifica a la empresa o distribuidor.
             </li>
             <li>
-              <strong>Múltiples canales de contacto:</strong> Puedes añadir tantas líneas de contacto como
-              necesites (teléfonos fijos, celulares, WhatsApp, emails o direcciones) pulsando <em>"+ Añadir"</em>.
+              <strong>Múltiples canales de contacto:</strong> Puedes añadir tantas líneas de
+              contacto como necesites (teléfonos fijos, celulares, WhatsApp, emails o direcciones)
+              pulsando <em>"+ Añadir"</em>.
             </li>
             <li>
               <strong>Observaciones comerciales:</strong> Registra condiciones de pago, plazos de entrega,
               horarios o nombres de vendedores.
             </li>
             <li>
-              <strong>Archivado sin pérdida histórica:</strong> Al archivar un proveedor, los movimientos y
-              entradas pasadas siguen conservando su nombre. Puedes consultar los proveedores archivados y
-              restaurarlos activando la casilla <em>"Archivados"</em> en la barra superior.
+              <strong>Archivado sin pérdida histórica:</strong> Al archivar un proveedor, los
+              movimientos y entradas pasadas siguen conservando su nombre. Puedes consultar los
+              proveedores archivados y restaurarlos activando la casilla <em>"Archivados"</em> en la barra
+              superior.
             </li>
             <li>
-              <strong>Eliminación definitiva:</strong> Desde <em>"Archivados"</em> puedes borrar un proveedor
-              para siempre ingresando la <strong>contraseña de administración</strong>; sus movimientos
-              conservan el nombre marcados como <em>"Proveedor eliminado"</em>.
+              <strong>Eliminación definitiva:</strong> Desde <em>"Archivados"</em> puedes borrar un
+              proveedor para siempre ingresando la <strong>contraseña de administración</strong>;
+              sus movimientos conservan el nombre marcados como <em>"Proveedor eliminado"</em>.
             </li>
             <li>
-              <strong>Registro rápido de entradas:</strong> El botón <code>+</code> de la fila abre el formulario
-              de movimiento con el proveedor ya seleccionado y el tipo Entrada, asociando la compra al instante.
+              <strong>Registro rápido de entradas:</strong> El botón <code>+</code> de la fila abre el
+              formulario de movimiento con el proveedor ya seleccionado y el tipo Entrada, asociando la
+              compra al instante.
             </li>
           </ul>
         </div>
-
       {:else if activeSection === "settings"}
         <div class="topic">
           <h2><Settings size={20} class="topic-icon" /> Configuración y Opciones Avanzadas</h2>
@@ -464,32 +476,35 @@
             <div class="info-card">
               <h3>Límites de Stock</h3>
               <p>
-                Configura los límites numéricos de stock <strong>Bajo</strong> y <strong>Medio</strong>.
-                Debe cumplirse la relación: <code>0 &le; Bajo &lt; Medio</code>.
+                Configura los límites numéricos de stock <strong>Bajo</strong> y
+                <strong>Medio</strong>. Debe cumplirse la relación:
+                <code>0 &le; Bajo &lt; Medio</code>.
               </p>
             </div>
 
             <div class="info-card">
               <h3>Color de Acento</h3>
               <p>
-                Elige entre 7 temas visuales diseñados profesionalmente: <em>Azul, Violeta, Esmeralda,
-                Ámbar, Rosa, Teal o Gris</em>. La preferencia se guarda de inmediato.
+                Elige entre 7 temas visuales diseñados profesionalmente: <em
+                  >Azul, Violeta, Esmeralda, Ámbar, Rosa, Teal o Gris</em
+                >. La preferencia se guarda de inmediato.
               </p>
             </div>
 
             <div class="info-card">
               <h3>Vista por Defecto</h3>
               <p>
-                Define qué pantalla se abre al iniciar la aplicación (Dashboard, Productos, Movimientos
-                o Proveedores).
+                Define qué pantalla se abre al iniciar la aplicación (Dashboard, Productos,
+                Movimientos o Proveedores).
               </p>
             </div>
 
             <div class="info-card">
               <h3>Categorías</h3>
               <p>
-                Personaliza el catálogo de categorías con colores distintivos y un catálogo de más de
-                60 iconos. Al eliminar una categoría, sus productos pasan a "Sin categoría" sin perderse.
+                Personaliza el catálogo de categorías con colores distintivos y un catálogo de más
+                de 60 iconos. Al eliminar una categoría, sus productos pasan a "Sin categoría" sin
+                perderse.
               </p>
             </div>
 
@@ -499,7 +514,8 @@
                 <h3>Copias de Seguridad</h3>
               </div>
               <p>
-                <strong>Crear respaldo:</strong> Exporta un archivo <code>.db</code> consistente.<br />
+                <strong>Crear respaldo:</strong> Exporta un archivo <code>.db</code> consistente.<br
+                />
                 <strong>Restaurar respaldo:</strong> Restaura una copia previa. El sistema genera una
                 copia de seguridad preventiva automática antes de sobreescribir.
               </p>
@@ -511,16 +527,16 @@
                 <h3>Contraseña de Administrador</h3>
               </div>
               <p>
-                Cambia la contraseña que protege las eliminaciones permanentes: la eliminación masiva
-                de movimientos y el borrado definitivo de productos y proveedores archivados (inicial
-                <code>admin</code>), ingresando la clave actual y la nueva dos veces. La eliminación en
-                lote se realiza desde el botón <em>"Eliminar movimientos"</em> al pie de la tabla de
+                Cambia la contraseña que protege las eliminaciones permanentes: la eliminación
+                masiva de movimientos y el borrado definitivo de productos y proveedores archivados
+                (inicial
+                <code>admin</code>), ingresando la clave actual y la nueva dos veces. La eliminación
+                en lote se realiza desde el botón <em>"Eliminar movimientos"</em> al pie de la tabla de
                 Movimientos (por cantidad o por rango de fechas) y no modifica el stock.
               </p>
             </div>
           </div>
         </div>
-
       {:else if activeSection === "faq"}
         <div class="topic">
           <h2><CircleHelp size={20} class="topic-icon" /> Preguntas Frecuentes (FAQ)</h2>
@@ -530,21 +546,29 @@
 
           <div class="faq-list">
             <details class="faq-item" open>
-              <summary>¿Por qué el sistema dice que un producto "ya existe" si no lo veo en la lista?</summary>
+              <summary
+                >¿Por qué el sistema dice que un producto "ya existe" si no lo veo en la lista?</summary
+              >
               <div class="faq-body">
-                Probablemente ese producto fue <strong>archivado</strong> anteriormente.
-                Para recuperarlo, ve a la sección <em>Productos</em>, activa la casilla <strong>"Archivados"</strong>
-                en la barra superior y pulsa <strong>"Restaurar"</strong>. También puedes hacer clic directamente en
-                el botón <em>"Ver registro existente (archivado)"</em> que aparece debajo del aviso de error.
+                Probablemente ese producto fue <strong>archivado</strong> anteriormente. Para
+                recuperarlo, ve a la sección <em>Productos</em>, activa la casilla
+                <strong>"Archivados"</strong>
+                en la barra superior y pulsa <strong>"Restaurar"</strong>. También puedes hacer clic
+                directamente en el botón <em>"Ver registro existente (archivado)"</em> que aparece debajo
+                del aviso de error.
               </div>
             </details>
 
             <details class="faq-item">
-              <summary>¿Por qué no puedo cambiar el factor de conversión o la unidad base de un producto?</summary>
+              <summary
+                >¿Por qué no puedo cambiar el factor de conversión o la unidad base de un producto?</summary
+              >
               <div class="faq-body">
                 Porque el producto ya posee movimientos asentados en su historial. Alterar un factor
-                retroactivamente falsearía los cálculos y saldos de las compras y salidas anteriores. Si el
-                fabricante cambió el formato de empaque, añade una <strong>nueva presentación</strong>
+                retroactivamente falsearía los cálculos y saldos de las compras y salidas
+                anteriores. Si el fabricante cambió el formato de empaque, añade una <strong
+                  >nueva presentación</strong
+                >
                 (ej. "Caja x 10") y utiliza esa nueva presentación a partir de ese momento.
               </div>
             </details>
@@ -552,29 +576,35 @@
             <details class="faq-item">
               <summary>¿Por qué el botón de archivar producto está deshabilitado?</summary>
               <div class="faq-body">
-                Por seguridad contable, un producto <strong>solo se puede archivar si su stock es exactamente 0.00</strong>.
-                Esto evita que quede mercadería física olvidada en el almacén sin control. Realiza una Salida
-                o un Ajuste de inventario para llevar el stock a cero y el botón de archivar se habilitará al instante.
+                Por seguridad contable, un producto <strong
+                  >solo se puede archivar si su stock es exactamente 0.00</strong
+                >. Esto evita que quede mercadería física olvidada en el almacén sin control.
+                Realiza una Salida o un Ajuste de inventario para llevar el stock a cero y el botón
+                de archivar se habilitará al instante.
               </div>
             </details>
 
             <details class="faq-item">
-              <summary>¿Puedo eliminar un movimiento si me equivoqué en la cantidad o producto?</summary>
+              <summary
+                >¿Puedo eliminar un movimiento si me equivoqué en la cantidad o producto?</summary
+              >
               <div class="faq-body">
-                Lo correcto es <strong>Anular el movimiento</strong> haciendo clic en el icono de papelera en la
-                tabla de Movimientos e ingresando el motivo; el stock se revertirá automáticamente y podrás
-                asentar el movimiento correcto. Si necesitas purgar el historial, un administrador puede usar
-                el botón <em>"Eliminar movimientos"</em> al pie de la tabla de Movimientos con contraseña: esa
-                purga es irreversible y no modifica el stock.
+                Lo correcto es <strong>Anular el movimiento</strong> haciendo clic en el icono de
+                papelera en la tabla de Movimientos e ingresando el motivo; el stock se revertirá
+                automáticamente y podrás asentar el movimiento correcto. Si necesitas purgar el
+                historial, un administrador puede usar el botón <em>"Eliminar movimientos"</em> al pie
+                de la tabla de Movimientos con contraseña: esa purga es irreversible y no modifica el
+                stock.
               </div>
             </details>
 
             <details class="faq-item">
               <summary>¿Por qué el sistema me impide anular una Entrada de mercadería?</summary>
               <div class="faq-body">
-                Anular una Entrada requiere restar ese stock de las existencias actuales. Si después de esa
-                Entrada ya realizaste Salidas o ventas que consumieron esa mercadería, el saldo caería por
-                debajo de cero. El sistema bloquea la anulación para proteger la regla de stock no negativo.
+                Anular una Entrada requiere restar ese stock de las existencias actuales. Si después
+                de esa Entrada ya realizaste Salidas o ventas que consumieron esa mercadería, el
+                saldo caería por debajo de cero. El sistema bloquea la anulación para proteger la
+                regla de stock no negativo.
               </div>
             </details>
 
@@ -582,10 +612,17 @@
               <summary>¿Cómo traslado mi inventario a otra computadora?</summary>
               <div class="faq-body">
                 <ol>
-                  <li>En la máquina actual, abre <strong>Configuración (⚙)</strong> &gt; <em>Avanzado</em> y pulsa <strong>"Crear respaldo"</strong>.</li>
+                  <li>
+                    En la máquina actual, abre <strong>Configuración (⚙)</strong> &gt;
+                    <em>Avanzado</em>
+                    y pulsa <strong>"Crear respaldo"</strong>.
+                  </li>
                   <li>Guarda el archivo <code>.db</code> en una memoria USB o disco externo.</li>
                   <li>Instala la aplicación en la nueva computadora.</li>
-                  <li>Abre <strong>Configuración (⚙)</strong> &gt; <strong>"Restaurar respaldo"</strong> y selecciona tu archivo.</li>
+                  <li>
+                    Abre <strong>Configuración (⚙)</strong> &gt;
+                    <strong>"Restaurar respaldo"</strong> y selecciona tu archivo.
+                  </li>
                 </ol>
               </div>
             </details>
@@ -597,7 +634,9 @@
 
   {#snippet footer()}
     <div class="modal-footer-content">
-      <span class="footer-hint">Acceso rápido: presiona <strong>F1</strong> en cualquier momento para abrir o cerrar esta ayuda.</span>
+      <span class="footer-hint"
+        >Acceso rápido: presiona <strong>F1</strong> en cualquier momento para abrir o cerrar esta ayuda.</span
+      >
       <div class="footer-action">
         <Button variant="secondary" icon={Check} onclick={() => modalService.close()}>
           Entendido
@@ -682,7 +721,9 @@
     font-weight: 500;
     cursor: pointer;
     text-align: left;
-    transition: background-color 0.15s, color 0.15s;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
     width: 100%;
     white-space: nowrap;
   }

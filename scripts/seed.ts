@@ -12,13 +12,7 @@ function defaultDatabasePath(): string {
     return join(appData, APP_IDENTIFIER, "inventory.db");
   }
   if (process.platform === "darwin") {
-    return join(
-      homedir(),
-      "Library",
-      "Application Support",
-      APP_IDENTIFIER,
-      "inventory.db",
-    );
+    return join(homedir(), "Library", "Application Support", APP_IDENTIFIER, "inventory.db");
   }
   return join(
     process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
@@ -52,18 +46,23 @@ try {
   db.exec(readFileSync(schemaPath, "utf8"));
 
   const counts = db
-    .query<{
-      products: number;
-      movements: number;
-      categories: number;
-      suppliers: number;
-    }, []>(`
+    .query<
+      {
+        products: number;
+        movements: number;
+        categories: number;
+        suppliers: number;
+      },
+      []
+    >(
+      `
       SELECT
         (SELECT count(*) FROM products) AS products,
         (SELECT count(*) FROM movements) AS movements,
         (SELECT count(*) FROM categories) AS categories,
         (SELECT count(*) FROM suppliers) AS suppliers
-    `)
+    `,
+    )
     .get();
 
   if (!counts) throw new Error("Could not inspect the database.");

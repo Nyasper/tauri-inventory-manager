@@ -22,16 +22,7 @@
   import { formatNumber } from "$lib/utils/format";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import {
-    Search,
-    Plus,
-    Minus,
-    History,
-    Pencil,
-    Trash,
-    Archive,
-    Undo2,
-  } from "@lucide/svelte";
+  import { Search, Plus, Minus, History, Pencil, Trash, Archive, Undo2 } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   productsService.load();
@@ -39,12 +30,9 @@
   const columnHelper = createAppColumnHelper<Product>();
 
   let search = $state("");
-  const archive = new ArchivedList<Product>((archived) =>
-    getProducts(archived),
-  );
+  const archive = new ArchivedList<Product>((archived) => getProducts(archived));
   const visible = $derived(archive.active ? archive.items : productsService.items);
-  let stockFilter = $state("");
-  $effect(()=>{stockFilter=page.url.searchParams.get("stock")??"";});
+  let stockFilter = $derived(page.url.searchParams.get("stock") ?? "");
   const targetId = $derived(page.url.searchParams.get("id"));
   let categoryFilter = $state("");
 
@@ -73,27 +61,25 @@
     columnHelper.accessor("name", {
       header: () => "Nombre",
       meta: { width: "34%" },
-      cell: (info) =>
-        renderComponent(ProductNameCell, { product: info.row.original }),
+      cell: (info) => renderComponent(ProductNameCell, { product: info.row.original }),
     }),
     columnHelper.accessor("category_name", {
       header: () => "Categoría",
       meta: { width: "22%" },
-      cell: (info) =>
-        renderComponent(ProductCategoryCell, { product: info.row.original }),
+      cell: (info) => renderComponent(ProductCategoryCell, { product: info.row.original }),
     }),
     columnHelper.accessor("stock", {
       header: () => "Stock",
       meta: { align: "center", width: "14%" },
-      cell: (info) => `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
+      cell: (info) =>
+        `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
     }),
     columnHelper.accessor(statusRank, {
       id: "status",
       header: () => "Estado",
       enableGlobalFilter: false,
       meta: { align: "center", width: "14%" },
-      cell: (info) =>
-        renderComponent(StockBadge, { status: statusOf(info.row.original) }),
+      cell: (info) => renderComponent(StockBadge, { status: statusOf(info.row.original) }),
     }),
   ]);
 
@@ -102,22 +88,17 @@
     const cat = categoryFilter && categoryFilter !== "none" ? Number(categoryFilter) : null;
     return visible.filter((p) => {
       if (targetId && p.id !== Number(targetId)) return false;
-      if (stockFilter === "low" && !["low","out"].includes(statusOf(p))) return false;
+      if (stockFilter === "low" && !["low", "out"].includes(statusOf(p))) return false;
       if (categoryFilter === "none") {
         if (p.category_id !== null) return false;
       } else if (cat !== null && p.category_id !== cat) return false;
       if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q)
-      );
+      return p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q);
     });
   });
 
   const initialSort: SortingState =
-    page.url.searchParams.get("sort") === "status"
-      ? [{ id: "status", desc: false }]
-      : [];
+    page.url.searchParams.get("sort") === "status" ? [{ id: "status", desc: false }] : [];
 
   const table = createAppTable({
     columns,
@@ -141,11 +122,11 @@
   }
 
   function openEdit(product: Product) {
-    if (product.archived) {
-      productsService.restore(product.id).then(() => archive.reload());
-      return;
-    }
     modalService.open(ProductFormModal, { product });
+  }
+
+  function restoreArchived(product: Product) {
+    void productsService.restore(product.id).then(() => archive.reload());
   }
 
   async function removeProduct(product: Product) {
@@ -172,8 +153,15 @@
 
 <div class="toolbar">
   <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
-  <label><input type="checkbox" checked={stockFilter==="low"} onchange={(e)=>stockFilter=e.currentTarget.checked?"low":""} /> Stock bajo / agotado</label>
-  {#if targetId}<Button variant="secondary" onclick={()=>goto("/products")}>Ver todos</Button>{/if}
+  <label
+    ><input
+      type="checkbox"
+      checked={stockFilter === "low"}
+      onchange={(e) => (stockFilter = e.currentTarget.checked ? "low" : "")}
+    /> Stock bajo / agotado</label
+  >
+  {#if targetId}<Button variant="secondary" onclick={() => goto("/products")}>Ver todos</Button
+    >{/if}
   <div class="search">
     <Search size={16} />
     <input
@@ -195,7 +183,12 @@
 </div>
 
 <div class="products">
-  {#if productsService.error || archive.error}<p class="error" role="alert">{productsService.error || archive.error}</p><Button onclick={()=>archive.active?archive.reload():productsService.load()}>Reintentar</Button>
+  {#if productsService.error || archive.error}<p class="error" role="alert">
+      {productsService.error || archive.error}
+    </p>
+    <Button onclick={() => (archive.active ? archive.reload() : productsService.load())}
+      >Reintentar</Button
+    >
   {:else if productsService.loading || archive.loading}<p role="status">Cargando productos…</p>
   {:else if visible.length === 0}
     {#if archive.active}
@@ -223,113 +216,111 @@
       {table}
       fixed
       onRowClick={openEdit}
+      rowClickable={(product) => !product.archived}
       showSearch={false}
-      searchPlaceholder="Buscar productos..."
     >
       {#snippet actions(product)}
-      {#if product.archived}
-        <div class="actions">
-          <button
-            class="icon-btn"
-            type="button"
-            title="Restaurar"
-            aria-label={`Restaurar ${product.name}`}
-            onclick={(e) => {
-              e.stopPropagation();
-              openEdit(product);
-            }}
-          >
-            <Undo2 size={16} />
-          </button>
-          <button
-            class="icon-btn danger"
-            type="button"
-            title="Eliminar definitivamente"
-            aria-label={`Eliminar definitivamente ${product.name}`}
-            onclick={(e) => {
-              e.stopPropagation();
-              removePermanently(product);
-            }}
-          >
-            <Trash size={16} />
-          </button>
-        </div>
-      {:else}
-        <div class="actions">
-          <button
-            class="icon-btn"
-            type="button"
-            title="Registrar entrada"
-            aria-label={`Registrar entrada de ${product.name}`}
-            onclick={(e) => {
-              e.stopPropagation();
-              modalService.open(MovementFormModal, {
-                initialProductId: String(product.id),
-              });
-            }}
-          >
-            <Plus size={16} />
-          </button>
-          <button
-            class="icon-btn"
-            type="button"
-            title="Registrar salida"
-            aria-label={`Registrar salida de ${product.name}`}
-            onclick={(e) => {
-              e.stopPropagation();
-              modalService.open(MovementFormModal, {
-                initialProductId: String(product.id),
-                initialType: "out",
-              });
-            }}
-          >
-            <Minus size={16} />
-          </button>
-          <button
-            class="icon-btn"
-            type="button"
-            title="Ver movimientos"
-            aria-label={`Ver movimientos de ${product.name}`}
-            onclick={(e) => {
-              e.stopPropagation();
-              goto(`/movements?product=${product.id}`);
-            }}
-          >
-            <History size={16} />
-          </button>
-          <button
-            class="icon-btn"
-            type="button"
-            title="Editar"
-            aria-label="Editar"
-            onclick={(e) => {
-              e.stopPropagation();
-              openEdit(product);
-            }}
-          >
-            <Pencil size={16} />
-          </button>
-          <span
-            class="archive-wrap"
-            title={product.stock > 0
-              ? "Archivar (el stock debe ser 0)."
-              : "Archivar"}
-          >
+        {#if product.archived}
+          <div class="actions">
+            <button
+              class="icon-btn"
+              type="button"
+              title="Restaurar"
+              aria-label={`Restaurar ${product.name}`}
+              onclick={(e) => {
+                e.stopPropagation();
+                restoreArchived(product);
+              }}
+            >
+              <Undo2 size={16} />
+            </button>
             <button
               class="icon-btn danger"
               type="button"
-              aria-label="Archivar"
-              disabled={product.stock > 0}
+              title="Eliminar definitivamente"
+              aria-label={`Eliminar definitivamente ${product.name}`}
               onclick={(e) => {
                 e.stopPropagation();
-                removeProduct(product);
+                removePermanently(product);
               }}
             >
-              <Archive size={16} />
+              <Trash size={16} />
             </button>
-          </span>
-        </div>
-      {/if}
+          </div>
+        {:else}
+          <div class="actions">
+            <button
+              class="icon-btn"
+              type="button"
+              title="Registrar entrada"
+              aria-label={`Registrar entrada de ${product.name}`}
+              onclick={(e) => {
+                e.stopPropagation();
+                modalService.open(MovementFormModal, {
+                  initialProductId: String(product.id),
+                });
+              }}
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              class="icon-btn"
+              type="button"
+              title="Registrar salida"
+              aria-label={`Registrar salida de ${product.name}`}
+              onclick={(e) => {
+                e.stopPropagation();
+                modalService.open(MovementFormModal, {
+                  initialProductId: String(product.id),
+                  initialType: "out",
+                });
+              }}
+            >
+              <Minus size={16} />
+            </button>
+            <button
+              class="icon-btn"
+              type="button"
+              title="Ver movimientos"
+              aria-label={`Ver movimientos de ${product.name}`}
+              onclick={(e) => {
+                e.stopPropagation();
+                goto(`/movements?product=${product.id}`);
+              }}
+            >
+              <History size={16} />
+            </button>
+            <button
+              class="icon-btn"
+              type="button"
+              title="Editar"
+              aria-label="Editar"
+              onclick={(e) => {
+                e.stopPropagation();
+                openEdit(product);
+              }}
+            >
+              <Pencil size={16} />
+            </button>
+            <span
+              class="archive-wrap"
+              title={product.stock > 0 ? "Archivar (el stock debe ser 0)." : "Archivar"}
+            >
+              <button
+                class="icon-btn danger"
+                type="button"
+                aria-label="Archivar"
+                disabled={product.stock > 0}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  removeProduct(product);
+                }}
+              >
+                <Archive size={16} />
+              </button>
+            </span>
+          </div>
+        {/if}
       {/snippet}
     </DataTable>
   {/if}

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Prettier and ESLint setup with `lint`, `format` and `format:check` scripts.
+
+### Changed
+
+- Modernized the Svelte components: declaration tags (`{const}`) replace the legacy `{@const}`, clsx-style class attributes replace `class:` directives, the modal focus lifecycle uses an `{@attach}` attachment, and the archived-list URL helper uses the reactive `SvelteURL`.
+- Settings thresholds, the default view, the product stock filter and the movement product filter now derive their value from the stored settings or the URL instead of being synchronized with `$effect`; the movement-form quantity is clamped with a function binding and the movements page keeps its page in derived state, so changing a filter no longer triggers an extra fetch.
+- Presentation and supplier contact rows use stable keys instead of the array index.
+- Right-click is now allowed inside text inputs and textareas (copy/paste), while the global context menu stays disabled everywhere else.
+- Select and textarea primitives accept a `disabled` prop, and data tables accept a `rowClickable` predicate to disable row clicks per record.
+
+### Fixed
+
+- Modal autofocus moved to the first field in the modal body instead of the header close button.
+- Clicking a row in the archived products list no longer restores the product; restoring now requires the explicit "Restaurar" action.
+- The batch-deletion modal no longer treats a numerically unchanged count as an unsaved change.
+
+### Removed
+
+- Dead code flagged by the new linting: unused icon and type imports, the unused `Product.presentations` field, an inert CSS class and an unused table prop.
+
 ## [0.12.0] - 2026-09-15
 
 ### Added

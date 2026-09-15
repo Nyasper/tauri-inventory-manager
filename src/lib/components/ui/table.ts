@@ -34,7 +34,4 @@ export const { createAppTable, createAppColumnHelper } = createTableHook({
 type AppFeatures = typeof features;
 
 /** Tipo de la instancia creada por `createAppTable`, para tipar componentes. */
-export type AppTable<TData extends RowData> = SvelteTable<
-  AppFeatures,
-  TData
->;
+export type AppTable<TData extends RowData> = SvelteTable<AppFeatures, TData>;

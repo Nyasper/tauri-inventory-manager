@@ -6,7 +6,7 @@
   import { CATEGORY_COLORS, type CategoryDraft } from "$lib/categories";
 
   let {
-    draft,
+    draft = $bindable(),
     onSaved,
     onCancel,
   }: {
@@ -42,18 +42,13 @@
 </script>
 
 <div class="editor">
-  <Input
-    label="Nombre"
-    placeholder="Nombre de la categoría"
-    bind:value={draft.name}
-  />
+  <Input label="Nombre" placeholder="Nombre de la categoría" bind:value={draft.name} />
   <span class="field-label">Color</span>
   <div class="cat-colors">
     {#each CATEGORY_COLORS as color (color)}
       <button
         type="button"
-        class="cat-color"
-        class:active={draft.color === color}
+        class={["cat-color", { active: draft.color === color }]}
         style="--swatch: {color}"
         aria-label={color}
         onclick={() => (draft.color = color)}
@@ -67,9 +62,7 @@
     <p class="validation" role="status">El nombre es obligatorio.</p>
   {/if}
   <div class="actions">
-    <Button variant="secondary" size="sm" disabled={saving} onclick={onCancel}>
-      Cancelar
-    </Button>
+    <Button variant="secondary" size="sm" disabled={saving} onclick={onCancel}>Cancelar</Button>
     <Button size="sm" disabled={!canSave} onclick={save}>
       {saving ? "Guardando…" : draft.id === null ? "Crear" : "Guardar"}
     </Button>

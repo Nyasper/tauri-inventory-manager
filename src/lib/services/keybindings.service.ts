@@ -151,8 +151,7 @@ class KeybindingsService {
     if (event.repeat || event.defaultPrevented) return;
     const shortcut = this.shortcuts.find(
       (item) =>
-        matches(event, item.combo) &&
-        (!item.whenNoModal || modalService.modals.length === 0),
+        matches(event, item.combo) && (!item.whenNoModal || modalService.modals.length === 0),
     );
     if (!shortcut) return;
     event.preventDefault();

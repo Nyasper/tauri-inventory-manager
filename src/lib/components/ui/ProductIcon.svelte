@@ -22,8 +22,7 @@
 </script>
 
 <div
-  class="tile"
-  class:tinted={hasColor}
+  class={["tile", { tinted: hasColor }]}
   style:width="{size}px"
   style:height="{size}px"
   style:background={bg}

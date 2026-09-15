@@ -26,7 +26,6 @@ export interface Product {
   category_name?: string | null;
   category_color?: string | null;
   category_icon?: string | null;
-  presentations?: Presentation[];
 }
 
 export interface Supplier {
@@ -59,11 +58,7 @@ export interface Movement {
   supplier_name?: string;
 }
 
-export type DefaultView =
-  | "dashboard"
-  | "products"
-  | "movements"
-  | "suppliers";
+export type DefaultView = "dashboard" | "products" | "movements" | "suppliers";
 
 export interface AppSettings {
   stock_low_threshold: number;
@@ -78,11 +73,4 @@ export interface DuplicateRecord {
   archived: number;
 }
 
-export type AccentColor =
-  | "blue"
-  | "violet"
-  | "emerald"
-  | "amber"
-  | "rose"
-  | "teal"
-  | "slate";
+export type AccentColor = "blue" | "violet" | "emerald" | "amber" | "rose" | "teal" | "slate";

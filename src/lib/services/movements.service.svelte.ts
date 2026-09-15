@@ -44,10 +44,7 @@ class MovementsService {
     await this.load();
   }
 
-  async deleteBatch(
-    filter: MovementDeleteFilter,
-    password: string,
-  ): Promise<number> {
+  async deleteBatch(filter: MovementDeleteFilter, password: string): Promise<number> {
     const deleted = await deleteMovements(filter, password);
     await this.load();
     return deleted;

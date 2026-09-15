@@ -42,14 +42,14 @@
 <Modal
   title="Eliminar definitivamente"
   onClose={() => modalService.close()}
-  dirty={dirty}
+  {dirty}
   busy={deleting}
   width="sm"
 >
   <div class="delete">
     <p class="message">
-      ¿Eliminar definitivamente el {label} <strong>{name}</strong>? Esta acción
-      no se puede deshacer.
+      ¿Eliminar definitivamente el {label} <strong>{name}</strong>? Esta acción no se puede
+      deshacer.
     </p>
     <p class="hint">
       Sus movimientos se conservarán en el historial marcados como "{label}

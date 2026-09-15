@@ -25,12 +25,11 @@
 <button
   {type}
   {disabled}
-  class="btn btn-{variant} btn-{size}"
-  class:icon-only={!children}
+  class={["btn", `btn-${variant}`, `btn-${size}`, { "icon-only": !children }]}
   {onclick}
 >
   {#if icon}
-    {@const Icon = icon}
+    {const Icon = icon}
     <Icon size={size === "sm" ? 15 : 16} />
   {/if}
   {#if children}

@@ -7,11 +7,7 @@
 
 {#if product.category_name}
   <span class="category">
-    <ProductIcon
-      icon={product.category_icon}
-      color={product.category_color}
-      size={22}
-    />
+    <ProductIcon icon={product.category_icon} color={product.category_color} size={22} />
     <span class="name" title={product.category_name}>
       {product.category_name}
     </span>

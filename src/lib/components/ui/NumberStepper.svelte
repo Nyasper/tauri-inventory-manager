@@ -19,12 +19,8 @@
 
   const id = $props.id();
 
-  const atMin = $derived(
-    disabled || !Number.isFinite(value) || value <= min,
-  );
-  const atMax = $derived(
-    disabled || (max !== undefined && Number.isFinite(value) && value >= max),
-  );
+  const atMin = $derived(disabled || !Number.isFinite(value) || value <= min);
+  const atMax = $derived(disabled || (max !== undefined && Number.isFinite(value) && value >= max));
 
   function clamp(next: number): number {
     if (next < min) next = min;
@@ -47,7 +43,7 @@
 {#if label}
   <label class="field-label" for={id}>{label}</label>
 {/if}
-<div class="stepper" class:disabled>
+<div class={["stepper", { disabled }]}>
   {#if showBounds}
     <button
       class="bound-btn"
@@ -75,7 +71,7 @@
     class="step-input"
     bind:value
     {min}
-    max={max}
+    {max}
     {disabled}
     step="1"
     autocomplete="off"
