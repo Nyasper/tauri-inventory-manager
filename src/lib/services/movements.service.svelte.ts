@@ -4,7 +4,7 @@ import {
   createMovement,
   deleteMovements,
   getMovements,
-  type MovementDeleteMode,
+  type MovementDeleteFilter,
   type MovementFilters,
   type MovementInput,
 } from "$lib/services/db.service";
@@ -45,11 +45,10 @@ class MovementsService {
   }
 
   async deleteBatch(
-    mode: MovementDeleteMode,
-    count: number,
+    filter: MovementDeleteFilter,
     password: string,
   ): Promise<number> {
-    const deleted = await deleteMovements(mode, count, password);
+    const deleted = await deleteMovements(filter, password);
     await this.load();
     return deleted;
   }

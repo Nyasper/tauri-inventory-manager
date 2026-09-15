@@ -19,6 +19,10 @@
       !changing,
   );
 
+  const dirty = $derived(
+    oldPassword !== "" || newPassword !== "" || repeatPassword !== "",
+  );
+
   async function updatePassword() {
     if (!canChange) return;
     changing = true;
@@ -38,9 +42,9 @@
 
 <Modal
   title="Cambiar contraseña de administrador"
-  onClose={() => {
-    if (!changing) modalService.close();
-  }}
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={changing}
 >
   <p class="hint">
     La contraseña de administrador protege la eliminación masiva de movimientos

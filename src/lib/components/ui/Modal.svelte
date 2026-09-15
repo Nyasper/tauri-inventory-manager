@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
 
   let {
     title,
@@ -10,25 +11,51 @@
     footer,
     onClose,
     width = "md",
+    dirty = false,
+    busy = false,
   }: {
     title: string;
     children: Snippet;
     footer?: Snippet;
     onClose?: () => void;
     width?: "sm" | "md" | "lg" | "xl";
+    dirty?: boolean;
+    busy?: boolean;
   } = $props();
 
   let dialog: HTMLDivElement;
+  let closing = $state(false);
   const titleId = $props.id();
+
+  // El guardián bloquea el cierre mientras hay una operación en curso y pide
+  // confirmación cuando el usuario tocó el formulario y hay cambios sin guardar.
+  const unregisterGuard = modalService.registerCloseGuard(async () => {
+    if (busy) return false;
+    if (!dirty) return true;
+    return modalService.confirmDiscard();
+  });
+  onDestroy(unregisterGuard);
+
   onMount(() => {
     const previous = document.activeElement as HTMLElement | null;
     (dialog.querySelector<HTMLElement>("input,select,textarea,button") ?? dialog).focus();
     return () => previous?.focus();
   });
+
+  async function attemptClose() {
+    if (closing) return;
+    closing = true;
+    try {
+      if (await modalService.canClose()) onClose?.();
+    } finally {
+      closing = false;
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     const dialogs = document.querySelectorAll('[role="dialog"]');
     if (dialogs[dialogs.length-1] !== dialog) return;
-    if (event.key === "Escape") { event.preventDefault(); onClose?.(); }
+    if (event.key === "Escape") { event.preventDefault(); void attemptClose(); }
     if (event.key === "Tab") {
       const items = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(el => el.getClientRects().length);
       const first = items[0], last = items[items.length-1];
@@ -46,13 +73,13 @@
   role="presentation"
   transition:fade={{ duration: 160 }}
   onclick={(event) => {
-    if (event.target === event.currentTarget) onClose?.();
+    if (event.target === event.currentTarget) void attemptClose();
   }}
 >
   <div bind:this={dialog} class="modal modal-{width}" role="dialog" aria-modal="true" aria-labelledby={titleId} tabindex="-1">
     <header class="header">
       <h2 id={titleId}>{title}</h2>
-      <button class="icon-btn" type="button" aria-label="Cerrar" onclick={onClose}>
+      <button class="icon-btn" type="button" aria-label="Cerrar" onclick={attemptClose}>
         <X size={18} />
       </button>
     </header>

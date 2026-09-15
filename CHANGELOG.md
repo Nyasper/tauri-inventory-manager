@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-15
+
 ### Added
 
 - Permanent deletion of archived suppliers from the "Archivados" view; their movements keep the supplier name snapshot with a "Proveedor eliminado" badge.
+- Batch movement deletion now supports date criteria: from a date onward, up to a date (backwards) or between two dates, alongside the existing most-recent/most-oldest count modes.
+- Live preview in the batch-deletion modal showing how many movements match the selected filter before deleting, with the button disabled when there are none.
+- The current application version is shown at the end of the Settings modal, read dynamically from the executable.
+- Confirmation dialog when closing a modal with unsaved changes (overlay click, X, Escape, Cancel/Back or `Ctrl + O`).
 
 ### Changed
 
@@ -19,6 +25,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The "Anular movimiento" action in the movements view now uses an undo icon instead of a trash can.
 - The "Eliminar movimientos" batch-deletion button moved from Settings › Advanced to the bottom of the movements view (next to the pagination controls).
 - The administration password that protects movement deletion can now only be changed from Settings › Advanced via the new "Cambiar contraseña de administrador" button, and it was removed from the delete-movements modal.
+- Closing modals is now centralized through a close guard in `modal.service`, so every close path (buttons, keys and shortcuts) respects in-progress operations and unsaved changes.
+
+### Fixed
+
+- Batch movement deletion now performs a single transactional statement instead of deleting rows one by one.
 
 ## [0.11.0] - 2026-09-14
 

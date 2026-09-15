@@ -22,6 +22,7 @@
   let error = $state("");
 
   const canDelete = $derived(password.trim() !== "" && !deleting);
+  const dirty = $derived(password !== "");
 
   async function submit() {
     if (!canDelete) return;
@@ -40,9 +41,9 @@
 
 <Modal
   title="Eliminar definitivamente"
-  onClose={() => {
-    if (!deleting) modalService.close();
-  }}
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={deleting}
   width="sm"
 >
   <div class="delete">
@@ -59,7 +60,7 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" disabled={deleting} onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={deleting} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
     <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={submit}>

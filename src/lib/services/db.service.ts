@@ -178,15 +178,57 @@ export function cancelMovement(id: number, reason: string): Promise<void> {
   return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
 }
 
-export type MovementDeleteMode = "recent" | "oldest";
+export type MovementDeleteMode =
+  | "recent"
+  | "oldest"
+  | "from"
+  | "until"
+  | "range";
+
+/** Filtro de borrado en lote. `from`/`to` son días locales (`YYYY-MM-DD`). */
+export interface MovementDeleteFilter {
+  mode: MovementDeleteMode;
+  count?: number;
+  from?: string;
+  to?: string;
+}
+
+interface MovementDeleteQuery {
+  mode: MovementDeleteMode;
+  count: number | null;
+  from: string | null;
+  to: string | null;
+}
+
+function toDeleteQuery(filter: MovementDeleteFilter): MovementDeleteQuery {
+  const amount = Number(filter.count);
+  return {
+    mode: filter.mode,
+    count:
+      filter.mode === "recent" || filter.mode === "oldest"
+        ? Number.isFinite(amount)
+          ? amount
+          : null
+        : null,
+    from: filter.from ? utcDayBoundary(filter.from, false) : null,
+    to: filter.to ? utcDayBoundary(filter.to, true) : null,
+  };
+}
+
+/** Cuenta los movimientos que borraría el filtro, sin eliminar nada. */
+export function countMovements(filter: MovementDeleteFilter): Promise<number> {
+  return invoke<number>("count_movements", { filter: toDeleteQuery(filter) });
+}
 
 /** Borra movimientos en lote; el stock de los productos no se modifica. */
 export function deleteMovements(
-  mode: MovementDeleteMode,
-  count: number,
+  filter: MovementDeleteFilter,
   password: string,
 ): Promise<number> {
-  return invoke<number>("delete_movements", { mode, count, password });
+  return invoke<number>("delete_movements", {
+    filter: toDeleteQuery(filter),
+    password,
+  });
 }
 
 export function changeDeletePassword(

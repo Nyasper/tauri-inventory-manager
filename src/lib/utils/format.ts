@@ -19,3 +19,11 @@ export function formatDate(value: string | null): string {
     timeStyle: "short",
   }).format(date);
 }
+
+/** Formatea un día local (`YYYY-MM-DD`) sin hora. */
+export function formatDay(value: string): string {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(date);
+}

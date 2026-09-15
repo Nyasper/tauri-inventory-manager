@@ -28,6 +28,10 @@
   let saving = $state(false);
   let error = $state("");
 
+  const snapshot = () => JSON.stringify({ name, contacts, notes });
+  const baseline = $state(snapshot());
+  const dirty = $derived(snapshot() !== baseline);
+
   const validation = $derived(!name.trim() ? "El nombre es obligatorio." : "");
   const canSave = $derived(validation === "" && !saving);
 
@@ -59,7 +63,9 @@
 
 <Modal
   title={initial ? "Editar proveedor" : "Nuevo proveedor"}
-  onClose={() => { if (!saving) modalService.close(); }}
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={saving}
   width="md"
 >
   <div class="form">
@@ -110,7 +116,7 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
     <Button disabled={!canSave} onclick={save}>

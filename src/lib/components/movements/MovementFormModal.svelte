@@ -36,6 +36,23 @@
   let saving = $state(false);
   let error = $state("");
 
+  const snapshot = () =>
+    JSON.stringify({
+      productId,
+      presentationId,
+      type,
+      quantity,
+      supplierId,
+      notes,
+      adjustment,
+      reason,
+    });
+  let baseline = $state<string | null>(
+    untrack(() => initialProductId) ? null : snapshot(),
+  );
+  let baselineSet = !untrack(() => initialProductId);
+  const dirty = $derived(baseline !== null && snapshot() !== baseline);
+
   const selectedProduct = $derived(productsService.items.find((p) => p.id === Number(productId)));
   const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
   const baseQuantity = $derived(Math.round((Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6) / 1e6);
@@ -112,7 +129,12 @@
       }));
       const base = rows.find((r) => r.factor === 1) ?? rows[0];
       presentationId = base ? String(base.id) : "";
-    }).catch((e) => { if (!cancelled) error = String(e); }).finally(() => { if (!cancelled) loading = false; });
+      if (!baselineSet) { baselineSet = true; baseline = snapshot(); }
+    }).catch((e) => {
+      if (cancelled) return;
+      error = String(e);
+      if (!baselineSet) { baselineSet = true; baseline = snapshot(); }
+    }).finally(() => { if (!cancelled) loading = false; });
 
     return () => {
       cancelled = true;
@@ -160,7 +182,9 @@
 
 <Modal
   title="Nuevo movimiento"
-  onClose={() => { if (!saving) modalService.close(); }}
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={saving}
   width="md"
 >
   <div class="form">
@@ -226,7 +250,7 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
     <Button disabled={!canSave} onclick={save}>Registrar</Button>

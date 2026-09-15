@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    Connection, Pool, Row, Sqlite, SqliteConnection,
+    Connection, Pool, QueryBuilder, Row, Sqlite, SqliteConnection,
 };
 use std::{
     path::{Path, PathBuf},
@@ -593,52 +593,159 @@ async fn check_delete_password(db: &Db, password: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Borra en lote los movimientos más recientes o más antiguos. El stock de
-/// los productos no se modifica: el historial se recorta sin revertir efectos.
+/// Filtro de borrado en lote de movimientos. `from` es inclusivo y `to`
+/// exclusivo, ambos en UTC (`YYYY-MM-DD HH:MM:SS`), como en `page_movements`.
+#[derive(Deserialize)]
+pub struct MovementDeleteFilter {
+    pub mode: String,
+    #[serde(default)]
+    pub count: Option<i64>,
+    #[serde(default)]
+    pub from: Option<String>,
+    #[serde(default)]
+    pub to: Option<String>,
+}
+
+/// Filtro ya validado: `limit` solo aplica a los modos por cantidad y
+/// `descending` indica si el recorte empieza por los movimientos más recientes.
+struct ValidatedDeleteFilter {
+    limit: Option<i64>,
+    descending: bool,
+    from: Option<String>,
+    to: Option<String>,
+}
+
+fn validate_delete_filter(filter: &MovementDeleteFilter) -> Result<ValidatedDeleteFilter, String> {
+    let from = filter
+        .from
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let to = filter
+        .to
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    match filter.mode.as_str() {
+        "recent" | "oldest" => {
+            let count = filter.count.unwrap_or(0);
+            if !(1..=1_000_000_000).contains(&count) {
+                return Err("Indica una cantidad válida de movimientos.".into());
+            }
+            Ok(ValidatedDeleteFilter {
+                limit: Some(count),
+                descending: filter.mode == "recent",
+                from: None,
+                to: None,
+            })
+        }
+        "from" => {
+            let from = from.ok_or("Indica la fecha de inicio.")?;
+            Ok(ValidatedDeleteFilter {
+                limit: None,
+                descending: false,
+                from: Some(from.to_string()),
+                to: None,
+            })
+        }
+        "until" => {
+            let to = to.ok_or("Indica la fecha límite.")?;
+            Ok(ValidatedDeleteFilter {
+                limit: None,
+                descending: false,
+                from: None,
+                to: Some(to.to_string()),
+            })
+        }
+        "range" => {
+            let (Some(from), Some(to)) = (from, to) else {
+                return Err("Indica ambas fechas.".into());
+            };
+            if from >= to {
+                return Err("La fecha inicial debe ser anterior a la final.".into());
+            }
+            Ok(ValidatedDeleteFilter {
+                limit: None,
+                descending: false,
+                from: Some(from.to_string()),
+                to: Some(to.to_string()),
+            })
+        }
+        _ => Err("Modo de eliminación inválido.".into()),
+    }
+}
+
+/// Añade las condiciones de fecha del filtro a un `QueryBuilder` sobre `movements`.
+fn apply_delete_filter(query: &mut QueryBuilder<Sqlite>, filter: &ValidatedDeleteFilter) {
+    let mut separator = " WHERE ";
+    if let Some(from) = &filter.from {
+        query
+            .push(separator)
+            .push("created_at>=")
+            .push_bind(from.clone());
+        separator = " AND ";
+    }
+    if let Some(to) = &filter.to {
+        query.push(separator).push("created_at<").push_bind(to.clone());
+    }
+}
+
+/// Cuenta los movimientos que borraría el filtro, para previsualizarlo.
+#[tauri::command]
+pub async fn count_movements(
+    db: State<'_, DbState>,
+    filter: MovementDeleteFilter,
+) -> Result<i64, String> {
+    let db = db.0.read().await;
+    count_movements_db(&db, &filter).await
+}
+async fn count_movements_db(db: &Db, filter: &MovementDeleteFilter) -> Result<i64, String> {
+    let filter = validate_delete_filter(filter)?;
+    let mut query = QueryBuilder::<Sqlite>::new("SELECT count(*) FROM movements");
+    apply_delete_filter(&mut query, &filter);
+    let row = query.build().fetch_one(db).await.map_err(error)?;
+    row.try_get::<i64, _>(0).map_err(error)
+}
+
+/// Borra en lote los movimientos que coincidan con el filtro (por cantidad o
+/// por fechas). El stock de los productos no se modifica: el historial se
+/// recorta sin revertir efectos.
 #[tauri::command]
 pub async fn delete_movements(
     db: State<'_, DbState>,
-    mode: String,
-    count: i64,
+    filter: MovementDeleteFilter,
     password: String,
 ) -> Result<i64, String> {
     let db = db.0.read().await;
-    delete_movements_db(&db, mode, count, password).await
+    delete_movements_db(&db, filter, password).await
 }
 async fn delete_movements_db(
     db: &Db,
-    mode: String,
-    count: i64,
+    filter: MovementDeleteFilter,
     password: String,
 ) -> Result<i64, String> {
-    if !["recent", "oldest"].contains(&mode.as_str()) {
-        return Err("Modo de eliminación inválido.".into());
-    }
-    if !(1..=1_000_000_000).contains(&count) {
-        return Err("Indica una cantidad válida de movimientos.".into());
-    }
+    let filter = validate_delete_filter(&filter)?;
     check_delete_password(db, &password).await?;
-    let order = if mode == "recent" {
-        "created_at DESC, id DESC"
-    } else {
-        "created_at ASC, id ASC"
-    };
     let mut tx = db.begin().await.map_err(error)?;
-    let ids: Vec<i64> =
-        sqlx::query_scalar(&format!("SELECT id FROM movements ORDER BY {order} LIMIT ?"))
-            .bind(count)
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(error)?;
-    let mut deleted = 0;
-    for id in ids {
-        deleted += sqlx::query("DELETE FROM movements WHERE id=?")
-            .bind(id)
-            .execute(&mut *tx)
-            .await
-            .map_err(error)?
-            .rows_affected();
-    }
+    let deleted = if let Some(limit) = filter.limit {
+        let order = if filter.descending {
+            "created_at DESC, id DESC"
+        } else {
+            "created_at ASC, id ASC"
+        };
+        sqlx::query(&format!(
+            "DELETE FROM movements WHERE id IN (SELECT id FROM movements ORDER BY {order} LIMIT ?)"
+        ))
+        .bind(limit)
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?
+        .rows_affected()
+    } else {
+        let mut query = QueryBuilder::<Sqlite>::new("DELETE FROM movements");
+        apply_delete_filter(&mut query, &filter);
+        query.build().execute(&mut *tx).await.map_err(error)?.rows_affected()
+    };
     tx.commit().await.map_err(error)?;
     Ok(deleted as i64)
 }
@@ -1400,6 +1507,30 @@ mod tests {
                 .unwrap();
         });
     }
+    fn delete_filter(mode: &str) -> MovementDeleteFilter {
+        MovementDeleteFilter {
+            mode: mode.into(),
+            count: None,
+            from: None,
+            to: None,
+        }
+    }
+    fn delete_filter_count(mode: &str, count: i64) -> MovementDeleteFilter {
+        MovementDeleteFilter {
+            mode: mode.into(),
+            count: Some(count),
+            from: None,
+            to: None,
+        }
+    }
+    fn delete_filter_range(mode: &str, from: Option<&str>, to: Option<&str>) -> MovementDeleteFilter {
+        MovementDeleteFilter {
+            mode: mode.into(),
+            count: None,
+            from: from.map(str::to_string),
+            to: to.map(str::to_string),
+        }
+    }
     #[test]
     fn deleting_movements_requires_password_and_keeps_stock() {
         tauri::async_runtime::block_on(async {
@@ -1419,23 +1550,23 @@ mod tests {
                 .unwrap();
 
             assert!(
-                delete_movements_db(&db, "recent".into(), 1, "clave".into())
+                delete_movements_db(&db, delete_filter_count("recent", 1), "clave".into())
                     .await
                     .is_err()
             );
             assert!(
-                delete_movements_db(&db, "invalid".into(), 1, "admin".into())
+                delete_movements_db(&db, delete_filter_count("invalid", 1), "admin".into())
                     .await
                     .is_err()
             );
             assert!(
-                delete_movements_db(&db, "recent".into(), 0, "admin".into())
+                delete_movements_db(&db, delete_filter_count("recent", 0), "admin".into())
                     .await
                     .is_err()
             );
 
             assert_eq!(
-                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                delete_movements_db(&db, delete_filter_count("recent", 1), "admin".into())
                     .await
                     .unwrap(),
                 1
@@ -1451,7 +1582,7 @@ mod tests {
             assert_eq!(stock(&db, coffee.0).await, 5.0);
 
             assert_eq!(
-                delete_movements_db(&db, "oldest".into(), 10, "admin".into())
+                delete_movements_db(&db, delete_filter_count("oldest", 10), "admin".into())
                     .await
                     .unwrap(),
                 3
@@ -1465,11 +1596,71 @@ mod tests {
             );
             assert_eq!(stock(&db, water.0).await, 5.0);
             assert_eq!(
-                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                delete_movements_db(&db, delete_filter_count("recent", 1), "admin".into())
                     .await
                     .unwrap(),
                 0
             );
+        });
+    }
+
+    #[test]
+    fn delete_movements_by_date_range_previews_and_deletes() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            for _ in 0..5 {
+                create_movement_db(&db, movement(water, "in", 1.0))
+                    .await
+                    .unwrap();
+            }
+            for (id, day) in [
+                (1, "2026-01-01"),
+                (2, "2026-01-02"),
+                (3, "2026-01-03"),
+                (4, "2026-01-04"),
+                (5, "2026-01-05"),
+            ] {
+                sqlx::query("UPDATE movements SET created_at=? WHERE id=?")
+                    .bind(format!("{day} 10:00:00"))
+                    .bind(id)
+                    .execute(&db)
+                    .await
+                    .unwrap();
+            }
+
+            let onward = delete_filter_range("from", Some("2026-01-03 00:00:00"), None);
+            assert_eq!(count_movements_db(&db, &onward).await.unwrap(), 3);
+            let backward = delete_filter_range("until", None, Some("2026-01-03 00:00:00"));
+            assert_eq!(count_movements_db(&db, &backward).await.unwrap(), 2);
+            let interval = delete_filter_range(
+                "range",
+                Some("2026-01-02 00:00:00"),
+                Some("2026-01-05 00:00:00"),
+            );
+            assert_eq!(count_movements_db(&db, &interval).await.unwrap(), 3);
+
+            assert!(count_movements_db(&db, &delete_filter("from")).await.is_err());
+            assert!(count_movements_db(&db, &delete_filter("until")).await.is_err());
+            assert!(count_movements_db(&db, &delete_filter("range")).await.is_err());
+            let inverted = delete_filter_range(
+                "range",
+                Some("2026-01-05 00:00:00"),
+                Some("2026-01-02 00:00:00"),
+            );
+            assert!(count_movements_db(&db, &inverted).await.is_err());
+
+            assert_eq!(
+                delete_movements_db(&db, interval, "admin".into())
+                    .await
+                    .unwrap(),
+                3
+            );
+            let remaining: Vec<i64> = sqlx::query_scalar("SELECT id FROM movements ORDER BY id")
+                .fetch_all(&db)
+                .await
+                .unwrap();
+            assert_eq!(remaining, vec![1, 5]);
         });
     }
 
@@ -1498,12 +1689,12 @@ mod tests {
                 .await
                 .unwrap();
             assert!(
-                delete_movements_db(&db, "recent".into(), 1, "admin".into())
+                delete_movements_db(&db, delete_filter_count("recent", 1), "admin".into())
                     .await
                     .is_err()
             );
             assert_eq!(
-                delete_movements_db(&db, "recent".into(), 1, "nueva".into())
+                delete_movements_db(&db, delete_filter_count("recent", 1), "nueva".into())
                     .await
                     .unwrap(),
                 1

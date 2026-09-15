@@ -6,7 +6,10 @@
 
   let { onCreated }: { onCreated?: (id: number) => void } = $props();
 
+  const initialDraft = newCategoryDraft();
   let draft = $state<CategoryDraft>(newCategoryDraft());
+
+  const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(initialDraft));
 
   function handleSaved(id: number) {
     onCreated?.(id);
@@ -14,10 +17,15 @@
   }
 </script>
 
-<Modal title="Nueva categoría" onClose={() => modalService.close()} width="md">
+<Modal
+  title="Nueva categoría"
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  width="md"
+>
   <CategoryEditor
     {draft}
     onSaved={handleSaved}
-    onCancel={() => modalService.close()}
+    onCancel={() => modalService.requestClose()}
   />
 </Modal>

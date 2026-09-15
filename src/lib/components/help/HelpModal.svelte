@@ -161,6 +161,11 @@
               <strong>Botón de Ayuda (?):</strong> Ubicado abajo a la izquierda del menú para consultar este
               manual en cualquier momento (también accesible mediante la tecla <strong>F1</strong>).
             </li>
+            <li>
+              <strong>Protección de cambios sin guardar:</strong> si tocaste un formulario y hay cambios
+              pendientes, al cerrar el modal (clic fuera, <em>X</em>, <em>Escape</em>, Cancelar o
+              <em>Ctrl + O</em>) se pide confirmación antes de descartarlos.
+            </li>
           </ul>
 
           <h3>Atajos de Teclado</h3>
@@ -386,7 +391,10 @@
               atómica y mantendrá el registro original para fines de auditoría.
               <br />
               Como excepción de mantenimiento, un administrador puede purgar el historial en lote desde el
-              botón <em>"Eliminar movimientos"</em> al pie de la tabla, con contraseña.
+              botón <em>"Eliminar movimientos"</em> al pie de la tabla: por cantidad (más recientes o más
+              antiguos) o por fechas (desde una fecha en adelante, hasta una fecha hacia atrás, o un
+              intervalo), con vista previa de cuántos movimientos se borrarán y confirmación con la
+              contraseña de administración.
             </div>
           </div>
 
@@ -448,7 +456,8 @@
           <h2><Settings size={20} class="topic-icon" /> Configuración y Opciones Avanzadas</h2>
           <p class="lead">
             Ajusta los parámetros globales de la aplicación, límites de stock, estética, respaldos
-            de la base de datos y la contraseña de administrador.
+            de la base de datos y la contraseña de administrador. Al final de la ventana se muestra
+            la versión instalada de la aplicación.
           </p>
 
           <div class="card-grid">
@@ -506,7 +515,7 @@
                 de movimientos y el borrado definitivo de productos y proveedores archivados (inicial
                 <code>admin</code>), ingresando la clave actual y la nueva dos veces. La eliminación en
                 lote se realiza desde el botón <em>"Eliminar movimientos"</em> al pie de la tabla de
-                Movimientos y no modifica el stock.
+                Movimientos (por cantidad o por rango de fechas) y no modifica el stock.
               </p>
             </div>
           </div>

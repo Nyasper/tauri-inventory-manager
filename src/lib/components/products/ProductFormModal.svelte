@@ -36,12 +36,18 @@
   let loadFailed = $state(false);
   let error = $state("");
 
+  const snapshot = () =>
+    JSON.stringify({ name, description, categoryId, presentations });
+  let baseline = $state<string | null>(initial?.id ? null : snapshot());
+  const dirty = $derived(baseline !== null && snapshot() !== baseline);
+
   if (initial?.id) {
     getPresentations(initial.id).then((rows) => {
       presentations = rows.length
         ? rows.map((r) => ({ id: r.id, name: r.name, factor: r.factor }))
         : [{ name: "Unidad", factor: 1 }];
-    }).catch((e) => { loadFailed = true; error = String(e); }).finally(() => { loading = false; });
+      baseline = snapshot();
+    }).catch((e) => { loadFailed = true; error = String(e); baseline = snapshot(); }).finally(() => { loading = false; });
   }
 
   const categoryOptions = $derived([
@@ -126,7 +132,9 @@
 
 <Modal
   title={initial ? "Editar producto" : "Nuevo producto"}
-  onClose={() => { if (!saving) modalService.close(); }}
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={saving}
   width="lg"
 >
   <div class="form">
@@ -210,7 +218,7 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="secondary" disabled={saving} onclick={() => modalService.close()}>
+    <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
     <Button disabled={!canSave} onclick={save}>

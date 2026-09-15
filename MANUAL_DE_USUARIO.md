@@ -51,6 +51,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Administración de Categorías (Colores e Iconos)](#administración-de-categorías-colores-e-iconos)
    - [Opciones Avanzadas: Copias de Seguridad (Backup) y Restauración](#opciones-avanzadas-copias-de-seguridad-backup-y-restauración)
    - [Cambio de Contraseña de Administrador](#cambio-de-contraseña-de-administrador)
+   - [Versión de la Aplicación](#versión-de-la-aplicación)
 9. [Reglas de Integridad y Validación de Datos](#9-reglas-de-integridad-y-validación-de-datos)
 10. [Preguntas Frecuentes y Solución de Problemas (FAQ)](#10-preguntas-frecuentes-y-solución-de-problemas-faq)
 
@@ -133,6 +134,7 @@ La aplicación adapta toda su paleta de colores, tablas y ventanas modales segú
 ### Notificaciones del Sistema (Toasts) y Modales
 - **Avisos Emergentes (Toasts)**: Se muestran en la esquina inferior derecha para confirmar acciones exitosas (por ejemplo, "Respaldo creado correctamente") o alertar sobre errores del sistema. Pueden cerrarse manualmente haciendo clic en el botón `×`.
 - **Modales con Bloqueo de Seguridad**: Las pantallas de edición y confirmación se abren en ventanas modales focalizadas. Mientras una operación esté procesándose o guardándose, los botones se deshabilitan para evitar dobles envíos o escrituras duplicadas.
+- **Confirmación de cambios sin guardar**: si tocaste un formulario y hay cambios pendientes, al intentar cerrarlo (clic fuera, botón `X`, tecla `Escape`, botón Cancelar/Volver o el atajo `Ctrl + O`) aparecerá un diálogo para confirmar que quieres descartarlos. Así no se pierde el progreso por un clic accidental.
 
 ### Atajos de Teclado
 | Atajo | Acción |
@@ -362,14 +364,17 @@ Por regla general, los movimientos de stock **no se eliminan**: si se cometió u
 Para tareas de mantenimiento del historial, la vista de **Movimientos** incluye al pie de la tabla el botón **"Eliminar movimientos"**. Abre una ventana modal protegida con contraseña:
 
 1. En la vista **Movimientos**, al pie de la tabla, pulse **"Eliminar movimientos"**.
-2. Elija el criterio **"Desde"**:
+2. Elija el criterio **"Qué borrar"**:
    - **Más recientes**: elimina los últimos movimientos registrados.
    - **Más antiguos**: elimina los movimientos más antiguos del historial.
-3. Indique la **Cantidad** de movimientos a eliminar.
+   - **Desde una fecha en adelante**: elimina todos los movimientos registrados a partir del día indicado (incluido).
+   - **Hasta una fecha hacia atrás**: elimina todos los movimientos registrados hasta el día indicado (incluido).
+   - **Entre dos fechas**: elimina los movimientos registrados dentro del intervalo (ambos extremos incluidos).
+3. Complete los campos que aparezcan según el criterio: **Cantidad** para los modos por cantidad, o **Desde**/**Hasta** para los modos por fecha. El modal muestra en tiempo real cuántos movimientos coinciden y deshabilita el botón si no hay ninguno.
 4. Ingrese la **contraseña** de administrador.
 5. Confirme la operación en el diálogo de seguridad.
 
-> **Importante**: La eliminación es **definitiva e irreversible**, incluye tanto movimientos vigentes como anulados y **no modifica el stock actual** de los productos: solo recorta el historial. Si la cantidad indicada supera los movimientos existentes, se eliminan todos los disponibles.
+> **Importante**: La eliminación es **definitiva e irreversible**, incluye tanto movimientos vigentes como anulados y **no modifica el stock actual** de los productos: solo recorta el historial. Si el criterio supera los movimientos existentes, se eliminan todos los disponibles.
 
 ---
 
@@ -433,6 +438,8 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 |                                                                   |
 | AVANZADO (Base de Datos)                                          |
 | [💾 Crear respaldo] [📂 Restaurar respaldo] [🔑 Cambiar contraseña] |
++-------------------------------------------------------------------+
+| Gestor de Inventario vX.Y.Z                                       |
 +-------------------------------------------------------------------+
 ```
 
@@ -499,6 +506,9 @@ La contraseña de administrador protege las **eliminaciones permanentes**: la **
 
 > **Sugerencia de seguridad**: Cambie la contraseña inicial `admin` y tenga presente que, al viajar dentro del archivo `inventory.db`, la clave también se incluye en los respaldos.
 
+### Versión de la Aplicación
+Al final de la ventana de **Configuración** se muestra la versión instalada (por ejemplo, `Gestor de Inventario v0.12.0`). El dato se lee dinámicamente del propio ejecutable, por lo que siempre refleja la versión real en uso y sirve de referencia al reportar problemas o verificar actualizaciones.
+
 ---
 
 ## 9. Reglas de Integridad y Validación de Datos
@@ -555,4 +565,4 @@ Esto ocurre porque anular una Entrada implica restar ese stock, y si ya consumi�
 
 ---
 
-*Manual elaborado para Inventory Manager v0.9.0 o superior.*
+*Manual elaborado para Inventory Manager v0.12.0 o superior.*

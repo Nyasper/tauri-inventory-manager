@@ -21,6 +21,7 @@ pub fn run() {
             inventory::create_movement,
             inventory::cancel_movement,
             inventory::delete_movements,
+            inventory::count_movements,
             inventory::change_delete_password,
             inventory::save_settings,
             inventory::backup_database,

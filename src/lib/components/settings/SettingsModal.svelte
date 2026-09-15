@@ -9,6 +9,7 @@
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload, KeyRound } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
+  import { getAppVersion } from "$lib/services/app.service";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
@@ -31,6 +32,14 @@
   let defaultView = $state("dashboard");
   let editingCat = $state<CategoryDraft | null>(null);
   let busy = $state(false);
+
+  const appVersion = getAppVersion();
+
+  const dirty = $derived(
+    Number(low) !== settingsService.settings.stock_low_threshold ||
+      Number(medium) !== settingsService.settings.stock_medium_threshold ||
+      editingCat !== null,
+  );
 
   const thresholdsValid = $derived(
     Number.isFinite(Number(low)) &&
@@ -134,7 +143,13 @@
   }
 </script>
 
-<Modal title="Configuración" onClose={() => modalService.close()} width="md">
+<Modal
+  title="Configuración"
+  onClose={() => modalService.close()}
+  dirty={dirty}
+  busy={busy}
+  width="md"
+>
   <div class="settings">
     <section>
       <h3>Límites de stock</h3>
@@ -295,6 +310,12 @@
         <p class="hint backup-busy">Procesando…</p>
       {/if}
     </section>
+
+    {#await appVersion then version}
+      {#if version}
+        <p class="app-version">Gestor de Inventario v{version}</p>
+      {/if}
+    {/await}
   </div>
 </Modal>
 
@@ -467,5 +488,13 @@
     margin-top: 0.5rem;
     color: var(--warning);
     font-size: 0.8125rem;
+  }
+
+  .app-version {
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
   }
 </style>

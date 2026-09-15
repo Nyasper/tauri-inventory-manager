@@ -106,13 +106,13 @@ export function openSettings(): void {
 function toggleHelp(): void {
   const id = openEntryId(HelpModal);
   if (id === null) openHelp();
-  else modalService.close(id);
+  else void modalService.requestClose(id);
 }
 
 function toggleSettings(): void {
   const id = openEntryId(SettingsModal);
   if (id === null) openSettings();
-  else modalService.close(id);
+  else void modalService.requestClose(id);
 }
 
 function toggleTheme(): void {
