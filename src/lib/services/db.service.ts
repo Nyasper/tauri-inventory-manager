@@ -53,6 +53,7 @@ export interface MovementFilters {
   to?: string;
   status?: string;
   page?: number;
+  pageSize?: number;
 }
 
 export interface MovementPage {
@@ -69,6 +70,7 @@ interface MovementQuery {
   to: string | null;
   status: string | null;
   page: number;
+  page_size: number | null;
 }
 
 interface SupplierRow {
@@ -78,9 +80,6 @@ interface SupplierRow {
   notes: string | null;
   archived: number;
 }
-
-/** Tamaño de página de la vista de movimientos (compartido con el backend). */
-export const MOVEMENTS_PAGE_SIZE = 50;
 
 /** Ejecuta un comando de Tauri y, si se indica, muestra un aviso de éxito. */
 async function invoke<T>(
@@ -155,6 +154,7 @@ function toQuery(filters: MovementFilters): MovementQuery {
     to: filters.to ? utcDayBoundary(filters.to, true) : null,
     status: filters.status === "active" || filters.status === "cancelled" ? filters.status : null,
     page: Math.max(0, filters.page ?? 0),
+    page_size: filters.pageSize && filters.pageSize > 0 ? Math.floor(filters.pageSize) : null,
   };
 }
 
@@ -327,6 +327,10 @@ export function saveSettingsThresholds(low: number, medium: number): Promise<voi
 
 export function saveSettingsDefaultView(view: DefaultView): Promise<void> {
   return invoke("save_settings", { view }, "Vista por defecto actualizada.");
+}
+
+export function saveSettingsPageSize(pageSize: number): Promise<void> {
+  return invoke("save_settings", { pageSize }, "Elementos por página actualizados.");
 }
 
 /* --------------------------------- Backup -------------------------------- */

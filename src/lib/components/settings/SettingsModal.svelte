@@ -24,6 +24,7 @@
   let low: string = $derived(String(settingsService.settings.stock_low_threshold));
   let medium: string = $derived(String(settingsService.settings.stock_medium_threshold));
   let defaultView: string = $derived(settingsService.settings.default_view);
+  let pageSize: string = $derived(String(settingsService.settings.movements_page_size));
   let editingCat = $state<CategoryDraft | null>(null);
   let busy = $state(false);
 
@@ -49,6 +50,13 @@
     { value: "suppliers", label: "Proveedores" },
   ];
 
+  const pageSizeOptions: SelectOption[] = [
+    { value: "25", label: "25 movimientos" },
+    { value: "50", label: "50 movimientos" },
+    { value: "100", label: "100 movimientos" },
+    { value: "200", label: "200 movimientos" },
+  ];
+
   const selectedAccentLabel = $derived(
     ACCENTS.find((a) => a.id === accentService.accent)?.label ?? "",
   );
@@ -57,6 +65,16 @@
     const view = (event.currentTarget as HTMLSelectElement).value as DefaultView;
     try {
       await settingsService.saveDefaultView(view);
+    } catch (e) {
+      feedback.error(errorMessage(e));
+      await settingsService.load().catch(() => {});
+    }
+  }
+
+  async function savePageSize(event: Event) {
+    const size = Number((event.currentTarget as HTMLSelectElement).value);
+    try {
+      await settingsService.savePageSize(size);
     } catch (e) {
       feedback.error(errorMessage(e));
       await settingsService.load().catch(() => {});
@@ -198,6 +216,12 @@
       <h3>Vista por defecto</h3>
       <p class="hint">Vista que se muestra al abrir la aplicación.</p>
       <Select bind:value={defaultView} options={viewOptions} onchange={saveDefaultView} />
+    </section>
+
+    <section>
+      <h3>Movimientos por página</h3>
+      <p class="hint">Cantidad de movimientos que se muestran en cada página del historial.</p>
+      <Select bind:value={pageSize} options={pageSizeOptions} onchange={savePageSize} />
     </section>
 
     <section>

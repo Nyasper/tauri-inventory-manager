@@ -414,7 +414,8 @@
             La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas),
             buscador de texto, selectores de producto y proveedor, filtro por rango de fechas (Desde
             / Hasta), y filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma
-            paginada a 50 registros por página.
+            paginada según la preferencia "Movimientos por página" configurada (50 registros por
+            defecto).
           </p>
           <p>
             En el pie de la tabla, los botones de icono permiten ir a la <em>primera</em> página, a
@@ -507,6 +508,15 @@
               <p>
                 Define qué pantalla se abre al iniciar la aplicación (Dashboard, Productos,
                 Movimientos o Proveedores).
+              </p>
+            </div>
+
+            <div class="info-card">
+              <h3>Movimientos por Página</h3>
+              <p>
+                Elige cuántos movimientos se muestran en cada página del historial: <em
+                  >25, 50, 100 o 200</em
+                > (por defecto 50). Se guarda al instante y se conserva en los respaldos.
               </p>
             </div>
 

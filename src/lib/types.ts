@@ -64,6 +64,7 @@ export interface AppSettings {
   stock_low_threshold: number;
   stock_medium_threshold: number;
   default_view: DefaultView;
+  movements_page_size: number;
 }
 
 export type StockStatus = "out" | "low" | "medium" | "high";

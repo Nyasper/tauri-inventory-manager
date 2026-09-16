@@ -6,8 +6,11 @@ use crate::inventory::{name as normalize_name, CommandError, DbState};
 
 type Db = Pool<Sqlite>;
 
-/// Tamaño de página compartido con la vista de movimientos.
-pub(crate) const PAGE_SIZE: i64 = 50;
+/// Tamaño de página por defecto de la vista de movimientos.
+pub(crate) const DEFAULT_PAGE_SIZE: i64 = 50;
+/// Rango permitido para el tamaño de página configurable.
+pub(crate) const MIN_PAGE_SIZE: i64 = 10;
+pub(crate) const MAX_PAGE_SIZE: i64 = 200;
 
 fn query_error(error: sqlx::Error) -> CommandError {
     eprintln!("Query error: {error}");
@@ -76,6 +79,7 @@ pub struct SettingsRow {
     pub stock_low_threshold: f64,
     pub stock_medium_threshold: f64,
     pub default_view: String,
+    pub movements_page_size: i64,
 }
 
 #[derive(Serialize)]
@@ -131,6 +135,8 @@ pub struct MovementFilters {
     pub status: Option<String>,
     #[serde(default)]
     pub page: Option<i64>,
+    #[serde(default)]
+    pub page_size: Option<i64>,
 }
 
 pub(crate) async fn list_products_db(
@@ -209,10 +215,14 @@ pub(crate) async fn page_movements_db(
     );
     apply_movement_filters(&mut query, filters);
 
-    let offset = filters.page.unwrap_or(0).max(0) * PAGE_SIZE;
+    let page_size = filters
+        .page_size
+        .unwrap_or(DEFAULT_PAGE_SIZE)
+        .clamp(MIN_PAGE_SIZE, MAX_PAGE_SIZE);
+    let offset = filters.page.unwrap_or(0).max(0) * page_size;
     query
         .push(" ORDER BY created_at DESC, id DESC LIMIT ")
-        .push_bind(PAGE_SIZE)
+        .push_bind(page_size)
         .push(" OFFSET ")
         .push_bind(offset);
 
@@ -317,6 +327,7 @@ pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, CommandError
         stock_low_threshold: 5.0,
         stock_medium_threshold: 20.0,
         default_view: "dashboard".into(),
+        movements_page_size: DEFAULT_PAGE_SIZE,
     };
     for row in rows {
         let key: String = row.try_get("key").map_err(query_error)?;
@@ -342,6 +353,13 @@ pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, CommandError
                     "dashboard" | "products" | "movements" | "suppliers"
                 ) {
                     settings.default_view = value;
+                }
+            }
+            "movements_page_size" => {
+                if let Ok(parsed) = value.parse::<i64>() {
+                    if (MIN_PAGE_SIZE..=MAX_PAGE_SIZE).contains(&parsed) {
+                        settings.movements_page_size = parsed;
+                    }
                 }
             }
             _ => {}

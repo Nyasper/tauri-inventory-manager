@@ -48,6 +48,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Límites de Stock](#límites-de-stock)
    - [Paleta de Colores de Acento](#paleta-de-colores-de-acento)
    - [Vista por Defecto al Iniciar](#vista-por-defecto-al-iniciar)
+   - [Movimientos por Página](#movimientos-por-página)
    - [Administración de Categorías (Colores e Iconos)](#administración-de-categorías-colores-e-iconos)
    - [Opciones Avanzadas: Copias de Seguridad (Backup) y Restauración](#opciones-avanzadas-copias-de-seguridad-backup-y-restauración)
    - [Cambio de Contraseña de Administrador](#cambio-de-contraseña-de-administrador)
@@ -343,7 +344,7 @@ La vista de movimientos ofrece un potente panel de filtros combinables para audi
 - **Filtro por Proveedor**: Muestra las compras realizadas a un proveedor específico.
 - **Rango de Fechas (Desde / Hasta)**: Acota las transacciones al período cronológico seleccionado.
 - **Estado**: Permite filtrar entre transacciones `Vigentes` o `Anuladas`.
-- **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **50 filas por página**, garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Use los botones de icono del pie para ir a la **primera** página, a la **anterior**, a la **siguiente** o a la **última**; el indicador central muestra `Página X de Y` junto al total de movimientos.
+- **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **50 filas por página** (configurable en 25/50/100/200 desde Configuración), garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Use los botones de icono del pie para ir a la **primera** página, a la **anterior**, a la **siguiente** o a la **última**; el indicador central muestra `Página X de Y` junto al total de movimientos.
 
 ### Anulación Segura y Auditable de Movimientos
 Por regla general, los movimientos de stock **no se eliminan**: si se cometió un error de tipeo o se devolvió una mercadería, el movimiento debe ser **Anulado**. La única excepción es la **Eliminación Masiva**, un botón al pie de la tabla de Movimientos que purga registros del historial (ver [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)).
@@ -432,6 +433,9 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 | VISTA POR DEFECTO                                                 |
 | [ Dashboard                 ▼ ]                                   |
 |                                                                   |
+| MOVIMIENTOS POR PÁGINA                                            |
+| [ 50 movimientos            ▼ ]                                   |
+|                                                                   |
 | CATEGORÍAS                                                        |
 | [+ Nueva categoría]                                               |
 | • [📦 Alimentos]       [✏️] [🗑️]                                    |
@@ -470,6 +474,15 @@ Define qué pantalla se abrirá automáticamente cada vez que inicie la aplicaci
 - **Productos** (Ideal para operarios de almacén o repositores).
 - **Movimientos** (Para puestos de caja, carga de remitos o control de despachos).
 - **Proveedores**.
+
+### Movimientos por Página
+Controla cuántos movimientos se cargan y se muestran en cada página del historial de Movimientos:
+
+- **Opciones disponibles**: 25, 50, 100 o 200 movimientos.
+- **Valor por defecto**: 50.
+- La preferencia se guarda **al instante** (no requiere pulsar "Guardar") en la base de datos local, por lo que también se conserva dentro de los respaldos.
+- Un valor más alto reduce los clics de paginación pero aumenta el desplazamiento por página; con 200 la página ocupa aproximadamente 13 pantallas.
+- El cambio surte efecto de inmediato al abrir la vista de **Movimientos** y vuelve a la primera página.
 
 ### Administración de Categorías (Colores e Iconos)
 Las categorías permiten organizar el catálogo y dotar a cada producto de un icono y color representativo en las tablas.

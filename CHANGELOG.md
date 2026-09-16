@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Prettier and ESLint setup with `lint`, `format` and `format:check` scripts.
 - `CI` workflow running formatting, lint, type checks, frontend build, Rust formatting, Clippy and tests on pushes to `main` and pull requests.
+- Configurable movements per page (25, 50, 100 or 200) from Settings › "Movimientos por página"; the preference is saved immediately in the database and the movements view honors it.
 
 ### Changed
 

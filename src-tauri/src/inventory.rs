@@ -10,6 +10,8 @@ use std::{
 use tauri::{async_runtime::RwLock, AppHandle, Manager, State};
 use unicode_normalization::UnicodeNormalization;
 
+use crate::queries::{MAX_PAGE_SIZE, MIN_PAGE_SIZE};
+
 type Db = Pool<Sqlite>;
 const SCHEMA: &str = include_str!("schema.sql");
 
@@ -939,15 +941,17 @@ pub async fn save_settings(
     low: Option<f64>,
     medium: Option<f64>,
     view: Option<String>,
+    page_size: Option<i64>,
 ) -> Result<(), CommandError> {
     let db = db.0.read().await;
-    save_settings_db(&db, low, medium, view).await
+    save_settings_db(&db, low, medium, view, page_size).await
 }
 async fn save_settings_db(
     db: &Db,
     low: Option<f64>,
     medium: Option<f64>,
     view: Option<String>,
+    page_size: Option<i64>,
 ) -> Result<(), CommandError> {
     let mut tx = db.begin().await.map_err(error)?;
     if let (Some(low), Some(medium)) = (low, medium) {
@@ -991,6 +995,31 @@ async fn save_settings_db(
             .await
             .map_err(error)?
             .rows_affected();
+        if updated != 1 {
+            return Err(CommandError::new(
+                "database_error",
+                "No se pudo guardar la configuración.",
+            ));
+        }
+    }
+    if let Some(page_size) = page_size {
+        if !(MIN_PAGE_SIZE..=MAX_PAGE_SIZE).contains(&page_size) {
+            return Err(CommandError::new(
+                "invalid_page_size",
+                format!(
+                    "Los movimientos por página deben estar entre {MIN_PAGE_SIZE} y {MAX_PAGE_SIZE}."
+                ),
+            ));
+        }
+        // Upsert: la clave no existe en bases creadas antes de esta preferencia.
+        let updated = sqlx::query(
+            "INSERT INTO settings(key,value) VALUES('movements_page_size',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        )
+        .bind(page_size.to_string())
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?
+        .rows_affected();
         if updated != 1 {
             return Err(CommandError::new(
                 "database_error",
@@ -2176,7 +2205,7 @@ mod tests {
     #[test]
     fn queries_filter_search_dates_status_and_pagination() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters, PAGE_SIZE};
+            use crate::queries::{page_movements_db, MovementFilters, DEFAULT_PAGE_SIZE};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -2276,19 +2305,19 @@ mod tests {
             assert_eq!(cancelled.total, 1);
             assert!(cancelled.items[0].cancelled_at.is_some());
 
-            // Se añaden PAGE_SIZE + 3 movimientos: la primera página debe
+            // Se añaden DEFAULT_PAGE_SIZE + 3 movimientos: la primera página debe
             // llenarse completa y la segunda conservar los 6 restantes.
-            for _ in 0..PAGE_SIZE + 3 {
+            for _ in 0..DEFAULT_PAGE_SIZE + 3 {
                 create_movement_db(&db, movement(water, "in", 1.0))
                     .await
                     .unwrap();
             }
-            let expected_total = PAGE_SIZE + 6;
+            let expected_total = DEFAULT_PAGE_SIZE + 6;
             let first = page_movements_db(&db, &MovementFilters::default())
                 .await
                 .unwrap();
             assert_eq!(first.total, expected_total);
-            assert_eq!(first.items.len(), PAGE_SIZE as usize);
+            assert_eq!(first.items.len(), DEFAULT_PAGE_SIZE as usize);
             let second = page_movements_db(
                 &db,
                 &MovementFilters {
@@ -2338,6 +2367,7 @@ mod tests {
             assert_eq!(defaults.stock_low_threshold, 5.0);
             assert_eq!(defaults.stock_medium_threshold, 20.0);
             assert_eq!(defaults.default_view, "dashboard");
+            assert_eq!(defaults.movements_page_size, 50);
 
             sqlx::query("UPDATE settings SET value='8' WHERE key='stock_low_threshold'")
                 .execute(&db)
@@ -2347,9 +2377,14 @@ mod tests {
                 .execute(&db)
                 .await
                 .unwrap();
+            sqlx::query("UPDATE settings SET value='999' WHERE key='movements_page_size'")
+                .execute(&db)
+                .await
+                .unwrap();
             let updated = get_settings_db(&db).await.unwrap();
             assert_eq!(updated.stock_low_threshold, 8.0);
             assert_eq!(updated.default_view, "dashboard");
+            assert_eq!(updated.movements_page_size, 50);
         });
     }
     #[test]
@@ -2416,15 +2451,20 @@ mod tests {
                 "invalid_filter"
             );
 
-            let invalid_view = save_settings_db(&db, None, None, Some("inventada".into()))
+            let invalid_view = save_settings_db(&db, None, None, Some("inventada".into()), None)
                 .await
                 .unwrap_err();
             assert_eq!(invalid_view.code, "invalid_view");
 
-            let invalid_thresholds = save_settings_db(&db, Some(10.0), Some(5.0), None)
+            let invalid_thresholds = save_settings_db(&db, Some(10.0), Some(5.0), None, None)
                 .await
                 .unwrap_err();
             assert_eq!(invalid_thresholds.code, "invalid_thresholds");
+
+            let invalid_page_size = save_settings_db(&db, None, None, None, Some(5))
+                .await
+                .unwrap_err();
+            assert_eq!(invalid_page_size.code, "invalid_page_size");
         });
     }
     #[test]
@@ -2451,6 +2491,57 @@ mod tests {
             .unwrap();
             assert!(page.items.is_empty());
             assert_eq!(page.total, 3);
+        });
+    }
+    #[test]
+    fn movement_page_size_from_filter_is_respected() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::{page_movements_db, MovementFilters, MIN_PAGE_SIZE};
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            for _ in 0..25 {
+                create_movement_db(&db, movement(water, "in", 1.0))
+                    .await
+                    .unwrap();
+            }
+
+            let first = page_movements_db(
+                &db,
+                &MovementFilters {
+                    page_size: Some(10),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(first.total, 25);
+            assert_eq!(first.items.len(), 10);
+
+            let third = page_movements_db(
+                &db,
+                &MovementFilters {
+                    page_size: Some(10),
+                    page: Some(2),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(third.total, 25);
+            assert_eq!(third.items.len(), 5);
+
+            // Un tamaño fuera del rango permitido se acota al mínimo.
+            let clamped = page_movements_db(
+                &db,
+                &MovementFilters {
+                    page_size: Some(1),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(clamped.items.len(), MIN_PAGE_SIZE as usize);
         });
     }
     #[test]
@@ -2489,10 +2580,13 @@ mod tests {
             use crate::queries::get_settings_db;
 
             let db = connect(Path::new(":memory:")).await.unwrap();
-            save_settings_db(&db, Some(3.0), Some(9.0), None)
+            save_settings_db(&db, Some(3.0), Some(9.0), None, None)
                 .await
                 .unwrap();
-            save_settings_db(&db, None, None, Some("products".into()))
+            save_settings_db(&db, None, None, Some("products".into()), None)
+                .await
+                .unwrap();
+            save_settings_db(&db, None, None, None, Some(200))
                 .await
                 .unwrap();
 
@@ -2500,6 +2594,7 @@ mod tests {
             assert_eq!(settings.stock_low_threshold, 3.0);
             assert_eq!(settings.stock_medium_threshold, 9.0);
             assert_eq!(settings.default_view, "products");
+            assert_eq!(settings.movements_page_size, 200);
         });
     }
     #[test]

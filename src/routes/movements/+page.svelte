@@ -2,7 +2,7 @@
   import { renderComponent } from "@tanstack/svelte-table";
   import type { Movement, MovementType } from "$lib/types";
   import { movementsService } from "$lib/services/movements.service.svelte";
-  import { MOVEMENTS_PAGE_SIZE } from "$lib/services/db.service";
+  import { settingsService } from "$lib/services/settings.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
@@ -58,6 +58,8 @@
     return () => clearTimeout(timer);
   });
 
+  const pageSize = $derived(settingsService.settings.movements_page_size);
+
   const query = $derived({
     search,
     product: productFilter,
@@ -66,6 +68,7 @@
     to,
     status,
     type: typeFilter,
+    pageSize,
   });
   const filterKey = $derived(JSON.stringify(query));
   let pageState = $state<{ key: string; page: number } | null>(null);
@@ -73,9 +76,7 @@
     pageState !== null && pageState.key === filterKey ? pageState.page : 0,
   );
 
-  const lastPage = $derived(
-    Math.max(0, Math.ceil(movementsService.total / MOVEMENTS_PAGE_SIZE) - 1),
-  );
+  const lastPage = $derived(Math.max(0, Math.ceil(movementsService.total / pageSize) - 1));
 
   function goToPage(page: number) {
     pageState = { key: filterKey, page };
