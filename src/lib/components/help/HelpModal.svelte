@@ -414,7 +414,13 @@
             La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas),
             buscador de texto, selectores de producto y proveedor, filtro por rango de fechas (Desde
             / Hasta), y filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma
-            paginada a 25 registros por página.
+            paginada a 50 registros por página.
+          </p>
+          <p>
+            En el pie de la tabla, los botones de icono permiten ir a la <em>primera</em> página, a
+            la
+            <em>anterior</em>, a la <em>siguiente</em> y a la <em>última</em>; el indicador central
+            muestra la página actual y el total (<em>Página X de Y</em>).
           </p>
           <p>
             Los movimientos de productos eliminados definitivamente conservan su nombre y muestran

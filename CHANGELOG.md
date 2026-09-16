@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Presentation and supplier contact rows use stable keys instead of the array index.
 - Right-click is now allowed inside text inputs and textareas (copy/paste), while the global context menu stays disabled everywhere else.
 - Select and textarea primitives accept a `disabled` prop, and data tables accept a `rowClickable` predicate to disable row clicks per record.
+- Movement pagination now uses icon buttons (first, previous, next and last page) with the page indicator showing the total number of pages, and lists 50 rows per page (up from 25).
 - Supplier rows can be clicked to open the edit form, like product rows; archived rows keep their explicit actions.
 - The application layout is marked `inert` while a modal is open, so the background cannot be focused or clicked.
 - `cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` are now the documented Rust checks.

@@ -7,7 +7,7 @@ use crate::inventory::{name as normalize_name, CommandError, DbState};
 type Db = Pool<Sqlite>;
 
 /// Tamaño de página compartido con la vista de movimientos.
-pub(crate) const PAGE_SIZE: i64 = 25;
+pub(crate) const PAGE_SIZE: i64 = 50;
 
 fn query_error(error: sqlx::Error) -> CommandError {
     eprintln!("Query error: {error}");

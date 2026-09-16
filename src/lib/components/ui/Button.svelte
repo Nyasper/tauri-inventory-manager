@@ -11,6 +11,8 @@
     icon,
     disabled = false,
     onclick,
+    ariaLabel,
+    title,
   }: {
     children?: Snippet;
     variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -19,6 +21,8 @@
     icon?: Component<LucideProps>;
     disabled?: boolean;
     onclick?: (event: MouseEvent) => void;
+    ariaLabel?: string;
+    title?: string;
   } = $props();
 </script>
 
@@ -27,6 +31,8 @@
   {disabled}
   class={["btn", `btn-${variant}`, `btn-${size}`, { "icon-only": !children }]}
   {onclick}
+  aria-label={ariaLabel}
+  {title}
 >
   {#if icon}
     {const Icon = icon}

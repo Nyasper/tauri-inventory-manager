@@ -18,7 +18,16 @@
   import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import Button from "$lib/components/ui/Button.svelte";
-  import { Plus, ArrowLeftRight, Trash, Undo2 } from "@lucide/svelte";
+  import {
+    Plus,
+    ArrowLeftRight,
+    Trash,
+    Undo2,
+    ChevronFirst,
+    ChevronLeft,
+    ChevronRight,
+    ChevronLast,
+  } from "@lucide/svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
 
   productsService.load();
@@ -64,6 +73,10 @@
     pageState !== null && pageState.key === filterKey ? pageState.page : 0,
   );
 
+  const lastPage = $derived(
+    Math.max(0, Math.ceil(movementsService.total / MOVEMENTS_PAGE_SIZE) - 1),
+  );
+
   function goToPage(page: number) {
     pageState = { key: filterKey, page };
   }
@@ -78,7 +91,6 @@
 
   $effect(() => {
     if (movementsService.loading || movementsService.total === 0) return;
-    const lastPage = Math.max(0, Math.ceil(movementsService.total / MOVEMENTS_PAGE_SIZE) - 1);
     if (currentPage > lastPage) goToPage(lastPage);
   });
 
@@ -259,22 +271,41 @@
       Eliminar movimientos
     </Button>
     <div class="spacer"></div>
-    <Button
-      variant="secondary"
-      disabled={currentPage === 0 || movementsService.loading}
-      onclick={() => goToPage(currentPage - 1)}
-    >
-      Anterior
-    </Button>
-    <span>Página {currentPage + 1} · {movementsService.total} movimientos</span>
-    <Button
-      variant="secondary"
-      disabled={(currentPage + 1) * MOVEMENTS_PAGE_SIZE >= movementsService.total ||
-        movementsService.loading}
-      onclick={() => goToPage(currentPage + 1)}
-    >
-      Siguiente
-    </Button>
+    <div class="pager">
+      <Button
+        variant="secondary"
+        icon={ChevronFirst}
+        ariaLabel="Primera página"
+        title="Primera página"
+        disabled={currentPage === 0 || movementsService.loading}
+        onclick={() => goToPage(0)}
+      />
+      <Button
+        variant="secondary"
+        icon={ChevronLeft}
+        ariaLabel="Página anterior"
+        title="Página anterior"
+        disabled={currentPage === 0 || movementsService.loading}
+        onclick={() => goToPage(currentPage - 1)}
+      />
+      <span>Página {currentPage + 1} de {lastPage + 1} · {movementsService.total} movimientos</span>
+      <Button
+        variant="secondary"
+        icon={ChevronRight}
+        ariaLabel="Página siguiente"
+        title="Página siguiente"
+        disabled={currentPage >= lastPage || movementsService.loading}
+        onclick={() => goToPage(currentPage + 1)}
+      />
+      <Button
+        variant="secondary"
+        icon={ChevronLast}
+        ariaLabel="Última página"
+        title="Última página"
+        disabled={currentPage >= lastPage || movementsService.loading}
+        onclick={() => goToPage(lastPage)}
+      />
+    </div>
   </div>
 </div>
 
@@ -321,6 +352,12 @@
 
   .spacer {
     flex: 1;
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .icon-btn {

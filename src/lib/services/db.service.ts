@@ -80,7 +80,7 @@ interface SupplierRow {
 }
 
 /** Tamaño de página de la vista de movimientos (compartido con el backend). */
-export const MOVEMENTS_PAGE_SIZE = 25;
+export const MOVEMENTS_PAGE_SIZE = 50;
 
 /** Ejecuta un comando de Tauri y, si se indica, muestra un aviso de éxito. */
 async function invoke<T>(

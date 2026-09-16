@@ -2176,7 +2176,7 @@ mod tests {
     #[test]
     fn queries_filter_search_dates_status_and_pagination() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters};
+            use crate::queries::{page_movements_db, MovementFilters, PAGE_SIZE};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -2276,16 +2276,19 @@ mod tests {
             assert_eq!(cancelled.total, 1);
             assert!(cancelled.items[0].cancelled_at.is_some());
 
-            for _ in 0..28 {
+            // Se añaden PAGE_SIZE + 3 movimientos: la primera página debe
+            // llenarse completa y la segunda conservar los 6 restantes.
+            for _ in 0..PAGE_SIZE + 3 {
                 create_movement_db(&db, movement(water, "in", 1.0))
                     .await
                     .unwrap();
             }
+            let expected_total = PAGE_SIZE + 6;
             let first = page_movements_db(&db, &MovementFilters::default())
                 .await
                 .unwrap();
-            assert_eq!(first.total, 31);
-            assert_eq!(first.items.len(), 25);
+            assert_eq!(first.total, expected_total);
+            assert_eq!(first.items.len(), PAGE_SIZE as usize);
             let second = page_movements_db(
                 &db,
                 &MovementFilters {
@@ -2295,7 +2298,7 @@ mod tests {
             )
             .await
             .unwrap();
-            assert_eq!(second.total, 31);
+            assert_eq!(second.total, expected_total);
             assert_eq!(second.items.len(), 6);
         });
     }
