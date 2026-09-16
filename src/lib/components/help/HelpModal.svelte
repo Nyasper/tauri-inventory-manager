@@ -392,6 +392,17 @@
             color rojo y desactiva el botón de registro.
           </p>
 
+          <h3>Ficha de Detalle</h3>
+          <p>
+            Haz clic sobre cualquier movimiento (en el historial o en <em
+              >"Movimientos recientes"</em
+            >
+            del Dashboard) para abrir su ficha completa: tipo y estado, producto, presentación y factor,
+            cantidad y equivalencia en unidades base, proveedor, fecha, motivo del ajuste, notas completas
+            y datos de la anulación si corresponde. Desde la ficha puedes ver el historial del producto
+            o anular el movimiento si sigue vigente.
+          </p>
+
           <h3>Anulación Segura de Movimientos</h3>
           <div class="tip-box">
             <Info size={18} />
@@ -414,14 +425,13 @@
             La vista de movimientos cuenta con filtros por tipo (Todos / Entradas / Salidas),
             buscador de texto, selectores de producto y proveedor, filtro por rango de fechas (Desde
             / Hasta), y filtro de estado (Vigentes / Anulados). Las consultas se resuelven de forma
-            paginada según la preferencia "Movimientos por página" configurada (50 registros por
-            defecto).
+            paginada a 25 registros por página.
           </p>
           <p>
-            En el pie de la tabla, los botones de icono permiten ir a la <em>primera</em> página, a
-            la
-            <em>anterior</em>, a la <em>siguiente</em> y a la <em>última</em>; el indicador central
-            muestra la página actual y el total (<em>Página X de Y</em>).
+            En el pie de la tabla, los botones <em>Anterior</em> y <em>Siguiente</em> permiten
+            navegar entre páginas; el indicador central muestra la página actual y el total (por
+            ejemplo,
+            <em>Página 1 · 137 movimientos</em>).
           </p>
           <p>
             Los movimientos de productos eliminados definitivamente conservan su nombre y muestran

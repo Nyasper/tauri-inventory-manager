@@ -11,6 +11,7 @@
   import { formatNumber, formatDate } from "$lib/utils/format";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
+  import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
@@ -188,9 +189,7 @@
             <button
               class="row"
               type="button"
-              onclick={() => {
-                if (movement.product_id !== null) goto(`/movements?product=${movement.product_id}`);
-              }}
+              onclick={() => modalService.open(MovementDetailModal, { movement })}
             >
               {#if movement.cancelled_at}<span>Anulado</span>{/if}
               {#if movement.type === "in"}

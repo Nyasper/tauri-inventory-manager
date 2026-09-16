@@ -13,6 +13,7 @@
   import { page } from "$app/state";
   import Select from "$lib/components/ui/Select.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
+  import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
   import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
@@ -246,6 +247,7 @@
         {table}
         showSearch={false}
         emptyText="No hay movimientos que coincidan con el filtro."
+        onRowClick={(movement) => modalService.open(MovementDetailModal, { movement })}
       >
         {#snippet actions(movement)}
           <button

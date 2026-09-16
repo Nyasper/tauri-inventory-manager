@@ -16,7 +16,8 @@ Para consultar la documentación completa de uso y todas las características en
 - Archive/restore products and suppliers without losing history.
 - Multiple contact lines per supplier.
 - Auditable movement cancellation and inventory adjustments with mandatory reasons.
-- Movement filters and database pagination (25 rows per page).
+- Movement filters and database pagination (25, 50, 100 or 200 rows per page, 50 by default).
+- Movement detail view from the history and the dashboard, with full notes, adjustment reasons and cancellation audit data.
 
 ## Development
 
