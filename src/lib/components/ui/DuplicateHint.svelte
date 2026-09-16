@@ -1,10 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import {
-    findProductDuplicate,
-    findSupplierDuplicate,
-    isDuplicateError,
-  } from "$lib/services/db.service";
+  import { findProductDuplicate, findSupplierDuplicate } from "$lib/services/db.service";
+  import { isDuplicateError, type AppError } from "$lib/utils/errors";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { DuplicateRecord } from "$lib/types";
@@ -17,7 +14,7 @@
   }: {
     name: string;
     kind: "product" | "supplier";
-    error: string;
+    error: AppError;
     currentId?: number;
   } = $props();
 

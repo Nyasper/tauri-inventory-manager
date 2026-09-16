@@ -113,7 +113,12 @@
     />
   {/if}
 {:else}
-  <DataTable {table} searchPlaceholder="Buscar proveedores...">
+  <DataTable
+    {table}
+    searchPlaceholder="Buscar proveedores..."
+    onRowClick={openEdit}
+    rowClickable={(supplier) => !supplier.archived}
+  >
     {#snippet actions(supplier)}
       {#if supplier.archived}
         <div class="actions">

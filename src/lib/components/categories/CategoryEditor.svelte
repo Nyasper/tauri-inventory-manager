@@ -3,6 +3,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import IconPicker from "$lib/components/ui/IconPicker.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import { CATEGORY_COLORS, type CategoryDraft } from "$lib/categories";
 
   let {
@@ -34,7 +35,7 @@
       }
       onSaved?.(id);
     } catch (e) {
-      error = String(e);
+      error = errorMessage(e);
     } finally {
       saving = false;
     }

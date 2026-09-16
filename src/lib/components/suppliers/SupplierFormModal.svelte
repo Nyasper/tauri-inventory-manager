@@ -5,6 +5,7 @@
   import type { Supplier } from "$lib/types";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
+  import { toAppError, type AppError } from "$lib/utils/errors";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
@@ -38,7 +39,7 @@
   );
   let notes = $state(initial?.notes ?? "");
   let saving = $state(false);
-  let error = $state("");
+  let error = $state<AppError | null>(null);
 
   const snapshot = () => JSON.stringify({ name, contacts, notes });
   const baseline = $state(snapshot());
@@ -51,7 +52,7 @@
     if (!canSave) return;
 
     saving = true;
-    error = "";
+    error = null;
     try {
       const data = {
         name: name.trim(),
@@ -66,7 +67,7 @@
       }
       modalService.close();
     } catch (e) {
-      error = String(e);
+      error = toAppError(e);
     } finally {
       saving = false;
     }
@@ -121,7 +122,7 @@
       <p class="validation" role="status">{validation}</p>
     {/if}
     {#if error}
-      <p class="error" role="alert">{error}</p>
+      <p class="error" role="alert">{error.message}</p>
       <DuplicateHint {name} {error} kind="supplier" currentId={initial?.id} />
     {/if}
   </div>

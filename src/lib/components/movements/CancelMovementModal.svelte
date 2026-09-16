@@ -5,6 +5,7 @@
   import { modalService } from "$lib/services/modal.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import type { Movement } from "$lib/types";
 
   let { movement }: { movement: Movement } = $props();
@@ -25,7 +26,7 @@
       await productsService.load();
       modalService.close();
     } catch (e) {
-      error = String(e);
+      error = errorMessage(e);
     } finally {
       saving = false;
     }

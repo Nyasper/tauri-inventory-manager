@@ -437,6 +437,11 @@
               <strong>Nombre único:</strong> Identifica a la empresa o distribuidor.
             </li>
             <li>
+              <strong>Edición rápida:</strong> Haz clic sobre la fila de un proveedor (o usa el
+              lápiz) para abrir sus datos. En la vista <em>"Archivados"</em>, las filas no abren el
+              formulario y la restauración se hace con el botón <em>"Restaurar"</em>.
+            </li>
+            <li>
               <strong>Múltiples canales de contacto:</strong> Puedes añadir tantas líneas de
               contacto como necesites (teléfonos fijos, celulares, WhatsApp, emails o direcciones)
               pulsando <em>"+ Añadir"</em>.

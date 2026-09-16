@@ -394,7 +394,8 @@ Para dar de alta un nuevo proveedor, pulse **"Nuevo proveedor"**:
 2. **Contactos**: Permite agregar múltiples canales de comunicación dinámicos.
 3. **Notas**: Condiciones de pago, horarios de entrega, dirección del depósito, etc.
 
-Para modificar un proveedor existente, pulse el icono del lápiz en su fila.
+Para modificar un proveedor existente, haga clic sobre su fila en la tabla o pulse el icono del lápiz.
+En la vista **"Archivados"**, las filas no abren el formulario: para recuperar un proveedor use el botón **"Restaurar"**.
 
 ### Acciones Rápidas por Proveedor
 - **`+` (Registrar entrada)**: Abre el formulario de movimiento con este proveedor preseleccionado y el tipo Entrada por defecto, asociando automáticamente la compra al proveedor.

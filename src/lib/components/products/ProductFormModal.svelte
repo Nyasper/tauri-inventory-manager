@@ -7,6 +7,7 @@
     type PresentationInput,
     type ProductInput,
   } from "$lib/services/db.service";
+  import { toAppError, type AppError } from "$lib/utils/errors";
   import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import CategoryFormModal from "$lib/components/categories/CategoryFormModal.svelte";
@@ -39,7 +40,7 @@
   let saving = $state(false);
   let loading = $state(!!initial?.id);
   let loadFailed = $state(false);
-  let error = $state("");
+  let error = $state<AppError | null>(null);
 
   const snapshot = () => JSON.stringify({ name, description, categoryId, presentations });
   let baseline = $state<string | null>(initial?.id ? null : snapshot());
@@ -55,7 +56,7 @@
       })
       .catch((e) => {
         loadFailed = true;
-        error = String(e);
+        error = toAppError(e);
         baseline = snapshot();
       })
       .finally(() => {
@@ -122,12 +123,12 @@
     };
 
     saving = true;
-    error = "";
+    error = null;
     try {
       await productsService.save(input);
       modalService.close();
     } catch (e) {
-      error = String(e);
+      error = toAppError(e);
     } finally {
       saving = false;
     }
@@ -145,14 +146,26 @@
     {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
     <div class="grid">
       <div class="span-2">
-        <Input label="Nombre" bind:value={name} placeholder="Nombre del producto" />
+        <Input
+          label="Nombre"
+          bind:value={name}
+          placeholder="Nombre del producto"
+          disabled={loading}
+        />
       </div>
       <div class="span-2">
         <div class="category-row">
           <div class="category-select">
-            <Select label="Categoría" bind:value={categoryId} options={categoryOptions} />
+            <Select
+              label="Categoría"
+              bind:value={categoryId}
+              options={categoryOptions}
+              disabled={loading}
+            />
           </div>
-          <Button variant="secondary" icon={Plus} onclick={openNewCategory}>Nueva</Button>
+          <Button variant="secondary" icon={Plus} onclick={openNewCategory} disabled={loading}>
+            Nueva
+          </Button>
         </div>
       </div>
       <div class="span-2">
@@ -160,6 +173,7 @@
           label="Observaciones"
           bind:value={description}
           placeholder="Notas asociadas a este producto"
+          disabled={loading}
         />
       </div>
     </div>
@@ -167,7 +181,15 @@
     <section class="presentations">
       <div class="section-head">
         <h3>Presentaciones</h3>
-        <Button size="sm" variant="secondary" icon={Plus} onclick={addPresentation}>Añadir</Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Plus}
+          onclick={addPresentation}
+          disabled={loading}
+        >
+          Añadir
+        </Button>
       </div>
       <p class="hint">
         La presentación con factor 1 es la unidad base en la que se cuenta el stock. Se admiten
@@ -177,10 +199,19 @@
       {#each presentations as presentation, index (presentation.key)}
         <div class="pres-row">
           <div class="pres-name">
-            <Input bind:value={presentation.name} placeholder="Ej. Caja, Botella" />
+            <Input
+              bind:value={presentation.name}
+              placeholder="Ej. Caja, Botella"
+              disabled={loading}
+            />
           </div>
           <div class="pres-factor">
-            <NumberStepper label="Factor" bind:value={presentation.factor} min={1} />
+            <NumberStepper
+              label="Factor"
+              bind:value={presentation.factor}
+              min={1}
+              disabled={loading}
+            />
           </div>
           <div class="pres-base">
             {#if presentation.factor === 1}
@@ -194,7 +225,7 @@
             type="button"
             title="Quitar presentación"
             aria-label="Quitar presentación"
-            disabled={presentations.length <= 1}
+            disabled={loading || presentations.length <= 1}
             onclick={() => removePresentation(index)}
           >
             <Trash size={16} />
@@ -208,7 +239,7 @@
     {/if}
 
     {#if error}
-      <p class="error" role="alert">{error}</p>
+      <p class="error" role="alert">{error.message}</p>
       <DuplicateHint {name} {error} kind="product" currentId={initial?.id} />
     {/if}
   </div>

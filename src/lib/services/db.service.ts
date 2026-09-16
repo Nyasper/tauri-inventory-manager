@@ -1,5 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { feedback } from "$lib/services/feedback.service.svelte";
+import { toAppError } from "$lib/utils/errors";
 import type {
   AppSettings,
   Category,
@@ -78,20 +79,23 @@ interface SupplierRow {
   archived: number;
 }
 
+/** Tamaño de página de la vista de movimientos (compartido con el backend). */
+export const MOVEMENTS_PAGE_SIZE = 25;
+
 /** Ejecuta un comando de Tauri y, si se indica, muestra un aviso de éxito. */
 async function invoke<T>(
   command: string,
   args?: Record<string, unknown>,
   successMessage?: string,
 ): Promise<T> {
-  const result = await tauriInvoke<T>(command, args);
+  let result: T;
+  try {
+    result = await tauriInvoke<T>(command, args);
+  } catch (cause) {
+    throw toAppError(cause);
+  }
   if (successMessage) feedback.success(successMessage);
   return result;
-}
-
-/** Indica si el error devuelto por el backend corresponde a un nombre duplicado. */
-export function isDuplicateError(error: string): boolean {
-  return error.includes("Ya existe");
 }
 
 /* ------------------------------- Productos ------------------------------- */

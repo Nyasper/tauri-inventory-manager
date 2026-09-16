@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import type { Presentation, MovementType } from "$lib/types";
   import { getPresentations } from "$lib/services/db.service";
+  import { errorMessage } from "$lib/utils/errors";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
@@ -50,8 +51,7 @@
   const quantity = $derived(Math.min(quantityInput, maxQuantity ?? Infinity));
 
   function setQuantity(next: number) {
-    if (!Number.isFinite(next)) return;
-    quantityInput = Math.min(next, maxQuantity ?? Infinity);
+    quantityInput = Number.isFinite(next) ? Math.min(next, maxQuantity ?? Infinity) : 0;
   }
 
   const snapshot = () =>
@@ -147,7 +147,7 @@
       })
       .catch((e) => {
         if (cancelled) return;
-        error = String(e);
+        error = errorMessage(e);
         if (!baselineSet) {
           baselineSet = true;
           baseline = snapshot();
@@ -195,7 +195,7 @@
       await productsService.load();
       modalService.close();
     } catch (e) {
-      error = String(e);
+      error = errorMessage(e);
     } finally {
       saving = false;
     }
@@ -235,7 +235,7 @@
     />
 
     {#if selectedProduct && selectedPresentation}
-      <div aria-live="polite">
+      <div class="stock-preview" aria-live="polite">
         <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
         <p>
           {Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(

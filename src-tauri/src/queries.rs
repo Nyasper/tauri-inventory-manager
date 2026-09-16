@@ -2,16 +2,19 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, QueryBuilder, Row, Sqlite};
 use tauri::State;
 
-use crate::inventory::{name as normalize_name, DbState};
+use crate::inventory::{name as normalize_name, CommandError, DbState};
 
 type Db = Pool<Sqlite>;
 
 /// Tamaño de página compartido con la vista de movimientos.
 pub(crate) const PAGE_SIZE: i64 = 25;
 
-fn query_error(error: sqlx::Error) -> String {
+fn query_error(error: sqlx::Error) -> CommandError {
     eprintln!("Query error: {error}");
-    "No se pudo consultar la información. Inténtalo nuevamente.".into()
+    CommandError::new(
+        "query_failed",
+        "No se pudo consultar la información. Inténtalo nuevamente.",
+    )
 }
 
 /// Escapa los comodines de `LIKE` para que la búsqueda sea literal.
@@ -133,7 +136,7 @@ pub struct MovementFilters {
 pub(crate) async fn list_products_db(
     db: &Db,
     archived: bool,
-) -> Result<Vec<ProductRow>, String> {
+) -> Result<Vec<ProductRow>, CommandError> {
     sqlx::query_as::<_, ProductRow>(
         "SELECT p.id, p.name, p.description, p.category_id, p.base_presentation_id,
                 p.stock, p.archived, p.created_at, p.updated_at,
@@ -154,7 +157,7 @@ pub(crate) async fn list_products_db(
 pub(crate) async fn list_presentations_db(
     db: &Db,
     product_id: i64,
-) -> Result<Vec<PresentationRow>, String> {
+) -> Result<Vec<PresentationRow>, CommandError> {
     sqlx::query_as::<_, PresentationRow>(
         "SELECT id, product_id, name, factor
          FROM presentations
@@ -170,7 +173,7 @@ pub(crate) async fn list_presentations_db(
 pub(crate) async fn list_suppliers_db(
     db: &Db,
     archived: bool,
-) -> Result<Vec<SupplierRow>, String> {
+) -> Result<Vec<SupplierRow>, CommandError> {
     sqlx::query_as::<_, SupplierRow>(
         "SELECT id, name, contact, notes, archived
          FROM suppliers
@@ -183,7 +186,7 @@ pub(crate) async fn list_suppliers_db(
     .map_err(query_error)
 }
 
-pub(crate) async fn list_categories_db(db: &Db) -> Result<Vec<CategoryRow>, String> {
+pub(crate) async fn list_categories_db(db: &Db) -> Result<Vec<CategoryRow>, CommandError> {
     sqlx::query_as::<_, CategoryRow>(
         "SELECT id, name, color, icon FROM categories ORDER BY name COLLATE NOCASE",
     )
@@ -195,7 +198,7 @@ pub(crate) async fn list_categories_db(db: &Db) -> Result<Vec<CategoryRow>, Stri
 pub(crate) async fn page_movements_db(
     db: &Db,
     filters: &MovementFilters,
-) -> Result<MovementsPage, String> {
+) -> Result<MovementsPage, CommandError> {
     let mut query = QueryBuilder::<Sqlite>::new(
         "SELECT id, product_id, type AS movement_type, quantity, presentation_id,
                 presentation_name, product_name, factor, base_quantity, supplier_id,
@@ -204,6 +207,32 @@ pub(crate) async fn page_movements_db(
                 count(*) OVER () AS total_count
          FROM movements",
     );
+    apply_movement_filters(&mut query, filters);
+
+    let offset = filters.page.unwrap_or(0).max(0) * PAGE_SIZE;
+    query
+        .push(" ORDER BY created_at DESC, id DESC LIMIT ")
+        .push_bind(PAGE_SIZE)
+        .push(" OFFSET ")
+        .push_bind(offset);
+
+    let rows = query.build().fetch_all(db).await.map_err(query_error)?;
+    let mut total = rows
+        .first()
+        .map(|row| row.get::<i64, _>("total_count"))
+        .unwrap_or(0);
+    if rows.is_empty() && offset > 0 {
+        total = count_movements_where(db, filters).await?;
+    }
+    let mut items = Vec::with_capacity(rows.len());
+    for row in &rows {
+        items.push(MovementRow::from_row(row).map_err(query_error)?);
+    }
+    Ok(MovementsPage { items, total })
+}
+
+/// Añade las condiciones de los filtros de movimientos a un `QueryBuilder`.
+fn apply_movement_filters(query: &mut QueryBuilder<Sqlite>, filters: &MovementFilters) {
     let mut separator = " WHERE ";
 
     if let Some(search) = filters
@@ -236,10 +265,7 @@ pub(crate) async fn page_movements_db(
         separator = " AND ";
     }
     if let Some(product) = filters.product {
-        query
-            .push(separator)
-            .push("product_id=")
-            .push_bind(product);
+        query.push(separator).push("product_id=").push_bind(product);
         separator = " AND ";
     }
     if let Some(supplier) = filters.supplier {
@@ -272,27 +298,17 @@ pub(crate) async fn page_movements_db(
         }
         _ => {}
     }
-
-    let offset = filters.page.unwrap_or(0).max(0) * PAGE_SIZE;
-    query
-        .push(" ORDER BY created_at DESC, id DESC LIMIT ")
-        .push_bind(PAGE_SIZE)
-        .push(" OFFSET ")
-        .push_bind(offset);
-
-    let rows = query.build().fetch_all(db).await.map_err(query_error)?;
-    let total = rows
-        .first()
-        .map(|row| row.get::<i64, _>("total_count"))
-        .unwrap_or(0);
-    let mut items = Vec::with_capacity(rows.len());
-    for row in &rows {
-        items.push(MovementRow::from_row(row).map_err(query_error)?);
-    }
-    Ok(MovementsPage { items, total })
 }
 
-pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, String> {
+/// Total de movimientos que cumplen los filtros, sin paginar.
+async fn count_movements_where(db: &Db, filters: &MovementFilters) -> Result<i64, CommandError> {
+    let mut query = QueryBuilder::<Sqlite>::new("SELECT count(*) FROM movements");
+    apply_movement_filters(&mut query, filters);
+    let row = query.build().fetch_one(db).await.map_err(query_error)?;
+    row.try_get::<i64, _>(0).map_err(query_error)
+}
+
+pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, CommandError> {
     let rows = sqlx::query("SELECT key, value FROM settings")
         .fetch_all(db)
         .await
@@ -339,11 +355,16 @@ pub(crate) async fn find_duplicate_db(
     kind: &str,
     name: &str,
     current_id: Option<i64>,
-) -> Result<Option<DuplicateRow>, String> {
+) -> Result<Option<DuplicateRow>, CommandError> {
     let table = match kind {
         "product" => "products",
         "supplier" => "suppliers",
-        _ => return Err("Tipo de registro inválido.".into()),
+        _ => {
+            return Err(CommandError::new(
+                "invalid_kind",
+                "Tipo de registro inválido.",
+            ))
+        }
     };
     let (_, key) = normalize_name(name)?;
     let sql = format!("SELECT id, archived FROM {table} WHERE name_key = ? AND id <> ? LIMIT 1");
@@ -363,7 +384,7 @@ pub(crate) async fn find_duplicate_db(
 pub async fn list_products(
     state: State<'_, DbState>,
     archived: bool,
-) -> Result<Vec<ProductRow>, String> {
+) -> Result<Vec<ProductRow>, CommandError> {
     let pool = state.pool().read().await;
     list_products_db(&pool, archived).await
 }
@@ -372,7 +393,7 @@ pub async fn list_products(
 pub async fn list_presentations(
     state: State<'_, DbState>,
     product_id: i64,
-) -> Result<Vec<PresentationRow>, String> {
+) -> Result<Vec<PresentationRow>, CommandError> {
     let pool = state.pool().read().await;
     list_presentations_db(&pool, product_id).await
 }
@@ -381,13 +402,13 @@ pub async fn list_presentations(
 pub async fn list_suppliers(
     state: State<'_, DbState>,
     archived: bool,
-) -> Result<Vec<SupplierRow>, String> {
+) -> Result<Vec<SupplierRow>, CommandError> {
     let pool = state.pool().read().await;
     list_suppliers_db(&pool, archived).await
 }
 
 #[tauri::command]
-pub async fn list_categories(state: State<'_, DbState>) -> Result<Vec<CategoryRow>, String> {
+pub async fn list_categories(state: State<'_, DbState>) -> Result<Vec<CategoryRow>, CommandError> {
     let pool = state.pool().read().await;
     list_categories_db(&pool).await
 }
@@ -396,13 +417,13 @@ pub async fn list_categories(state: State<'_, DbState>) -> Result<Vec<CategoryRo
 pub async fn page_movements(
     state: State<'_, DbState>,
     filters: MovementFilters,
-) -> Result<MovementsPage, String> {
+) -> Result<MovementsPage, CommandError> {
     let pool = state.pool().read().await;
     page_movements_db(&pool, &filters).await
 }
 
 #[tauri::command]
-pub async fn get_settings(state: State<'_, DbState>) -> Result<SettingsRow, String> {
+pub async fn get_settings(state: State<'_, DbState>) -> Result<SettingsRow, CommandError> {
     let pool = state.pool().read().await;
     get_settings_db(&pool).await
 }
@@ -413,7 +434,7 @@ pub async fn find_duplicate(
     kind: String,
     name: String,
     current_id: Option<i64>,
-) -> Result<Option<DuplicateRow>, String> {
+) -> Result<Option<DuplicateRow>, CommandError> {
     let pool = state.pool().read().await;
     find_duplicate_db(&pool, &kind, &name, current_id).await
 }

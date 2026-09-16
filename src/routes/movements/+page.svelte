@@ -2,6 +2,7 @@
   import { renderComponent } from "@tanstack/svelte-table";
   import type { Movement, MovementType } from "$lib/types";
   import { movementsService } from "$lib/services/movements.service.svelte";
+  import { MOVEMENTS_PAGE_SIZE } from "$lib/services/db.service";
   import { productsService } from "$lib/services/products.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
@@ -73,6 +74,12 @@
 
   $effect(() => {
     movementsService.load({ ...query, page: currentPage });
+  });
+
+  $effect(() => {
+    if (movementsService.loading || movementsService.total === 0) return;
+    const lastPage = Math.max(0, Math.ceil(movementsService.total / MOVEMENTS_PAGE_SIZE) - 1);
+    if (currentPage > lastPage) goToPage(lastPage);
   });
 
   const columns = columnHelper.columns([
@@ -262,7 +269,8 @@
     <span>Página {currentPage + 1} · {movementsService.total} movimientos</span>
     <Button
       variant="secondary"
-      disabled={(currentPage + 1) * 25 >= movementsService.total || movementsService.loading}
+      disabled={(currentPage + 1) * MOVEMENTS_PAGE_SIZE >= movementsService.total ||
+        movementsService.loading}
       onclick={() => goToPage(currentPage + 1)}
     >
       Siguiente

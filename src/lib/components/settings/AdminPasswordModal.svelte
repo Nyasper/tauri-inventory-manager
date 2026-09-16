@@ -5,6 +5,7 @@
   import { KeyRound } from "@lucide/svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import { changeDeletePassword } from "$lib/services/db.service";
+  import { errorMessage } from "$lib/utils/errors";
 
   let oldPassword = $state("");
   let newPassword = $state("");
@@ -27,11 +28,9 @@
     error = "";
     try {
       await changeDeletePassword(oldPassword, newPassword);
-      oldPassword = "";
-      newPassword = "";
-      repeatPassword = "";
+      modalService.close();
     } catch (e) {
-      error = String(e);
+      error = errorMessage(e);
     } finally {
       changing = false;
     }

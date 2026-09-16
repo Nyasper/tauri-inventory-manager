@@ -31,9 +31,13 @@ bun run tauri dev
 bun run check      # svelte-check (types + runes)
 bun run lint       # ESLint
 bun run format:check
+cargo fmt --check --manifest-path src-tauri/Cargo.toml
+cargo clippy --all-targets --manifest-path src-tauri/Cargo.toml -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 bun run build
 ```
+
+The same checks run in the `CI` workflow on every push to `main` and on pull requests.
 
 ## Release
 

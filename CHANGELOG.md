@@ -9,17 +9,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Prettier and ESLint setup with `lint`, `format` and `format:check` scripts.
+- `CI` workflow running formatting, lint, type checks, frontend build, Rust formatting, Clippy and tests on pushes to `main` and pull requests.
 
 ### Changed
 
+- Backend command errors now travel as structured `{ code, message }` values; the frontend reacts to stable codes (for example to detect duplicate names) instead of matching Spanish message text.
+- Backups are written to a temporary file next to the destination and renamed only on success, so a failed backup no longer removes a previous backup file.
 - Modernized the Svelte components: declaration tags (`{const}`) replace the legacy `{@const}`, clsx-style class attributes replace `class:` directives, the modal focus lifecycle uses an `{@attach}` attachment, and the archived-list URL helper uses the reactive `SvelteURL`.
 - Settings thresholds, the default view, the product stock filter and the movement product filter now derive their value from the stored settings or the URL instead of being synchronized with `$effect`; the movement-form quantity is clamped with a function binding and the movements page keeps its page in derived state, so changing a filter no longer triggers an extra fetch.
 - Presentation and supplier contact rows use stable keys instead of the array index.
 - Right-click is now allowed inside text inputs and textareas (copy/paste), while the global context menu stays disabled everywhere else.
 - Select and textarea primitives accept a `disabled` prop, and data tables accept a `rowClickable` predicate to disable row clicks per record.
+- Supplier rows can be clicked to open the edit form, like product rows; archived rows keep their explicit actions.
+- The application layout is marked `inert` while a modal is open, so the background cannot be focused or clicked.
+- `cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` are now the documented Rust checks.
+- Project metadata (description/authors) is no longer placeholder text.
 
 ### Fixed
 
+- Clearing the movement quantity field no longer keeps a hidden value: the field resets to `0` and saving is blocked until a valid quantity is entered.
+- Movements pagination falls back to the last valid page after movements are deleted or a backup with fewer records is restored.
+- Category edits and deletions refresh the products list, and the products filter drops a category that no longer exists.
+- Changing the administrator password closes the modal after a successful update.
+- Saving the default view reports failures, reverts the select to the stored value and no longer depends on event listener ordering; backup dialogs also report errors instead of failing silently.
+- Movement pagination reports the real total when the requested page is out of range instead of zero.
+- Saving settings verifies that the stored rows were updated instead of reporting success silently.
+- Archiving a product with stock and archiving/restoring a missing record now return distinct, clearer errors.
+- The stock preview panel in the movement form uses its shared `stock-preview` style again.
 - Modal autofocus moved to the first field in the modal body instead of the header close button.
 - Clicking a row in the archived products list no longer restores the product; restoring now requires the explicit "Restaurar" action.
 - The batch-deletion modal no longer treats a numerically unchanged count as an unsaved change.
@@ -27,6 +43,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 
 - Dead code flagged by the new linting: unused icon and type imports, the unused `Product.presentations` field, an inert CSS class and an unused table prop.
+- Unused `tauri-plugin-opener` dependency, plugin registration and capability.
+- Leftover `protocol-asset` feature, asset protocol scope and CSP entries from the removed image feature.
+- Unused `core:path:default` capability and unused `--stock-low`/`--stock-medium`/`--stock-high` CSS variables.
 
 ## [0.12.0] - 2026-09-15
 

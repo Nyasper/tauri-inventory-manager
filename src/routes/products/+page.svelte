@@ -36,6 +36,14 @@
   const targetId = $derived(page.url.searchParams.get("id"));
   let categoryFilter = $state("");
 
+  $effect(() => {
+    if (categoryFilter === "" || categoryFilter === "none") return;
+    const exists = categoriesService.items.some(
+      (category) => String(category.id) === categoryFilter,
+    );
+    if (!exists) categoryFilter = "";
+  });
+
   function statusOf(product: Product) {
     return getStockStatus(
       product.stock,

@@ -1,8 +1,8 @@
 [package]
 name = "tauri-inventory-manager"
 version = "0.12.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Gestor de inventario de escritorio con Tauri, Svelte y SQLite"
+authors = ["Nyasper"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,8 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-opener = "2"
+tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 serde = { version = "1", features = ["derive"] }

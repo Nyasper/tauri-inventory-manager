@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { feedback } from "$lib/services/feedback.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -8,6 +9,7 @@
   import Sidebar from "$lib/components/layout/Sidebar.svelte";
   import Header from "$lib/components/layout/Header.svelte";
   import ModalHost from "$lib/components/ui/ModalHost.svelte";
+  import { modalService } from "$lib/services/modal.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
@@ -27,7 +29,7 @@
 
   function handleError(event: PromiseRejectionEvent) {
     event.preventDefault();
-    feedback.error(String(event.reason));
+    feedback.error(errorMessage(event.reason));
   }
 
   function handleContextMenu(event: MouseEvent) {
@@ -49,7 +51,7 @@
   oncontextmenu={handleContextMenu}
 />
 
-<div class="app">
+<div class="app" inert={modalService.modals.length > 0}>
   <Sidebar />
   <div class="main">
     <Header />

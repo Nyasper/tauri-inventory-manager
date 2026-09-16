@@ -4,6 +4,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import { Trash } from "@lucide/svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
 
   let {
     kind,
@@ -32,7 +33,7 @@
       await onConfirm(password);
       modalService.close();
     } catch (e) {
-      error = String(e);
+      error = errorMessage(e);
     } finally {
       deleting = false;
     }

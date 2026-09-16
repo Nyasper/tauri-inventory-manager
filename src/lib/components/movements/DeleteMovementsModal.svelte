@@ -7,6 +7,7 @@
   import { modalService } from "$lib/services/modal.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { feedback } from "$lib/services/feedback.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import {
     countMovements,
     type MovementDeleteFilter,
@@ -132,7 +133,7 @@
       feedback.success(`Se eliminaron ${deleted} movimiento${deleted === 1 ? "" : "s"}.`);
       modalService.close();
     } catch (e) {
-      deleteError = String(e);
+      deleteError = errorMessage(e);
     } finally {
       deleting = false;
     }

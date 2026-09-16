@@ -1,4 +1,5 @@
 import type { Movement } from "$lib/types";
+import { errorMessage } from "$lib/utils/errors";
 import {
   cancelMovement,
   createMovement,
@@ -28,7 +29,7 @@ class MovementsService {
       this.items = result.items;
       this.total = result.total;
     } catch (e) {
-      if (request === this.request) this.error = String(e);
+      if (request === this.request) this.error = errorMessage(e);
     } finally {
       if (request === this.request) this.loading = false;
     }

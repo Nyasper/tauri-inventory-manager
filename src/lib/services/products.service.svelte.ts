@@ -1,4 +1,5 @@
 import type { Product } from "$lib/types";
+import { errorMessage } from "$lib/utils/errors";
 import {
   archiveProduct,
   deleteProduct,
@@ -19,7 +20,7 @@ class ProductsService {
     try {
       this.items = await getProducts(archived);
     } catch (e) {
-      this.error = String(e);
+      this.error = errorMessage(e);
     } finally {
       this.loading = false;
     }

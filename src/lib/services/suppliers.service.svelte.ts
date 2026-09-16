@@ -1,4 +1,5 @@
 import type { Supplier } from "$lib/types";
+import { errorMessage } from "$lib/utils/errors";
 import {
   archiveSupplier,
   deleteSupplier,
@@ -19,7 +20,7 @@ class SuppliersService {
     try {
       this.items = await getSuppliers();
     } catch (e) {
-      this.error = String(e);
+      this.error = errorMessage(e);
     } finally {
       this.loading = false;
     }

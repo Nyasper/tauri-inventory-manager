@@ -15,6 +15,7 @@
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { feedback } from "$lib/services/feedback.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import { modalService } from "$lib/services/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
   import { accentService, ACCENTS } from "$lib/services/accent.service.svelte";
@@ -52,8 +53,14 @@
     ACCENTS.find((a) => a.id === accentService.accent)?.label ?? "",
   );
 
-  async function saveDefaultView() {
-    await settingsService.saveDefaultView(defaultView as DefaultView);
+  async function saveDefaultView(event: Event) {
+    const view = (event.currentTarget as HTMLSelectElement).value as DefaultView;
+    try {
+      await settingsService.saveDefaultView(view);
+    } catch (e) {
+      feedback.error(errorMessage(e));
+      await settingsService.load().catch(() => {});
+    }
   }
 
   async function saveThresholds() {
@@ -83,12 +90,20 @@
     };
   }
 
+  async function handleCategorySaved() {
+    editingCat = null;
+    await productsService.load();
+  }
+
   async function removeCategory(id: number, name: string) {
     const ok = await modalService.confirm(
       `¿Eliminar la categoría "${name}"? Los productos asociados quedarán sin categoría.`,
       "Eliminar categoría",
     );
-    if (ok) await categoriesService.remove(id);
+    if (ok) {
+      await categoriesService.remove(id);
+      await productsService.load();
+    }
   }
 
   async function createBackup() {
@@ -98,7 +113,7 @@
       const path = await backupService.backup();
       if (path) feedback.success("Respaldo creado correctamente.");
     } catch (e) {
-      feedback.error(e instanceof Error ? e.message : String(e));
+      feedback.error(errorMessage(e));
     } finally {
       busy = false;
     }
@@ -106,7 +121,13 @@
 
   async function restoreBackup() {
     if (busy) return;
-    const path = await backupService.pickRestoreFile();
+    let path: string | null;
+    try {
+      path = await backupService.pickRestoreFile();
+    } catch (e) {
+      feedback.error(errorMessage(e));
+      return;
+    }
     if (!path) return;
     const ok = await modalService.confirm(
       "Se reemplazarán todos los datos actuales por los del respaldo seleccionado. Esta acción no se puede deshacer.",
@@ -125,7 +146,7 @@
       ]);
       feedback.success("Base de datos restaurada correctamente.");
     } catch (e) {
-      feedback.error(e instanceof Error ? e.message : String(e));
+      feedback.error(errorMessage(e));
     } finally {
       busy = false;
     }
@@ -187,7 +208,7 @@
         <div class="cat-editor">
           <CategoryEditor
             bind:draft={editingCat}
-            onSaved={() => (editingCat = null)}
+            onSaved={handleCategorySaved}
             onCancel={() => (editingCat = null)}
           />
         </div>

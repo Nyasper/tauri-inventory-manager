@@ -2,6 +2,7 @@ import { untrack } from "svelte";
 import { SvelteURL } from "svelte/reactivity";
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
+import { errorMessage } from "$lib/utils/errors";
 
 /**
  * Mantiene la lista de registros archivados. Se activa con `?archived=1` y se
@@ -57,7 +58,7 @@ export class ArchivedList<T> {
       this.items = items;
     } catch (cause) {
       if (request !== this.#request) return;
-      this.error = String(cause);
+      this.error = errorMessage(cause);
     } finally {
       if (request === this.#request) this.loading = false;
     }
