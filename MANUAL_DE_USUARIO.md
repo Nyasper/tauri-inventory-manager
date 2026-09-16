@@ -66,7 +66,6 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
 - **Rápida y Ligera**: Aplicación de escritorio diseñada para responder de forma inmediata y con mínimo consumo de recursos.
 - **Almacenamiento Local 100% Autónomo**: Toda la información se guarda localmente en su equipo en el archivo de base de datos `inventory.db`. Sus datos nunca se envían a servidores externos ni a la nube, garantizando privacidad total y funcionamiento continuo sin conexión a internet.
 - **Auditoría e Integridad Estricta**: No se permiten números negativos de stock, los nombres de registros se normalizan para evitar duplicidades accidentales, y las operaciones históricas quedan protegidas contra alteraciones destructivas.
-- **Precisión Numérica Decimal**: Soporta hasta 6 decimales de precisión en cantidades, factores de conversión y saldos de stock (admitiendo inventarios por peso, volumen, longitud o fracciones).
 
 ---
 
@@ -84,10 +83,10 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - En Fedora: `sudo rpm -i inventory-manager-*.rpm`
 
 ### Ubicación de los Datos y Base de Datos Local
-Toda la información del negocio se almacena en el archivo **`inventory.db`**, ubicado en el directorio estándar de datos de usuario según el sistema operativo:
-- **Windows**: `%APPDATA%\Inventory Manager\inventory.db`
-- **Linux**: `~/.config/inventory-manager/inventory.db`
-- **macOS**: `~/Library/Application Support/Inventory Manager/inventory.db`
+Toda la información del negocio se almacena en el archivo **`inventory.db`**, ubicado en el directorio de configuración de la aplicación (identificador `com.herre.tauri-inventory-manager`), según el sistema operativo:
+- **Windows**: `%APPDATA%\com.herre.tauri-inventory-manager\inventory.db`
+- **Linux**: `~/.config/com.herre.tauri-inventory-manager/inventory.db` (o `$XDG_CONFIG_HOME/com.herre.tauri-inventory-manager/inventory.db`)
+- **macOS**: `~/Library/Application Support/com.herre.tauri-inventory-manager/inventory.db`
 
 Una instalación nueva comienza con una base de datos limpia, sin productos ni movimientos.
 
@@ -265,7 +264,7 @@ Para editar un producto existente, haga clic directamente sobre su fila en la ta
 ### Archivado y Restauración de Productos
 En Inventory Manager los registros se archivan (borrado lógico) para evitar que los reportes y movimientos pasados queden huérfanos. Un producto archivado puede restaurarse o eliminarse definitivamente.
 
-- **Requisito para Archivar**: Un producto **solo se puede archivar si su stock actual es exactamente 0.00**. Si aún posee mercadería en existencia, el botón de papelera permanecerá deshabilitado. Deberá registrar un movimiento de Salida o Ajuste antes de poder archivarlo.
+- **Requisito para Archivar**: Un producto **solo se puede archivar si su stock actual es exactamente 0**. Si aún posee mercadería en existencia, el botón de papelera permanecerá deshabilitado. Deberá registrar un movimiento de Salida o Ajuste antes de poder archivarlo.
 - **Cómo archivar**: Haga clic en el icono de papelera (`Archivar`). El sistema solicitará confirmación mediante un diálogo de seguridad.
 - **Cómo restaurar**:
   1. Marque la casilla **"Archivados"** en la barra superior.
@@ -583,7 +582,7 @@ Esto ocurre porque anular una Entrada implica restar ese stock, y si ya consumi�
 
 ### ¿Cómo paso mi inventario a otra computadora?
 1. En la computadora de origen, abra **Configuración (⚙)** > sección **Avanzado** y haga clic en **"Crear respaldo"**.
-2. Guarde el archivo `.db` resultante en un pendrive o envíelo a su nuevo equipo.
+2. Guarde el archivo `.db` resultante en un pendrive, envíelo a su nuevo equipo o súbalo a la nube.
 3. Instale Inventory Manager en la nueva computadora.
 4. Abra **Configuración (⚙)** > **"Restaurar respaldo"** y elija el archivo `.db`.
 5. La aplicación recargará todos los datos instantáneamente.

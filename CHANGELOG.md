@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Modal autofocus moved to the first field in the modal body instead of the header close button.
 - Clicking a row in the archived products list no longer restores the product; restoring now requires the explicit "Restaurar" action.
 - The batch-deletion modal no longer treats a numerically unchanged count as an unsaved change.
+- The user manual and the in-app help now list the real database path per operating system (under the application identifier) instead of outdated locations.
 
 ### Removed
 

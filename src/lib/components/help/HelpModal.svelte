@@ -15,7 +15,6 @@
     CircleHelp,
     Search,
     ShieldCheck,
-    Layers,
     TriangleAlert,
     Info,
     Check,
@@ -97,11 +96,6 @@
           <p class="nav-empty">Sin resultados para «{searchQuery.trim()}».</p>
         {/each}
       </div>
-
-      <div class="nav-footer">
-        <span class="version-label">Gestor de Inventario</span>
-        <span class="sub-label">Control de Inventario Local</span>
-      </div>
     </nav>
 
     <!-- Área de contenido de la sección activa -->
@@ -126,18 +120,6 @@
                   >inventory.db</code
                 >. No depende de servidores externos ni sube información a la nube, garantizando
                 máxima privacidad y funcionamiento ininterrumpido sin conexión a internet.
-              </p>
-            </div>
-
-            <div class="info-card">
-              <div class="card-header">
-                <Layers size={18} class="accent-icon" />
-                <h3>Precisión de 6 Decimales</h3>
-              </div>
-              <p>
-                Cantidades, factores de conversión y saldos admiten hasta 6 lugares decimales (por
-                ejemplo, kilos, litros o fracciones métricas), con un límite de hasta 1.000
-                millones.
               </p>
             </div>
           </div>
@@ -183,9 +165,25 @@
           <div class="tip-box">
             <Info size={18} />
             <div>
-              <strong>¿Dónde están mis datos?</strong> Se almacenan en la carpeta local de datos de
-              la aplicación (<code>inventory.db</code>). Puedes crear copias de seguridad en
-              cualquier momento desde
+              <strong>¿Dónde están mis datos?</strong> Se almacenan en el archivo
+              <code>inventory.db</code>, dentro del directorio de configuración de la aplicación:
+              <ul>
+                <li>
+                  <strong>Windows:</strong>
+                  <code>%APPDATA%\com.herre.tauri-inventory-manager\inventory.db</code>
+                </li>
+                <li>
+                  <strong>Linux:</strong>
+                  <code>~/.config/com.herre.tauri-inventory-manager/inventory.db</code>
+                </li>
+                <li>
+                  <strong>macOS:</strong>
+                  <code
+                    >~/Library/Application Support/com.herre.tauri-inventory-manager/inventory.db</code
+                  >
+                </li>
+              </ul>
+              Puedes crear copias de seguridad en cualquier momento desde
               <em>Configuración &gt; Avanzado</em>.
             </div>
           </div>
@@ -608,7 +606,7 @@
               <summary>¿Por qué el botón de archivar producto está deshabilitado?</summary>
               <div class="faq-body">
                 Por seguridad contable, un producto <strong
-                  >solo se puede archivar si su stock es exactamente 0.00</strong
+                  >solo se puede archivar si su stock es exactamente 0</strong
                 >. Esto evita que quede mercadería física olvidada en el almacén sin control.
                 Realiza una Salida o un Ajuste de inventario para llevar el stock a cero y el botón
                 de archivar se habilitará al instante.
@@ -648,7 +646,10 @@
                     <em>Avanzado</em>
                     y pulsa <strong>"Crear respaldo"</strong>.
                   </li>
-                  <li>Guarda el archivo <code>.db</code> en una memoria USB o disco externo.</li>
+                  <li>
+                    Guarda el archivo <code>.db</code> en una memoria USB o disco externo, o súbelo a
+                    la nube.
+                  </li>
                   <li>Instala la aplicación en la nueva computadora.</li>
                   <li>
                     Abre <strong>Configuración (⚙)</strong> &gt;
@@ -782,26 +783,6 @@
     background: var(--surface-3);
     color: var(--text-muted);
     flex-shrink: 0;
-  }
-
-  .nav-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  .version-label {
-    font-weight: 600;
-  }
-
-  .sub-label {
-    font-size: 0.7rem;
-    opacity: 0.8;
   }
 
   /* Contenido principal */
@@ -943,6 +924,18 @@
     color: var(--primary);
     flex-shrink: 0;
     margin-top: 0.125rem;
+  }
+
+  .tip-box code {
+    overflow-wrap: anywhere;
+  }
+
+  .tip-box ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin: 0.375rem 0;
+    padding-left: 1rem;
   }
 
   .warning-box {
