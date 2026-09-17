@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
+  import type { Product } from "$lib/types";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
@@ -33,19 +34,24 @@
 
   const PANEL_SIZE = 10;
 
-  const lowProducts = $derived(
+  function statusOf(product: Product) {
+    return getStockStatus(
+      product.stock,
+      settingsService.settings.stock_low_threshold,
+      settingsService.settings.stock_medium_threshold,
+    );
+  }
+
+  const lowStockProducts = $derived(
     productsService.items
-      .filter((p) => {
-        const status = getStockStatus(
-          p.stock,
-          settingsService.settings.stock_low_threshold,
-          settingsService.settings.stock_medium_threshold,
-        );
+      .filter((product) => {
+        const status = statusOf(product);
         return status === "low" || status === "out";
       })
-      .sort((a, b) => a.stock - b.stock)
-      .slice(0, PANEL_SIZE),
+      .sort((a, b) => a.stock - b.stock),
   );
+
+  const lowProducts = $derived(lowStockProducts.slice(0, PANEL_SIZE));
 
   const recentMovements = $derived(movementsService.items.slice(0, PANEL_SIZE));
 
@@ -59,16 +65,7 @@
     },
     {
       label: "Stock bajo / agotado",
-      value: formatNumber(
-        productsService.items.filter((p) => {
-          const status = getStockStatus(
-            p.stock,
-            settingsService.settings.stock_low_threshold,
-            settingsService.settings.stock_medium_threshold,
-          );
-          return status === "low" || status === "out";
-        }).length,
-      ),
+      value: formatNumber(lowStockProducts.length),
       icon: TriangleAlert as Component<LucideProps>,
       tone: "danger",
       href: "/products?stock=low",
@@ -191,7 +188,9 @@
               type="button"
               onclick={() => modalService.open(MovementDetailModal, { movement })}
             >
-              {#if movement.cancelled_at}<span>Anulado</span>{/if}
+              {#if movement.cancelled_at}
+                <Badge uniform bg="var(--surface-3)" color="var(--text-muted)">Anulado</Badge>
+              {/if}
               {#if movement.type === "in"}
                 <Badge uniform bg="var(--success)" color="#ffffff">
                   <ArrowDownToLine size={13} /> Entrada

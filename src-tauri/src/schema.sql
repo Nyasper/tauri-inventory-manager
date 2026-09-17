@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS movements (
 CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id);
-CREATE INDEX IF NOT EXISTS products_category ON products(category_id);
+-- Se eliminó el índice de products(category_id): el filtrado por categoría se
+-- hace en el cliente y ninguna consulta SQL lo aprovechaba.
+DROP INDEX IF EXISTS products_category;
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO settings(key,value) VALUES
  ('stock_low_threshold','5'),('stock_medium_threshold','20'),('default_view','dashboard'),

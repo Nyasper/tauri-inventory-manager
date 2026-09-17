@@ -67,7 +67,8 @@
         {formatNumber(movement.quantity)}
         {movement.presentation_name}
         <span class="muted">
-          = {formatNumber(movement.base_quantity)}{baseUnit ? ` ${baseUnit}` : ""} base
+          = {formatNumber(movement.base_quantity)}
+          {baseUnit ? `${baseUnit} base` : "unidades base"}
         </span>
       </dd>
 

@@ -14,11 +14,11 @@ class ProductsService {
   loading = $state(false);
   error = $state("");
 
-  async load(archived = false): Promise<void> {
+  async load(): Promise<void> {
     this.loading = true;
     this.error = "";
     try {
-      this.items = await getProducts(archived);
+      this.items = await getProducts();
     } catch (e) {
       this.error = errorMessage(e);
     } finally {

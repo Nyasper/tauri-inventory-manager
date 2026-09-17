@@ -12,6 +12,7 @@
     showSearch = true,
     onRowClick,
     rowClickable,
+    rowActionLabel,
     actions,
     fixed = false,
     fill = false,
@@ -22,6 +23,7 @@
     showSearch?: boolean;
     onRowClick?: (row: TData) => void;
     rowClickable?: (row: TData) => boolean;
+    rowActionLabel?: (row: TData) => string;
     actions?: Snippet<[TData]>;
     fixed?: boolean;
     fill?: boolean;
@@ -58,14 +60,22 @@
         <tr>
           {#each headerGroup.headers as header (header.id)}
             <th
+              scope="col"
               class={{ center: isCentered(header.column) }}
               style:width={header.column.columnDef.meta?.width}
+              aria-sort={header.column.getCanSort()
+                ? header.column.getIsSorted() === "asc"
+                  ? "ascending"
+                  : header.column.getIsSorted() === "desc"
+                    ? "descending"
+                    : "none"
+                : undefined}
             >
               {#if !header.isPlaceholder && header.column.getCanSort()}
                 <button
                   class="th-sort"
                   type="button"
-                  aria-label={`Ordenar por ${header.id}`}
+                  aria-label={`Ordenar por ${header.id.replace(/_/g, " ")}`}
                   onclick={header.column.getToggleSortingHandler()}
                 >
                   <FlexRender {header} />
@@ -93,6 +103,7 @@
         <tr
           class={{ clickable: isClickable(row.original) }}
           tabindex={isClickable(row.original) ? 0 : undefined}
+          aria-label={isClickable(row.original) ? rowActionLabel?.(row.original) : undefined}
           onkeydown={(event) => {
             if (
               isClickable(row.original) &&

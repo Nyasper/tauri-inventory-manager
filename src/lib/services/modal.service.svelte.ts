@@ -2,7 +2,7 @@ import type { Component } from "svelte";
 
 type AnyComponent = Component<any, any, any>;
 
-export interface ModalEntry {
+interface ModalEntry {
   id: number;
   component: AnyComponent;
   props: Record<string, unknown>;

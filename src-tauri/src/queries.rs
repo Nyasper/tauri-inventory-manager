@@ -40,11 +40,8 @@ pub struct ProductRow {
     pub name: String,
     pub description: Option<String>,
     pub category_id: Option<i64>,
-    pub base_presentation_id: i64,
     pub stock: f64,
     pub archived: i64,
-    pub created_at: String,
-    pub updated_at: String,
     pub base_unit: Option<String>,
     pub category_name: Option<String>,
     pub category_color: Option<String>,
@@ -54,7 +51,6 @@ pub struct ProductRow {
 #[derive(Serialize, FromRow)]
 pub struct PresentationRow {
     pub id: i64,
-    pub product_id: i64,
     pub name: String,
     pub factor: f64,
 }
@@ -146,8 +142,7 @@ pub(crate) async fn list_products_db(
     archived: bool,
 ) -> Result<Vec<ProductRow>, CommandError> {
     sqlx::query_as::<_, ProductRow>(
-        "SELECT p.id, p.name, p.description, p.category_id, p.base_presentation_id,
-                p.stock, p.archived, p.created_at, p.updated_at,
+        "SELECT p.id, p.name, p.description, p.category_id, p.stock, p.archived,
                 b.name AS base_unit, c.name AS category_name,
                 c.color AS category_color, c.icon AS category_icon
          FROM products p
@@ -167,7 +162,7 @@ pub(crate) async fn list_presentations_db(
     product_id: i64,
 ) -> Result<Vec<PresentationRow>, CommandError> {
     sqlx::query_as::<_, PresentationRow>(
-        "SELECT id, product_id, name, factor
+        "SELECT id, name, factor
          FROM presentations
          WHERE product_id = ? AND archived = 0
          ORDER BY factor ASC",

@@ -248,6 +248,7 @@
         showSearch={false}
         emptyText="No hay movimientos que coincidan con el filtro."
         onRowClick={(movement) => modalService.open(MovementDetailModal, { movement })}
+        rowActionLabel={(movement) => `Ver detalle del movimiento #${movement.id}`}
       >
         {#snippet actions(movement)}
           <button

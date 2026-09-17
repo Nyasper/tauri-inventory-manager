@@ -7,7 +7,6 @@ export interface Category {
 
 export interface Presentation {
   id: number;
-  product_id: number;
   name: string;
   factor: number;
 }
@@ -19,17 +18,14 @@ export interface Product {
   name: string;
   description: string | null;
   category_id: number | null;
-  base_presentation_id: number | null;
   stock: number;
-  created_at: string;
-  updated_at: string;
   category_name?: string | null;
   category_color?: string | null;
   category_icon?: string | null;
 }
 
 export interface Supplier {
-  archived?: number;
+  archived: number;
   id: number;
   name: string;
   contacts: string[];
@@ -53,9 +49,9 @@ export interface Movement {
   supplier_id: number | null;
   notes: string | null;
   created_at: string;
-  product_name?: string;
-  presentation_name?: string;
-  supplier_name?: string;
+  product_name: string;
+  presentation_name: string;
+  supplier_name: string | null;
 }
 
 export type DefaultView = "dashboard" | "products" | "movements" | "suppliers";

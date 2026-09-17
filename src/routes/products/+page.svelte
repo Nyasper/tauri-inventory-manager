@@ -225,6 +225,7 @@
       fixed
       onRowClick={openEdit}
       rowClickable={(product) => !product.archived}
+      rowActionLabel={(product) => `Editar ${product.name}`}
       showSearch={false}
     >
       {#snippet actions(product)}

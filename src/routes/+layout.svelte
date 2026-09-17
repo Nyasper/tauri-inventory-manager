@@ -42,7 +42,12 @@
   onMount(async () => {
     const notice = await takeStartupNotice().catch(() => null);
     if (notice) feedback.error(notice);
-    await settingsService.load();
+    try {
+      await settingsService.load();
+    } catch (e) {
+      feedback.error(errorMessage(e));
+      return;
+    }
     const path = VIEW_PATHS[settingsService.settings.default_view] ?? "/";
     if (page.url.pathname === "/" && !page.url.search && path !== "/") goto(path);
   });

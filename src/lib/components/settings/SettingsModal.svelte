@@ -82,17 +82,13 @@
   }
 
   async function saveThresholds() {
-    const lowValue = Number(low);
-    const mediumValue = Number(medium);
-    if (
-      !Number.isFinite(lowValue) ||
-      !Number.isFinite(mediumValue) ||
-      lowValue < 0 ||
-      mediumValue <= lowValue
-    ) {
-      throw new Error("Los límites deben cumplir: 0 ≤ bajo < medio.");
+    if (!thresholdsValid) return;
+    try {
+      await settingsService.saveThresholds(Number(low), Number(medium));
+    } catch (e) {
+      feedback.error(errorMessage(e));
+      await settingsService.load().catch(() => {});
     }
-    await settingsService.saveThresholds(lowValue, mediumValue);
   }
 
   function startNewCategory() {

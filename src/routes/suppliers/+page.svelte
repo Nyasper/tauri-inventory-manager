@@ -118,6 +118,7 @@
     searchPlaceholder="Buscar proveedores..."
     onRowClick={openEdit}
     rowClickable={(supplier) => !supplier.archived}
+    rowActionLabel={(supplier) => `Editar ${supplier.name}`}
   >
     {#snippet actions(supplier)}
       {#if supplier.archived}

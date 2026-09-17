@@ -345,7 +345,7 @@ La vista de movimientos ofrece un potente panel de filtros combinables para audi
 - **Filtro por Proveedor**: Muestra las compras realizadas a un proveedor específico.
 - **Rango de Fechas (Desde / Hasta)**: Acota las transacciones al período cronológico seleccionado.
 - **Estado**: Permite filtrar entre transacciones `Vigentes` o `Anuladas`.
-- **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **25 filas por página**, garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Use los botones **Anterior** y **Siguiente** del pie de la tabla; el indicador central muestra `Página X · N movimientos` con el total de registros.
+- **Paginación Inteligente**: Las consultas se resuelven en la base de datos a razón de **50 filas por página** (configurable en 25/50/100/200 desde Configuración), garantizando un rendimiento instantáneo incluso con cientos de miles de movimientos. Use los botones de icono del pie para ir a la **primera** página, a la **anterior**, a la **siguiente** o a la **última**; el indicador central muestra `Página X de Y` junto al total de movimientos.
 
 ### Ficha de Detalle del Movimiento
 Haga clic sobre cualquier movimiento, tanto en el historial de **Movimientos** como en el panel **"Movimientos recientes"** del Dashboard, para abrir su **ficha completa**. La ficha muestra:

@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The application layout is marked `inert` while a modal is open, so the background cannot be focused or clicked.
 - `cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` are now the documented Rust checks.
 - Project metadata (description/authors) is no longer placeholder text.
+- `Intl` number and date formatters are created once instead of on every cell render, and the dashboard computes each product's stock status a single time.
+- Data tables mark column headers with `scope` and `aria-sort`, use the visible column name for sort buttons and announce the row action to screen readers.
+- The dashboard's cancelled marker uses the standard badge style, and the movement detail shows "unidades base" when the product no longer exists.
 
 ### Fixed
 
@@ -50,10 +53,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The movements page index is clamped so an absurd page number cannot overflow the query offset.
 - If the database cannot be opened, it is moved aside as `inventory.db.corrupt-<timestamp>`, the app starts with a fresh database and notifies the user.
 - Duplicate-name errors are mapped from the expected entity at each call site instead of parsing SQLite message text.
+- Saving stock thresholds is blocked by its button state and reports failures through the standard feedback instead of throwing an unhandled error.
+- A failed settings load at startup is reported without leaving the default-view redirect pending.
+- The user manual and the in-app help again describe the configurable page size and the icon pagination controls (they had regressed to 25 rows and text buttons).
 
 ### Removed
 
 - Dead code flagged by the new linting: unused icon and type imports, the unused `Product.presentations` field, an inert CSS class and an unused table prop.
+- Unused payload fields (`Product.created_at`, `updated_at`, `base_presentation_id`, `Presentation.product_id`), the `products_category` index, the unused `--shadow` CSS variable and lint-flagged unused exports; `productsService.load` no longer accepts an unused argument.
 - Unused `tauri-plugin-opener` dependency, plugin registration and capability.
 - Leftover `protocol-asset` feature, asset protocol scope and CSP entries from the removed image feature.
 - Unused `core:path:default` capability and unused `--stock-low`/`--stock-medium`/`--stock-high` CSS variables.

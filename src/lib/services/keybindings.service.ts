@@ -7,7 +7,7 @@ import { themeService } from "$lib/services/theme.service.svelte";
 
 type AnyComponent = Component<any, any, any>;
 
-export type ShortcutId =
+type ShortcutId =
   | "help"
   | "settings"
   | "theme"
@@ -16,7 +16,7 @@ export type ShortcutId =
   | "view-movements"
   | "view-suppliers";
 
-export interface KeyCombo {
+interface KeyCombo {
   key: string;
   ctrl?: boolean;
   shift?: boolean;
@@ -31,7 +31,7 @@ export interface Shortcut {
   whenNoModal: boolean;
 }
 
-export const SHORTCUTS: Shortcut[] = [
+const SHORTCUTS: Shortcut[] = [
   {
     id: "help",
     keys: "F1",
