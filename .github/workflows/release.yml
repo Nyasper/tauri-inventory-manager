@@ -43,9 +43,11 @@ jobs:
           # Linux: instaladores Debian/Fedora y AppImage portable.
           - platform: ubuntu-22.04
             args: "--bundles deb,rpm,appimage"
+            uploadPlainBinary: false
           # Windows: instalador NSIS.
           - platform: windows-latest
             args: "--bundles nsis"
+            uploadPlainBinary: false
           # Windows: ejecutable portable (sin instalador).
           - platform: windows-latest
             args: "--no-bundle"
@@ -56,6 +58,7 @@ jobs:
             args: "--target universal-apple-darwin --bundles app,dmg"
             targets: "aarch64-apple-darwin,x86_64-apple-darwin"
             appleSigningIdentity: "-"
+            uploadPlainBinary: false
 
     runs-on: ${{ matrix.platform }}
 
