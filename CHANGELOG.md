@@ -56,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Saving stock thresholds is blocked by its button state and reports failures through the standard feedback instead of throwing an unhandled error.
 - A failed settings load at startup is reported without leaving the default-view redirect pending.
 - The user manual and the in-app help again describe the configurable page size and the icon pagination controls (they had regressed to 25 rows and text buttons).
+- Programmatic modal closes (`closeAll` or by id) now resolve any pending `confirm()` promise with `false` instead of leaving its `await` hanging forever, and `closeAll` also clears the close-guard stack.
 
 ### Removed
 

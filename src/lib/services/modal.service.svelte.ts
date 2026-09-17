@@ -18,6 +18,7 @@ class ModalService {
 
   private nextId = 1;
   private guards: CloseGuard[] = [];
+  private pendingConfirms = new Map<number, (result: boolean) => void>();
 
   open(component: AnyComponent, props: Record<string, unknown> = {}): number {
     const id = this.nextId++;
@@ -27,14 +28,31 @@ class ModalService {
 
   close(id?: number): void {
     if (id === undefined) {
+      const removed = this.modals[this.modals.length - 1];
       this.modals.pop();
+      if (removed) this.resolveConfirm(removed.id);
       return;
     }
     this.modals = this.modals.filter((m) => m.id !== id);
+    this.resolveConfirm(id);
   }
 
   closeAll(): void {
+    const ids = this.modals.map((m) => m.id);
     this.modals = [];
+    this.guards = [];
+    for (const id of ids) this.resolveConfirm(id);
+  }
+
+  /**
+   * Resuelve con `false` una confirmación cuyo modal se cerró por otra vía
+   * (programática), para que ninguna promesa de `confirm()` quede pendiente.
+   */
+  private resolveConfirm(id: number): void {
+    const resolve = this.pendingConfirms.get(id);
+    if (!resolve) return;
+    this.pendingConfirms.delete(id);
+    resolve(false);
   }
 
   /**
@@ -83,10 +101,12 @@ class ModalService {
         title,
         message,
         onResult: (result: boolean) => {
+          this.pendingConfirms.delete(id);
           this.close(id);
           resolve(result);
         },
       });
+      this.pendingConfirms.set(id, resolve);
     });
   }
 }
