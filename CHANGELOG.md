@@ -62,6 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A failed settings load at startup is reported without leaving the default-view redirect pending.
 - The user manual and the in-app help again describe the configurable page size and the icon pagination controls (they had regressed to 25 rows and text buttons).
 - Programmatic modal closes (`closeAll` or by id) now resolve any pending `confirm()` promise with `false` instead of leaving its `await` hanging forever, and `closeAll` also clears the close-guard stack.
+- The window no longer freezes after a few minutes of use when it is covered or backgrounded: Windows WebView2 disables native window occlusion detection, occluded-window backgrounding and renderer backgrounding, which could unload the web view while it was idle.
 
 ### Removed
 
