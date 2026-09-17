@@ -340,6 +340,14 @@
             cero). En la vista <em>"Archivados"</em>, cada fila ofrece <em>"Restaurar"</em> y el icono
             de papelera para eliminarlo definitivamente.
           </p>
+
+          <h3>Paginación del Catálogo</h3>
+          <p>
+            La tabla muestra <strong>50 productos por página</strong>; la búsqueda, los filtros y el
+            orden se aplican sobre todo el catálogo antes de paginar. En el pie de la tabla dispones
+            de botones para ir a la primera página, retroceder, avanzar o saltar a la última, junto
+            al número de página y el total de registros.
+          </p>
         </div>
       {:else if activeSection === "movements"}
         <div class="topic">

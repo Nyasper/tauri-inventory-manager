@@ -8,6 +8,8 @@ import {
   globalFilteringFeature,
   createFilteredRowModel,
   filterFn_includesString,
+  rowPaginationFeature,
+  createPaginatedRowModel,
 } from "@tanstack/svelte-table";
 import type { RowData, SvelteTable } from "@tanstack/svelte-table";
 
@@ -24,6 +26,8 @@ const features = tableFeatures({
   globalFilteringFeature,
   filteredRowModel: createFilteredRowModel(),
   filterFns: { includesString: filterFn_includesString },
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
   columnMeta: {} as AppColumnMeta,
 });
 

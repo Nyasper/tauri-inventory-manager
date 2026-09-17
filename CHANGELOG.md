@@ -30,6 +30,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Intl` number and date formatters are created once instead of on every cell render, and the dashboard computes each product's stock status a single time.
 - Data tables mark column headers with `scope` and `aria-sort`, use the visible column name for sort buttons and announce the row action to screen readers.
 - The dashboard's cancelled marker uses the standard badge style, and the movement detail shows "unidades base" when the product no longer exists.
+- The movements view counts the total with an indexed query instead of the `count(*) OVER ()` window function, which forced SQLite to materialize and sort the whole history; with 100,000 movements the page went from ~45 ms to ~0.2 ms.
+- The database connection uses WAL journaling with `synchronous=NORMAL`, an in-memory temporary store and an 8 MB cache, reducing the latency of every movement write and speeding up sorts.
+- The products table paginates on the client (50 rows per page) with a page footer; search, filters and sorting still apply to the whole catalog before paginating.
+- The dashboard no longer loads the suppliers list twice (the layout already loads it on startup).
+- Release builds enable `lto`, `codegen-units=1` and symbol stripping.
 
 ### Fixed
 

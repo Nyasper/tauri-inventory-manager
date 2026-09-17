@@ -213,7 +213,7 @@ La barra de herramientas superior cuenta con herramientas de filtrado en tiempo 
 - **Filtro desplegable de Categoría**: Permite aislar los productos pertenecientes a una categoría específica, ver únicamente los productos "Sin categoría" o ver "Todas las categorías".
 - **Botón "Nuevo producto"**: Despliega la ventana de creación.
 
-La tabla de datos lista los productos con su icono de categoría, nombre, observaciones, nombre de categoría, stock total en unidad base y la insignia de estado. Puede ordenar los datos por columnas haciendo clic sobre la cabecera correspondiente.
+La tabla de datos lista los productos con su icono de categoría, nombre, observaciones, nombre de categoría, stock total en unidad base y la insignia de estado. Puede ordenar los datos por columnas haciendo clic sobre la cabecera correspondiente. La lista se reparte en páginas de 50 productos (la búsqueda y los filtros se aplican sobre todo el catálogo antes de paginar); use los botones de la parte inferior para navegar entre páginas.
 
 ### Estados y Clasificación de Stock
 El stock de cada producto se clasifica automáticamente en 4 niveles según los límites configurados:

@@ -30,7 +30,6 @@
 
   productsService.load();
   movementsService.load({});
-  suppliersService.load();
 
   const PANEL_SIZE = 10;
 

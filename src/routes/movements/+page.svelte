@@ -147,6 +147,7 @@
     get data() {
       return data;
     },
+    manualPagination: true,
   });
 
   function openNew() {

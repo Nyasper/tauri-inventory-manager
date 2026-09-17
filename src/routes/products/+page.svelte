@@ -113,7 +113,7 @@
     get data() {
       return filtered;
     },
-    initialState: { sorting: initialSort },
+    initialState: { sorting: initialSort, pagination: { pageIndex: 0, pageSize: 50 } },
   });
 
   const categoryOptions = $derived([
@@ -223,6 +223,7 @@
     <DataTable
       {table}
       fixed
+      paginate
       onRowClick={openEdit}
       rowClickable={(product) => !product.archived}
       rowActionLabel={(product) => `Editar ${product.name}`}

@@ -51,6 +51,7 @@
     get data() {
       return visible;
     },
+    manualPagination: true,
   });
 
   function openNew() {

@@ -3,7 +3,15 @@
   import type { RowData } from "@tanstack/svelte-table";
   import type { Snippet } from "svelte";
   import type { AppColumnMeta, AppTable } from "$lib/components/ui/table";
-  import { Search, ChevronUp, ChevronDown } from "@lucide/svelte";
+  import {
+    Search,
+    ChevronUp,
+    ChevronDown,
+    ChevronsLeft,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsRight,
+  } from "@lucide/svelte";
 
   let {
     table,
@@ -16,6 +24,7 @@
     actions,
     fixed = false,
     fill = false,
+    paginate = false,
   }: {
     table: AppTable<TData>;
     searchPlaceholder?: string;
@@ -27,7 +36,12 @@
     actions?: Snippet<[TData]>;
     fixed?: boolean;
     fill?: boolean;
+    paginate?: boolean;
   } = $props();
+
+  const pageCount = $derived(table.getPageCount());
+  const pageIndex = $derived(table.atoms.pagination?.get()?.pageIndex ?? 0);
+  const rowCount = $derived(table.getRowCount());
 
   function isClickable(row: TData): boolean {
     return !!onRowClick && (rowClickable?.(row) ?? true);
@@ -145,6 +159,54 @@
       {/if}
     </tbody>
   </table>
+
+  {#if paginate && pageCount > 1}
+    <nav class="pager" aria-label="Paginación de la tabla">
+      <span class="pager-info">Página {pageIndex + 1} de {pageCount} · {rowCount} en total</span>
+      <div class="pager-buttons">
+        <button
+          class="pager-btn"
+          type="button"
+          title="Primera página"
+          aria-label="Primera página"
+          disabled={!table.getCanPreviousPage()}
+          onclick={() => table.firstPage()}
+        >
+          <ChevronsLeft size={16} />
+        </button>
+        <button
+          class="pager-btn"
+          type="button"
+          title="Página anterior"
+          aria-label="Página anterior"
+          disabled={!table.getCanPreviousPage()}
+          onclick={() => table.previousPage()}
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          class="pager-btn"
+          type="button"
+          title="Página siguiente"
+          aria-label="Página siguiente"
+          disabled={!table.getCanNextPage()}
+          onclick={() => table.nextPage()}
+        >
+          <ChevronRight size={16} />
+        </button>
+        <button
+          class="pager-btn"
+          type="button"
+          title="Última página"
+          aria-label="Última página"
+          disabled={!table.getCanNextPage()}
+          onclick={() => table.lastPage()}
+        >
+          <ChevronsRight size={16} />
+        </button>
+      </div>
+    </nav>
+  {/if}
 </div>
 
 <style>
@@ -289,5 +351,46 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .pager-info {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  .pager-buttons {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .pager-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .pager-btn:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .pager-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 </style>
