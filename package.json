@@ -1,6 +1,6 @@
 {
   "name": "tauri-inventory-manager",
-  "version": "0.12.0",
+  "version": "1.0.0",
   "description": "Gestor de inventario de escritorio con Tauri, Svelte y SQLite",
   "type": "module",
   "scripts": {
