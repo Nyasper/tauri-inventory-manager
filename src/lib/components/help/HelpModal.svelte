@@ -543,10 +543,10 @@
                 <h3>Copias de Seguridad</h3>
               </div>
               <p>
-                <strong>Crear respaldo:</strong> Exporta un archivo <code>.db</code> consistente.<br
-                />
-                <strong>Restaurar respaldo:</strong> Restaura una copia previa. El sistema genera una
-                copia de seguridad preventiva automática antes de sobreescribir.
+                <strong>Crear respaldo:</strong> Exporta un archivo <code>.db</code> consistente (no
+                puede sobrescribir la base en uso).<br />
+                <strong>Restaurar respaldo:</strong> Valida la estructura y la integridad del archivo
+                y, si algo falla, restaura automáticamente los datos anteriores.
               </p>
             </div>
 

@@ -90,6 +90,8 @@ Toda la información del negocio se almacena en el archivo **`inventory.db`**, u
 
 Una instalación nueva comienza con una base de datos limpia, sin productos ni movimientos.
 
+> **Recuperación automática**: si la aplicación no puede abrir el archivo (corrupción o formato incompatible), lo aparta como `inventory.db.corrupt-<marca de tiempo>` y arranca con una base limpia, mostrando un aviso. El archivo apartado se conserva para recuperarlo manualmente. Además, antes de migrar una base de datos antigua se guarda una copia `inventory.db.pre-migrate`.
+
 ### Datos de Demostración (Opcional)
 Para fines de prueba o capacitación, la aplicación permite inicializar un catálogo con datos de prueba preconfigurados para explorar todas las pantallas y funciones sin alterar datos reales existentes.
 
@@ -516,9 +518,9 @@ Proteja la información de su negocio contra pérdidas fortuitas o traslade su i
 - Genera una **copia exacta, consistente y desfragmentada** del archivo de datos incluso mientras el sistema está en uso.
 
 #### 2. Restaurar Respaldo (`Restaurar respaldo`):
-- Seleccione un archivo `.db` generado previamente.
-- **Verificación de Seguridad Previa**: La aplicación verifica que el archivo sea un respaldo válido y compatible con la estructura del sistema.
-- **Copia de Seguridad Preventiva Automática**: Antes de reemplazar los datos, la aplicación genera automáticamente una copia de resguardo de emergencia (`pre-restore-backup.db`) en el directorio de la aplicación. Si el archivo estuviese corrupto, el sistema recupera automáticamente sus datos previos para evitar cualquier pérdida.
+- Seleccione un archivo `.db` generado previamente. La base de datos en uso no se puede elegir como destino del respaldo.
+- **Verificación de Seguridad Previa**: La aplicación comprueba que el archivo sea SQLite, que tenga las tablas y columnas esperadas, que supere el chequeo de integridad y que no contenga referencias rotas entre tablas.
+- **Copia de Seguridad Preventiva Automática**: Antes de reemplazar los datos, la aplicación genera automáticamente una copia de resguardo de emergencia (`pre-restore-backup.db`) en el directorio de la aplicación. Si el archivo estuviese corrupto o tuviera referencias inconsistentes, el sistema recupera automáticamente sus datos previos para evitar cualquier pérdida.
 
 ### Cambio de Contraseña de Administrador
 La contraseña de administrador protege las **eliminaciones permanentes**: la **eliminación masiva de movimientos** (ver [Eliminación Masiva de Movimientos en Lote](#eliminación-masiva-de-movimientos-en-lote)) y la **eliminación definitiva de productos y proveedores archivados**. Solo puede cambiarse desde aquí. Se guarda como texto plano en la tabla `settings` de la base de datos local (clave `delete_password`).

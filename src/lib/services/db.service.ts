@@ -317,6 +317,11 @@ export function archiveCategory(id: number): Promise<void> {
 
 /* -------------------------------- Ajustes -------------------------------- */
 
+/** Aviso generado durante el arranque (p. ej. base de datos apartada). */
+export function takeStartupNotice(): Promise<string | null> {
+  return invoke<string | null>("take_startup_notice");
+}
+
 export function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }

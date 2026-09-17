@@ -43,6 +43,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Clicking a row in the archived products list no longer restores the product; restoring now requires the explicit "Restaurar" action.
 - The batch-deletion modal no longer treats a numerically unchanged count as an unsaved change.
 - The user manual and the in-app help now list the real database path per operating system (under the application identifier) instead of outdated locations.
+- Backups can no longer overwrite the database in use: the destination is compared against the live file before writing.
+- Updating a supplier or category whose id no longer exists now fails with `not_found` instead of silently inserting a record with that id.
+- Backup validation now checks required columns, `PRAGMA integrity_check` and `PRAGMA foreign_key_check`; a restore whose data has broken references rolls back to the previous database.
+- Legacy databases are migrated with foreign keys disabled, a `pre-migrate` safety copy and a post-migration `foreign_key_check`.
+- The movements page index is clamped so an absurd page number cannot overflow the query offset.
+- If the database cannot be opened, it is moved aside as `inventory.db.corrupt-<timestamp>`, the app starts with a fresh database and notifies the user.
+- Duplicate-name errors are mapped from the expected entity at each call site instead of parsing SQLite message text.
 
 ### Removed
 

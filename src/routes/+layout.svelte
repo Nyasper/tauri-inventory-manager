@@ -13,6 +13,7 @@
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { takeStartupNotice } from "$lib/services/db.service";
   import { keybindingsService } from "$lib/services/keybindings.service";
 
   const VIEW_PATHS: Record<string, string> = {
@@ -39,6 +40,8 @@
   }
 
   onMount(async () => {
+    const notice = await takeStartupNotice().catch(() => null);
+    if (notice) feedback.error(notice);
     await settingsService.load();
     const path = VIEW_PATHS[settingsService.settings.default_view] ?? "/";
     if (page.url.pathname === "/" && !page.url.search && path !== "/") goto(path);

@@ -11,6 +11,8 @@ pub(crate) const DEFAULT_PAGE_SIZE: i64 = 50;
 /// Rango permitido para el tamaño de página configurable.
 pub(crate) const MIN_PAGE_SIZE: i64 = 10;
 pub(crate) const MAX_PAGE_SIZE: i64 = 200;
+/// Cota defensiva del índice de página: evita desbordar el offset.
+const MAX_PAGE_INDEX: i64 = 10_000_000;
 
 fn query_error(error: sqlx::Error) -> CommandError {
     eprintln!("Query error: {error}");
@@ -219,7 +221,8 @@ pub(crate) async fn page_movements_db(
         .page_size
         .unwrap_or(DEFAULT_PAGE_SIZE)
         .clamp(MIN_PAGE_SIZE, MAX_PAGE_SIZE);
-    let offset = filters.page.unwrap_or(0).max(0) * page_size;
+    let page = filters.page.unwrap_or(0).clamp(0, MAX_PAGE_INDEX);
+    let offset = page.saturating_mul(page_size);
     query
         .push(" ORDER BY created_at DESC, id DESC LIMIT ")
         .push_bind(page_size)

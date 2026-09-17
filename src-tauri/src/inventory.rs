@@ -62,10 +62,41 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
                 .busy_timeout(Duration::from_secs(10)),
         )
         .await?;
-    sqlx::raw_sql(SCHEMA).execute(&pool).await?;
-    migrate_remove_persons(&pool).await?;
-    migrate_allow_deleted_products(&pool).await?;
+    if let Err(error) = initialize(&pool, path).await {
+        // Cierra el pool para liberar el archivo (imprescindible en Windows
+        // antes de apartar una base dañada).
+        pool.close().await;
+        return Err(error);
+    }
     Ok(pool)
+}
+
+/// Aplica el esquema y las migraciones necesarias sobre el pool.
+async fn initialize(pool: &Db, path: &Path) -> Result<(), sqlx::Error> {
+    sqlx::raw_sql(SCHEMA).execute(pool).await?;
+    let legacy = inspect_legacy_schema(pool).await?;
+    if legacy.needs_migration() {
+        // Copia previa a migrar, para poder recuperar los datos originales.
+        if path.exists() {
+            let safety = with_suffix(path, ".pre-migrate");
+            if let Err(e) = std::fs::copy(path, &safety) {
+                eprintln!("Pre-migration backup error: {e}");
+            }
+        }
+        // El rebuild de tablas de SQLite exige desactivar las claves foráneas
+        // fuera de cualquier transacción y comprobarlas al terminar.
+        sqlx::query("PRAGMA foreign_keys=OFF").execute(pool).await?;
+        migrate_legacy_schema(pool, &legacy).await?;
+        sqlx::query("PRAGMA foreign_keys=ON").execute(pool).await?;
+        let violations = sqlx::query("PRAGMA foreign_key_check")
+            .fetch_all(pool)
+            .await?
+            .len();
+        if violations > 0 {
+            eprintln!("Migration left {violations} foreign key violations");
+        }
+    }
+    Ok(())
 }
 
 const MOVEMENTS_TABLE: &str = r#"
@@ -115,46 +146,43 @@ async fn replace_movements_table(db: &Db) -> Result<(), sqlx::Error> {
     tx.commit().await
 }
 
-/// Versiones anteriores asociaban cada movimiento a un responsable.
-/// Reconstruye la tabla sin esas columnas y elimina el catálogo de responsables.
-async fn migrate_remove_persons(db: &Db) -> Result<(), sqlx::Error> {
+/// Estado del esquema heredado que determina si hace falta reconstruir
+/// `movements` o eliminar el catálogo de responsables.
+#[derive(Default)]
+struct LegacySchema {
+    person_columns: bool,
+    persons_table: bool,
+    product_required: bool,
+    supplier_set_null: bool,
+}
+
+impl LegacySchema {
+    fn needs_migration(&self) -> bool {
+        self.person_columns
+            || self.persons_table
+            || self.product_required
+            || !self.supplier_set_null
+    }
+}
+
+async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
     let columns = sqlx::query("PRAGMA table_info(movements)")
         .fetch_all(db)
         .await?;
-    let has_columns = columns.iter().any(|row| {
+    let person_columns = columns.iter().any(|row| {
         matches!(
             row.get::<String, _>("name").as_str(),
             "responsible_person_id" | "person_name"
         )
     });
-    let has_table: bool = sqlx::query_scalar(
+    let product_required = columns.iter().any(|row| {
+        row.get::<String, _>("name") == "product_id" && row.get::<i64, _>("notnull") == 1
+    });
+    let persons_table: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='responsible_persons')",
     )
     .fetch_one(db)
     .await?;
-    if !has_columns && !has_table {
-        return Ok(());
-    }
-    if has_columns {
-        replace_movements_table(db).await?;
-    }
-    sqlx::query("DROP TABLE IF EXISTS responsible_persons")
-        .execute(db)
-        .await?;
-    Ok(())
-}
-
-/// Bases anteriores impedían borrar productos o proveedores con movimientos.
-/// Reconstruye `movements` con `product_id`/`presentation_id` opcionales y el
-/// proveedor limpio al eliminarse, para conservar el historial marcado como
-/// "producto/proveedor eliminado".
-async fn migrate_allow_deleted_products(db: &Db) -> Result<(), sqlx::Error> {
-    let columns = sqlx::query("PRAGMA table_info(movements)")
-        .fetch_all(db)
-        .await?;
-    let product_required = columns.iter().any(|row| {
-        row.get::<String, _>("name") == "product_id" && row.get::<i64, _>("notnull") == 1
-    });
     let keys = sqlx::query("PRAGMA foreign_key_list(movements)")
         .fetch_all(db)
         .await?;
@@ -162,10 +190,27 @@ async fn migrate_allow_deleted_products(db: &Db) -> Result<(), sqlx::Error> {
         row.get::<String, _>("from") == "supplier_id"
             && row.get::<String, _>("on_delete") == "SET NULL"
     });
-    if !product_required && supplier_set_null {
-        return Ok(());
+    Ok(LegacySchema {
+        person_columns,
+        persons_table,
+        product_required,
+        supplier_set_null,
+    })
+}
+
+/// Reconstruye `movements` (responsables, producto/proveedor opcionales) y
+/// elimina el catálogo de responsables. Debe ejecutarse con las claves
+/// foráneas desactivadas.
+async fn migrate_legacy_schema(db: &Db, legacy: &LegacySchema) -> Result<(), sqlx::Error> {
+    if legacy.person_columns || legacy.product_required || !legacy.supplier_set_null {
+        replace_movements_table(db).await?;
     }
-    replace_movements_table(db).await
+    if legacy.persons_table {
+        sqlx::query("DROP TABLE IF EXISTS responsible_persons")
+            .execute(db)
+            .await?;
+    }
+    Ok(())
 }
 
 /// Loads the same SQL used by `bun run seed` so its integrity is covered by Rust tests.
@@ -187,24 +232,7 @@ async fn seed_demo_data(db: &Db) -> Result<(), sqlx::Error> {
 fn error(e: sqlx::Error) -> CommandError {
     if let Some(db) = e.as_database_error() {
         if db.is_unique_violation() {
-            let (code, entity) = if db.message().contains("products.") {
-                ("duplicate_product", "un producto")
-            } else if db.message().contains("suppliers.") {
-                ("duplicate_supplier", "un proveedor")
-            } else if db.message().contains("categories.") {
-                ("duplicate_category", "una categoría")
-            } else if db.message().contains("presentations.") {
-                (
-                    "duplicate_presentation",
-                    "una presentación de este producto",
-                )
-            } else {
-                ("duplicate_record", "un registro")
-            };
-            return CommandError::new(
-                code,
-                format!("Ya existe {entity} con ese nombre (puede estar archivado)."),
-            );
+            return duplicate_error("record", "un registro");
         }
         if db.is_foreign_key_violation() {
             return CommandError::new(
@@ -218,6 +246,31 @@ fn error(e: sqlx::Error) -> CommandError {
         "database_error",
         "No se pudo completar la operación. Revisa los datos e inténtalo nuevamente.",
     )
+}
+
+fn duplicate_error(context: &str, entity: &str) -> CommandError {
+    let code = match context {
+        "product" => "duplicate_product",
+        "presentation" => "duplicate_presentation",
+        "supplier" => "duplicate_supplier",
+        "category" => "duplicate_category",
+        _ => "duplicate_record",
+    };
+    CommandError::new(
+        code,
+        format!("Ya existe {entity} con ese nombre (puede estar archivado)."),
+    )
+}
+
+/// Error de base de datos con la entidad esperada, para nombrar duplicados sin
+/// depender del texto del mensaje de SQLite.
+fn error_as(e: sqlx::Error, context: &str, entity: &str) -> CommandError {
+    if let Some(db) = e.as_database_error() {
+        if db.is_unique_violation() {
+            return duplicate_error(context, entity);
+        }
+    }
+    error(e)
 }
 /// Normaliza un nombre para mostrarlo y para compararlo de forma única:
 /// colapsa espacios, aplica NFC y calcula su clave en minúsculas.
@@ -326,7 +379,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             }
         }
         sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,updated_at=datetime('now') WHERE id=?")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(id).execute(&mut *tx).await.map_err(error)?;
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
         id
     } else {
         if !ids.is_empty() {
@@ -336,7 +389,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             ));
         }
         sqlx::query("INSERT INTO products(name,name_key,description,category_id,base_presentation_id) VALUES(?,?,?,?, -1)")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).execute(&mut *tx).await.map_err(error)?.last_insert_rowid()
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
     };
     // Retire omitted presentations; historical references remain valid.
     sqlx::query("UPDATE presentations SET archived=1 WHERE product_id=?")
@@ -372,7 +425,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             .bind(pid)
             .execute(&mut *tx)
             .await
-            .map_err(error)?;
+            .map_err(|e| error_as(e, "presentation", "una presentación de este producto"))?;
             pid
         } else {
             sqlx::query(
@@ -384,7 +437,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             .bind(p.factor)
             .execute(&mut *tx)
             .await
-            .map_err(error)?
+            .map_err(|e| error_as(e, "presentation", "una presentación de este producto"))?
             .last_insert_rowid()
         };
         if p.factor == 1.0 {
@@ -421,15 +474,81 @@ pub async fn save_catalog(
 async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandError> {
     let (display, key) = name(&input.name)?;
     let mut tx = db.begin().await.map_err(error)?;
-    let result=match input.kind.as_str() {
-        "supplier" => sqlx::query("INSERT INTO suppliers(id,name,name_key,contact,notes) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,name_key=excluded.name_key,contact=excluded.contact,notes=excluded.notes")
-            .bind(input.id).bind(display).bind(key).bind(input.contact).bind(input.notes).execute(&mut *tx).await,
-        "category" => sqlx::query("INSERT INTO categories(id,name,name_key,color,icon) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,name_key=excluded.name_key,color=excluded.color,icon=excluded.icon")
-            .bind(input.id).bind(display).bind(key).bind(input.color).bind(input.icon).execute(&mut *tx).await,
-        _ => return Err(CommandError::new("invalid_kind", "Tipo de registro inválido."))
-    }.map_err(error)?;
+    let id = match input.kind.as_str() {
+        "supplier" => {
+            if let Some(id) = input.id {
+                let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM suppliers WHERE id=?")
+                    .bind(id)
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(error)?;
+                if exists.is_none() {
+                    return Err(CommandError::new("not_found", "El proveedor no existe."));
+                }
+                sqlx::query("UPDATE suppliers SET name=?,name_key=?,contact=?,notes=? WHERE id=?")
+                    .bind(&display)
+                    .bind(&key)
+                    .bind(&input.contact)
+                    .bind(&input.notes)
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| error_as(e, "supplier", "un proveedor"))?;
+                id
+            } else {
+                sqlx::query("INSERT INTO suppliers(name,name_key,contact,notes) VALUES(?,?,?,?)")
+                    .bind(&display)
+                    .bind(&key)
+                    .bind(&input.contact)
+                    .bind(&input.notes)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| error_as(e, "supplier", "un proveedor"))?
+                    .last_insert_rowid()
+            }
+        }
+        "category" => {
+            if let Some(id) = input.id {
+                let exists: Option<i64> =
+                    sqlx::query_scalar("SELECT id FROM categories WHERE id=?")
+                        .bind(id)
+                        .fetch_optional(&mut *tx)
+                        .await
+                        .map_err(error)?;
+                if exists.is_none() {
+                    return Err(CommandError::new("not_found", "La categoría no existe."));
+                }
+                sqlx::query("UPDATE categories SET name=?,name_key=?,color=?,icon=? WHERE id=?")
+                    .bind(&display)
+                    .bind(&key)
+                    .bind(&input.color)
+                    .bind(&input.icon)
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| error_as(e, "category", "una categoría"))?;
+                id
+            } else {
+                sqlx::query("INSERT INTO categories(name,name_key,color,icon) VALUES(?,?,?,?)")
+                    .bind(&display)
+                    .bind(&key)
+                    .bind(&input.color)
+                    .bind(&input.icon)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| error_as(e, "category", "una categoría"))?
+                    .last_insert_rowid()
+            }
+        }
+        _ => {
+            return Err(CommandError::new(
+                "invalid_kind",
+                "Tipo de registro inválido.",
+            ))
+        }
+    };
     tx.commit().await.map_err(error)?;
-    Ok(input.id.unwrap_or(result.last_insert_rowid()))
+    Ok(id)
 }
 #[tauri::command]
 pub async fn archive_record(
@@ -1042,6 +1161,81 @@ pub(crate) fn db_path(app: &AppHandle) -> Result<PathBuf, CommandError> {
     Ok(dir.join("inventory.db"))
 }
 
+/// Aparta una base de datos que no se pudo abrir, renombrándola con un sufijo
+/// con fecha, y devuelve la ruta a la que se movió.
+pub(crate) fn quarantine_database(path: &Path) -> Result<PathBuf, std::io::Error> {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let quarantined = with_suffix(path, &format!(".corrupt-{stamp}"));
+    std::fs::rename(path, &quarantined)?;
+    for suffix in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(with_suffix(path, suffix));
+    }
+    Ok(quarantined)
+}
+
+/// Solo se aparta la base cuando el error indica corrupción o formato
+/// incompatible; un archivo bloqueado o inaccesible no debe moverse.
+fn should_quarantine(error: &sqlx::Error) -> bool {
+    match error {
+        sqlx::Error::Database(db) => !matches!(db.code().as_deref(), Some("5") | Some("6")),
+        _ => false,
+    }
+}
+
+/// Abre la base de datos; si falla por corrupción o incompatibilidad, la aparta
+/// y reintenta con una base nueva. Devuelve el pool y un aviso opcional.
+pub(crate) fn open_with_recovery(path: &Path) -> Result<(Db, Option<String>), String> {
+    match tauri::async_runtime::block_on(connect(path)) {
+        Ok(pool) => Ok((pool, None)),
+        Err(error) => {
+            eprintln!("Database open error: {error}");
+            if !should_quarantine(&error) {
+                return Err(format!("No se pudo abrir la base de datos: {error}"));
+            }
+            let quarantined = quarantine_database(path)
+                .map_err(|e| format!("No se pudo apartar la base de datos dañada: {e}"))?;
+            let pool = tauri::async_runtime::block_on(connect(path))
+                .map_err(|e| format!("No se pudo crear una base de datos nueva: {e}"))?;
+            let name = quarantined
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            Ok((
+                pool,
+                Some(format!(
+                    "La base de datos no se pudo abrir y se apartó como «{name}». Se inició con una base vacía; puedes restaurar un respaldo desde Configuración › Avanzado."
+                )),
+            ))
+        }
+    }
+}
+
+/// Aviso generado durante el arranque (por ejemplo, al recuperar una base de
+/// datos corrupta) que el frontend consume una única vez.
+#[derive(Default)]
+pub struct StartupNotice(std::sync::Mutex<Option<String>>);
+
+impl StartupNotice {
+    pub fn set(&self, message: String) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = Some(message);
+        }
+    }
+
+    fn take(&self) -> Option<String> {
+        self.0.lock().ok().and_then(|mut guard| guard.take())
+    }
+}
+
+#[tauri::command]
+pub fn take_startup_notice(state: State<'_, StartupNotice>) -> Option<String> {
+    state.take()
+}
+
 /// Check that a file starts with the SQLite database header.
 fn looks_like_sqlite(path: &Path) -> bool {
     use std::io::Read;
@@ -1053,17 +1247,53 @@ fn looks_like_sqlite(path: &Path) -> bool {
     f.read_exact(&mut header).is_ok() && &header == b"SQLite format 3\0"
 }
 
-/// Tables that a valid backup of this application must contain.
-const BACKUP_TABLES: [&str; 6] = [
-    "categories",
-    "suppliers",
-    "products",
-    "presentations",
-    "movements",
-    "settings",
+/// Tablas y columnas mínimas que debe tener un respaldo válido.
+const BACKUP_SCHEMA: [(&str, &[&str]); 6] = [
+    ("categories", &["id", "name", "name_key"]),
+    ("suppliers", &["id", "name", "name_key", "archived"]),
+    (
+        "products",
+        &[
+            "id",
+            "name",
+            "name_key",
+            "category_id",
+            "base_presentation_id",
+            "stock",
+            "archived",
+        ],
+    ),
+    (
+        "presentations",
+        &["id", "product_id", "name", "name_key", "factor", "archived"],
+    ),
+    (
+        "movements",
+        &[
+            "id",
+            "product_id",
+            "type",
+            "quantity",
+            "presentation_id",
+            "presentation_name",
+            "product_name",
+            "factor",
+            "base_quantity",
+            "supplier_id",
+            "supplier_name",
+            "notes",
+            "reason",
+            "kind",
+            "created_at",
+            "cancelled_at",
+            "cancellation_reason",
+        ],
+    ),
+    ("settings", &["key", "value"]),
 ];
 
-/// Validate that `path` is a SQLite database containing this app's tables.
+/// Validate that `path` is a SQLite database containing this app's tables,
+/// columns, consistent references and no corruption.
 async fn validate_backup(path: &Path) -> Result<(), CommandError> {
     if !path.exists() {
         return Err(CommandError::new(
@@ -1083,27 +1313,74 @@ async fn validate_backup(path: &Path) -> Result<(), CommandError> {
         .map_err(|_| {
             CommandError::new("invalid_backup", "No se pudo abrir el archivo de respaldo.")
         })?;
-    let placeholders = std::iter::repeat_n("?", BACKUP_TABLES.len())
-        .collect::<Vec<_>>()
-        .join(",");
-    let sql = format!(
-        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ({placeholders})"
-    );
-    let mut query = sqlx::query_scalar::<_, i64>(&sql);
-    for table in BACKUP_TABLES {
-        query = query.bind(table);
-    }
-    let found = query.fetch_one(&mut conn).await.map_err(|_| {
-        CommandError::new(
-            "invalid_backup",
-            "El archivo de respaldo está dañado o no es compatible.",
-        )
-    })?;
+    let result = inspect_backup(&mut conn).await;
     let _ = conn.close().await;
-    if found != BACKUP_TABLES.len() as i64 {
+    result
+}
+
+fn damaged_backup() -> CommandError {
+    CommandError::new(
+        "invalid_backup",
+        "El archivo de respaldo está dañado o no es compatible.",
+    )
+}
+
+async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError> {
+    let found: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN (?,?,?,?,?,?)",
+    )
+    .bind("categories")
+    .bind("suppliers")
+    .bind("products")
+    .bind("presentations")
+    .bind("movements")
+    .bind("settings")
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(|_| damaged_backup())?;
+    if found != BACKUP_SCHEMA.len() as i64 {
         return Err(CommandError::new(
             "invalid_backup",
             "El archivo no parece un respaldo válido de Gestor de Inventario.",
+        ));
+    }
+    for (table, required) in BACKUP_SCHEMA {
+        let columns = sqlx::query(&format!("PRAGMA table_info({table})"))
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|_| damaged_backup())?;
+        let names: Vec<String> = columns
+            .iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect();
+        if !required
+            .iter()
+            .all(|column| names.iter().any(|name| name == column))
+        {
+            return Err(CommandError::new(
+                "invalid_backup",
+                "El respaldo no tiene la estructura de datos esperada.",
+            ));
+        }
+    }
+    let integrity: String = sqlx::query_scalar("PRAGMA integrity_check")
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(|_| damaged_backup())?;
+    if integrity != "ok" {
+        return Err(CommandError::new(
+            "invalid_backup",
+            "El archivo de respaldo está dañado.",
+        ));
+    }
+    let violations = sqlx::query("PRAGMA foreign_key_check")
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|_| damaged_backup())?;
+    if !violations.is_empty() {
+        return Err(CommandError::new(
+            "invalid_backup",
+            "El respaldo tiene referencias inconsistentes.",
         ));
     }
     Ok(())
@@ -1117,8 +1394,15 @@ fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
 
 /// Create a consistent snapshot of the live database into `dest`. The snapshot
 /// is written next to the destination and renamed at the end, so a failure
-/// never destroys a previous backup.
-async fn backup_database_db(db: &Db, dest: &Path) -> Result<(), CommandError> {
+/// never destroys a previous backup. `live` es la base en uso: sobrescribirla
+/// corrompería los datos abiertos por el pool.
+async fn backup_database_db(db: &Db, dest: &Path, live: &Path) -> Result<(), CommandError> {
+    if same_path(dest, live) {
+        return Err(CommandError::new(
+            "backup_same_file",
+            "Elige un archivo distinto de la base de datos en uso.",
+        ));
+    }
     if let Some(parent) = dest.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
             return Err(CommandError::new(
@@ -1152,10 +1436,43 @@ async fn backup_database_db(db: &Db, dest: &Path) -> Result<(), CommandError> {
     Ok(())
 }
 
-fn same_file(a: &Path, b: &Path) -> bool {
-    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => false,
+/// Compara dos rutas aun cuando una de ellas todavía no exista.
+fn same_path(a: &Path, b: &Path) -> bool {
+    if let (Ok(a), Ok(b)) = (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        return a == b;
+    }
+    let (Ok(a), Ok(b)) = (std::path::absolute(a), std::path::absolute(b)) else {
+        return false;
+    };
+    #[cfg(windows)]
+    {
+        a.to_string_lossy()
+            .eq_ignore_ascii_case(&b.to_string_lossy())
+    }
+    #[cfg(not(windows))]
+    {
+        a == b
+    }
+}
+
+/// Restaura la copia de seguridad previa y reabre el pool, devolviendo el error
+/// indicado para informar al usuario.
+async fn recover_previous_database(
+    pool: &mut Db,
+    dest: &Path,
+    safety: &Path,
+    message: CommandError,
+) -> Result<(), CommandError> {
+    let _ = std::fs::copy(safety, dest);
+    match connect(dest).await {
+        Ok(recovered) => {
+            *pool = recovered;
+            Err(message)
+        }
+        Err(_) => Err(CommandError::new(
+            "restore_failed",
+            "No se pudo restaurar la base de datos. Reinicia la aplicación.",
+        )),
     }
 }
 
@@ -1168,14 +1485,14 @@ async fn restore_database_db(
     safety: &Path,
 ) -> Result<(), CommandError> {
     validate_backup(src).await?;
-    if same_file(src, dest) {
+    if same_path(src, dest) {
         return Err(CommandError::new(
             "restore_same_file",
             "Selecciona un archivo distinto de la base de datos actual.",
         ));
     }
     let mut pool = db.write().await;
-    backup_database_db(&pool, safety).await.map_err(|_| {
+    backup_database_db(&pool, safety, dest).await.map_err(|_| {
         CommandError::new(
             "restore_safety_failed",
             "No se pudo guardar una copia de seguridad antes de restaurar.",
@@ -1193,25 +1510,40 @@ async fn restore_database_db(
     })?;
     match connect(dest).await {
         Ok(reopened) => {
-            *pool = reopened;
-            Ok(())
+            let violations = sqlx::query("PRAGMA foreign_key_check")
+                .fetch_all(&reopened)
+                .await
+                .map(|rows| rows.len())
+                .unwrap_or(0);
+            if violations == 0 {
+                *pool = reopened;
+                return Ok(());
+            }
+            eprintln!("Restore left {violations} foreign key violations");
+            reopened.close().await;
+            recover_previous_database(
+                &mut pool,
+                dest,
+                safety,
+                CommandError::new(
+                    "restore_failed",
+                    "El respaldo tiene referencias inconsistentes; se restauraron los datos anteriores.",
+                ),
+            )
+            .await
         }
         Err(e) => {
             eprintln!("Restore error: {e}");
-            let _ = std::fs::copy(safety, dest);
-            match connect(dest).await {
-                Ok(recovered) => {
-                    *pool = recovered;
-                    Err(CommandError::new(
-                        "restore_failed",
-                        "No se pudo abrir el respaldo; se restauraron los datos anteriores.",
-                    ))
-                }
-                Err(_) => Err(CommandError::new(
+            recover_previous_database(
+                &mut pool,
+                dest,
+                safety,
+                CommandError::new(
                     "restore_failed",
-                    "No se pudo restaurar la base de datos. Reinicia la aplicación.",
-                )),
-            }
+                    "No se pudo abrir el respaldo; se restauraron los datos anteriores.",
+                ),
+            )
+            .await
         }
     }
 }
@@ -1219,11 +1551,13 @@ async fn restore_database_db(
 /// Create a backup file of the current database at `dest_path`.
 #[tauri::command]
 pub async fn backup_database(
+    app: AppHandle,
     db: State<'_, DbState>,
     dest_path: String,
 ) -> Result<(), CommandError> {
+    let live = db_path(&app)?;
     let db = db.0.read().await;
-    backup_database_db(&db, Path::new(&dest_path)).await
+    backup_database_db(&db, Path::new(&dest_path), &live).await
 }
 
 /// Replace the live database with the backup file at `src_path`.
@@ -1329,6 +1663,7 @@ mod tests {
             db.close().await;
 
             let migrated = connect(&live).await.unwrap();
+            assert!(with_suffix(&live, ".pre-migrate").exists());
             let columns = sqlx::query("PRAGMA table_info(movements)")
                 .fetch_all(&migrated)
                 .await
@@ -2089,7 +2424,7 @@ mod tests {
                 .unwrap();
             let state = RwLock::new(db);
 
-            backup_database_db(&*state.read().await, &backup)
+            backup_database_db(&*state.read().await, &backup, &live)
                 .await
                 .unwrap();
 
@@ -2607,17 +2942,173 @@ mod tests {
 
             let dest = dir.join("dest-as-directory");
             std::fs::create_dir(&dest).unwrap();
-            let error = backup_database_db(&db, &dest).await.unwrap_err();
+            let error = backup_database_db(&db, &dest, &live).await.unwrap_err();
             assert_eq!(error.code, "backup_failed");
             assert!(dest.is_dir());
             assert!(!with_suffix(&dest, ".tmp").exists());
 
             let missing = dir.join("missing").join("backup.db");
-            let error = backup_database_db(&db, &missing).await.unwrap_err();
+            let error = backup_database_db(&db, &missing, &live).await.unwrap_err();
             assert_eq!(error.code, "backup_folder_missing");
 
             db.close().await;
             let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn backup_rejects_live_database_path() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("backup-live");
+            let live = dir.join("inventory.db");
+            let db = connect(&live).await.unwrap();
+            fixture(&db, "Agua").await;
+
+            let error = backup_database_db(&db, &live, &live).await.unwrap_err();
+            assert_eq!(error.code, "backup_same_file");
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM products")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                1
+            );
+
+            db.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn save_catalog_update_missing_record_is_rejected() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+
+            let supplier = save_catalog_db(&db, catalog("supplier", Some(999), "Fantasma"))
+                .await
+                .unwrap_err();
+            assert_eq!(supplier.code, "not_found");
+            let category = save_catalog_db(&db, catalog("category", Some(999), "Fantasma"))
+                .await
+                .unwrap_err();
+            assert_eq!(category.code, "not_found");
+
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM suppliers")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM categories")
+                    .fetch_one(&db)
+                    .await
+                    .unwrap(),
+                0
+            );
+        });
+    }
+    #[test]
+    fn validate_backup_rejects_wrong_schema() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("backup-schema");
+            let path = dir.join("wrong.db");
+            let options = SqliteConnectOptions::new()
+                .filename(&path)
+                .create_if_missing(true);
+            let mut conn = SqliteConnection::connect_with(&options).await.unwrap();
+            sqlx::raw_sql(
+                "CREATE TABLE categories(id INTEGER);
+                 CREATE TABLE suppliers(id INTEGER);
+                 CREATE TABLE products(id INTEGER);
+                 CREATE TABLE presentations(id INTEGER);
+                 CREATE TABLE movements(id INTEGER);
+                 CREATE TABLE settings(key TEXT, value TEXT);",
+            )
+            .execute(&mut conn)
+            .await
+            .unwrap();
+            conn.close().await.unwrap();
+
+            let error = validate_backup(&path).await.unwrap_err();
+            assert_eq!(error.code, "invalid_backup");
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn validate_backup_rejects_foreign_key_violations() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("backup-fk");
+            let path = dir.join("orphan.db");
+            let db = connect(&path).await.unwrap();
+            db.close().await;
+
+            let options = SqliteConnectOptions::new().filename(&path);
+            let mut conn = SqliteConnection::connect_with(&options).await.unwrap();
+            sqlx::query("PRAGMA foreign_keys=OFF")
+                .execute(&mut conn)
+                .await
+                .unwrap();
+            sqlx::query(
+                "INSERT INTO movements(product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity)
+                 VALUES(999,'in',1,999,'X','X',1,1)",
+            )
+            .execute(&mut conn)
+            .await
+            .unwrap();
+            conn.close().await.unwrap();
+
+            let error = validate_backup(&path).await.unwrap_err();
+            assert_eq!(error.code, "invalid_backup");
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+    #[test]
+    fn corrupt_database_is_quarantined_and_recreated() {
+        let dir = temp_dir("quarantine");
+        let live = dir.join("inventory.db");
+        std::fs::write(&live, b"esto no es sqlite").unwrap();
+
+        tauri::async_runtime::block_on(async {
+            assert!(connect(&live).await.is_err());
+        });
+
+        let (db, notice) = open_with_recovery(&live).unwrap();
+        let notice = notice.expect("debe avisar de la recuperación");
+        assert!(notice.contains("corrupt"));
+        assert!(std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt-")));
+
+        tauri::async_runtime::block_on(async {
+            fixture(&db, "Agua").await;
+            db.close().await;
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn movement_page_index_is_clamped_without_overflow() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::{page_movements_db, MovementFilters};
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+            for _ in 0..3 {
+                create_movement_db(&db, movement(water, "in", 1.0))
+                    .await
+                    .unwrap();
+            }
+            let page = page_movements_db(
+                &db,
+                &MovementFilters {
+                    page: Some(i64::MAX),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert!(page.items.is_empty());
+            assert_eq!(page.total, 3);
         });
     }
 }
