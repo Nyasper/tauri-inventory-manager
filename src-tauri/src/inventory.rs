@@ -49,6 +49,14 @@ impl DbState {
 }
 
 pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
+    // `create_if_missing` crea el archivo pero no los directorios padres.
+    // En instalaciones limpias (Fedora RPM, `~/.config/...` inexistente)
+    // esto provoca `code:14 unable to open database file`.
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(sqlx::Error::Io)?;
+        }
+    }
     // Una única conexión serializa todas las transacciones, por lo que las
     // lecturas y escrituras de stock (leer-y-luego-actualizar) no pueden
     // intercalarse entre comandos concurrentes.
@@ -1174,6 +1182,12 @@ pub(crate) fn db_path(app: &AppHandle) -> Result<PathBuf, CommandError> {
 /// Aparta una base de datos que no se pudo abrir, renombrándola con un sufijo
 /// con fecha, y devuelve la ruta a la que se movió.
 pub(crate) fn quarantine_database(path: &Path) -> Result<PathBuf, std::io::Error> {
+    if !path.exists() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "No existe el fichero o el directorio",
+        ));
+    }
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_secs())
@@ -1187,10 +1201,26 @@ pub(crate) fn quarantine_database(path: &Path) -> Result<PathBuf, std::io::Error
 }
 
 /// Solo se aparta la base cuando el error indica corrupción o formato
-/// incompatible; un archivo bloqueado o inaccesible no debe moverse.
+/// incompatible; un archivo bloqueado, inaccesible o con directorio faltante
+/// no debe moverse (code 14 `CANTOPEN` con `unable to open database file`
+/// es típico de directorio padre inexistente).
 fn should_quarantine(error: &sqlx::Error) -> bool {
     match error {
-        sqlx::Error::Database(db) => !matches!(db.code().as_deref(), Some("5") | Some("6")),
+        sqlx::Error::Database(db) => {
+            // 5 BUSY, 6 LOCKED -> transitorio; 14 CANTOPEN por directorio
+            // faltante no es corrupción.
+            if matches!(db.code().as_deref(), Some("5") | Some("6")) {
+                return false;
+            }
+            if db.code().as_deref() == Some("14") {
+                let msg = db.message().to_ascii_lowercase();
+                if msg.contains("unable to open database file") {
+                    return false;
+                }
+            }
+            true
+        }
+        sqlx::Error::Io(_) => false,
         _ => false,
     }
 }
@@ -1202,7 +1232,10 @@ pub(crate) fn open_with_recovery(path: &Path) -> Result<(Db, Option<String>), St
         Ok(pool) => Ok((pool, None)),
         Err(error) => {
             eprintln!("Database open error: {error}");
-            if !should_quarantine(&error) {
+            // Si el archivo no existe, no tiene sentido intentar cuarentenar.
+            // Esto evita el `os error 2` que ocultaba el `code:14` original
+            // en instalaciones limpias donde el directorio aún no existía.
+            if !path.exists() || !should_quarantine(&error) {
                 return Err(format!("No se pudo abrir la base de datos: {error}"));
             }
             let quarantined = quarantine_database(path)
@@ -2445,6 +2478,41 @@ mod tests {
             db.close().await;
             let _ = std::fs::remove_dir_all(&dir);
         });
+    }
+    #[test]
+    fn connect_creates_missing_parent_directories() {
+        tauri::async_runtime::block_on(async {
+            let base = temp_dir("missing-parent");
+            let nested = base.join("a").join("b").join("inventory.db");
+            assert!(!nested.parent().unwrap().exists());
+            let db = connect(&nested).await.unwrap();
+            assert!(nested.exists());
+            db.close().await;
+            let _ = std::fs::remove_dir_all(&base);
+        });
+    }
+    #[test]
+    fn open_with_recovery_does_not_quarantine_missing_file() {
+        let dir = temp_dir("no-quarantine-missing");
+        let missing = dir.join("no-existe.db");
+        assert!(!missing.exists());
+        let recovery = open_with_recovery(&missing);
+        assert!(
+            recovery.is_ok(),
+            "missing dir/file should be created, not quarantined: {:?}",
+            recovery.err()
+        );
+        if let Ok((pool, _)) = recovery {
+            tauri::async_runtime::block_on(pool.close());
+        }
+        assert!(missing.exists());
+        let second = open_with_recovery(&missing).unwrap();
+        tauri::async_runtime::block_on(second.0.close());
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(!should_quarantine(&sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "test"
+        ))));
     }
     #[test]
     fn backup_and_restore_roundtrip_preserves_data() {
