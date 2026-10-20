@@ -12,30 +12,30 @@ export class ArchivedList<T> {
   items = $state<T[]>([]);
   loading = $state(false);
   error = $state("");
-  #active = $state(false);
+  #showingArchived = $state(false);
   #request = 0;
-  #load: (archived: boolean) => Promise<T[]>;
+  #load: (archivedOnly: boolean) => Promise<T[]>;
 
-  constructor(load: (archived: boolean) => Promise<T[]>) {
+  constructor(load: (archivedOnly: boolean) => Promise<T[]>) {
     this.#load = load;
     $effect(() => {
       const active = page.url.searchParams.get("archived") === "1";
-      untrack(() => this.#setActive(active));
+      untrack(() => this.#setShowingArchived(active));
     });
   }
 
-  get active(): boolean {
-    return this.#active;
+  get showingArchived(): boolean {
+    return this.#showingArchived;
   }
 
-  set active(value: boolean) {
-    this.#setActive(value);
+  set showingArchived(value: boolean) {
+    this.#setShowingArchived(value);
     this.#syncUrl(value);
   }
 
-  #setActive(value: boolean): void {
-    if (this.#active === value) return;
-    this.#active = value;
+  #setShowingArchived(value: boolean): void {
+    if (this.#showingArchived === value) return;
+    this.#showingArchived = value;
     if (value) void this.reload();
   }
 

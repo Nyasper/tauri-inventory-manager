@@ -4,7 +4,7 @@
   import IconPicker from "$lib/components/ui/IconPicker.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { errorMessage } from "$lib/utils/errors";
-  import { CATEGORY_COLORS, type CategoryDraft } from "$lib/categories";
+  import { CATEGORY_COLORS, type CategoryDraft } from "$lib/category-draft";
 
   let {
     draft = $bindable(),

@@ -3,17 +3,11 @@
   import { afterNavigate } from "$app/navigation";
   import { Sun, Moon, ArrowLeft, ArrowRight } from "@lucide/svelte";
   import { themeService } from "$lib/services/theme.service.svelte";
-
-  const titles: Record<string, string> = {
-    "/": "Dashboard",
-    "/products": "Productos",
-    "/movements": "Movimientos",
-    "/suppliers": "Proveedores",
-  };
+  import { PAGE_TITLES } from "$lib/navigation";
 
   const title = $derived.by(() => {
     const path = page.url.pathname;
-    for (const [key, value] of Object.entries(titles)) {
+    for (const [key, value] of Object.entries(PAGE_TITLES)) {
       const match = key === "/" ? path === "/" : path.startsWith(key);
       if (match) return value;
     }

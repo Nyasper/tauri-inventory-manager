@@ -2,7 +2,7 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
-  import { newCategoryDraft, type CategoryDraft } from "$lib/categories";
+  import { newCategoryDraft, type CategoryDraft } from "$lib/category-draft";
 
   let { onCreated }: { onCreated?: (id: number) => void } = $props();
 
@@ -17,6 +17,11 @@
   }
 </script>
 
-<Modal title="Nueva categoría" onClose={() => modalService.close()} {dirty} width="md">
+<Modal
+  title="Nueva categoría"
+  onClose={() => modalService.close()}
+  hasUnsavedChanges={dirty}
+  width="md"
+>
   <CategoryEditor bind:draft onSaved={handleSaved} onCancel={() => modalService.requestClose()} />
 </Modal>

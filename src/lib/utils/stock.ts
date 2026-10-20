@@ -1,20 +1,24 @@
 import type { Product, StockStatus } from "$lib/types";
 
-export function getStockStatus(stock: number, low: number, medium: number): StockStatus {
+export function getStockStatus(
+  stock: number,
+  lowThreshold: number,
+  mediumThreshold: number,
+): StockStatus {
   if (stock <= 0) return "out";
-  if (stock <= low) return "low";
-  if (stock <= medium) return "medium";
+  if (stock <= lowThreshold) return "low";
+  if (stock <= mediumThreshold) return "medium";
   return "high";
 }
 
 export function resolveProductStockStatus(
   product: Pick<Product, "stock" | "stock_low_threshold" | "stock_medium_threshold">,
-  globalLow: number,
-  globalMedium: number,
+  globalLowThreshold: number,
+  globalMediumThreshold: number,
 ): StockStatus {
-  const low = product.stock_low_threshold ?? globalLow;
-  const medium = product.stock_medium_threshold ?? globalMedium;
-  return getStockStatus(product.stock, low, medium);
+  const lowThreshold = product.stock_low_threshold ?? globalLowThreshold;
+  const mediumThreshold = product.stock_medium_threshold ?? globalMediumThreshold;
+  return getStockStatus(product.stock, lowThreshold, mediumThreshold);
 }
 
 export const STOCK_LABELS: Record<StockStatus, string> = {

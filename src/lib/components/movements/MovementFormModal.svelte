@@ -10,7 +10,8 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
-  import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import type { SelectOption } from "$lib/components/ui/select-option";
   import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
@@ -31,8 +32,8 @@
   let presentations = $state<Presentation[]>([]);
   let loading = $state(false);
   let presentationId = $state("");
-  let type = $state<MovementType>(untrack(() => initialType));
-  let quantityInput = $state(1);
+  let movementType = $state<MovementType>(untrack(() => initialType));
+  let rawQuantity = $state(1);
   let supplierId = $state(untrack(() => initialSupplierId));
   let notes = $state("");
   let saving = $state(false);
@@ -47,37 +48,42 @@
       : null,
   );
   const maxQuantity = $derived(
-    type === "out" && availableUnits !== null ? availableUnits : undefined,
+    movementType === "out" && availableUnits !== null ? availableUnits : undefined,
   );
-  const quantity = $derived(Math.min(quantityInput, maxQuantity ?? Infinity));
+  const clampedQuantity = $derived(Math.min(rawQuantity, maxQuantity ?? Infinity));
 
   function setQuantity(next: number) {
-    quantityInput = Number.isFinite(next) ? Math.min(next, maxQuantity ?? Infinity) : 0;
+    rawQuantity = Number.isFinite(next) ? Math.min(next, maxQuantity ?? Infinity) : 0;
   }
 
-  const snapshot = () =>
+  const formSnapshot = () =>
     JSON.stringify({
       productId,
       presentationId,
-      type,
-      quantity,
+      movementType,
+      quantity: clampedQuantity,
       supplierId,
       notes,
       adjustment,
       reason,
     });
-  let baseline = $state<string | null>(untrack(() => initialProductId) ? null : snapshot());
-  let baselineSet = !untrack(() => initialProductId);
-  const dirty = $derived(baseline !== null && snapshot() !== baseline);
+  let initialSnapshot = $state<string | null>(
+    untrack(() => initialProductId) ? null : formSnapshot(),
+  );
+  let initialSnapshotSet = !untrack(() => initialProductId);
+  const dirty = $derived(initialSnapshot !== null && formSnapshot() !== initialSnapshot);
 
   const baseQuantity = $derived(
     Math.round(
-      (Number.isFinite(quantity) ? quantity : 0) * (selectedPresentation?.factor ?? 0) * 1e6,
+      (Number.isFinite(clampedQuantity) ? clampedQuantity : 0) *
+        (selectedPresentation?.factor ?? 0) *
+        1e6,
     ) / 1e6,
   );
-  const projected = $derived(
+  const projectedStock = $derived(
     Math.round(
-      ((selectedProduct?.stock ?? 0) + (type === "in" ? baseQuantity : -baseQuantity)) * 1e6,
+      ((selectedProduct?.stock ?? 0) + (movementType === "in" ? baseQuantity : -baseQuantity)) *
+        1e6,
     ) / 1e6,
   );
 
@@ -85,12 +91,13 @@
     if (loading) return "";
     if (!productId) return "Selecciona un producto.";
     if (!presentationId) return "Selecciona una presentación.";
-    if (!Number.isFinite(quantity) || quantity <= 0) return "La cantidad debe ser mayor que cero.";
-    if (type === "out") {
+    if (!Number.isFinite(clampedQuantity) || clampedQuantity <= 0)
+      return "La cantidad debe ser mayor que cero.";
+    if (movementType === "out") {
       if (availableUnits !== null && availableUnits < 1)
         return `Stock insuficiente: no alcanza para 1 ${selectedPresentation?.name ?? "unidad"}.`;
-      if (projected < 0)
-        return `Stock insuficiente: disponible ${selectedProduct?.stock ?? 0} ${selectedProduct?.base_unit ?? ""}.`;
+      if (projectedStock < 0)
+        return `Stock insuficiente: disponible ${selectedProduct?.stock ?? 0} ${selectedProduct?.base_presentation_name ?? ""}.`;
     }
     if (adjustment && !reason.trim()) return "Indica el motivo del ajuste.";
     return "";
@@ -132,7 +139,7 @@
     }
 
     const product = productsService.items.find((p) => p.id === pid);
-    if (type === "in") {
+    if (movementType === "in") {
       if (product?.default_supplier_id) {
         supplierId = String(product.default_supplier_id);
       } else if (!initialSupplierId || pid !== Number(initialProductId)) {
@@ -150,17 +157,17 @@
         presentations = rows;
         const base = rows.find((r) => r.factor === 1) ?? rows[0];
         presentationId = base ? String(base.id) : "";
-        if (!baselineSet) {
-          baselineSet = true;
-          baseline = snapshot();
+        if (!initialSnapshotSet) {
+          initialSnapshotSet = true;
+          initialSnapshot = formSnapshot();
         }
       })
       .catch((e) => {
         if (cancelled) return;
         error = errorMessage(e);
-        if (!baselineSet) {
-          baselineSet = true;
-          baseline = snapshot();
+        if (!initialSnapshotSet) {
+          initialSnapshotSet = true;
+          initialSnapshot = formSnapshot();
         }
       })
       .finally(() => {
@@ -173,7 +180,7 @@
   });
 
   $effect(() => {
-    if (type === "in" && !supplierId && selectedProduct?.default_supplier_id) {
+    if (movementType === "in" && !supplierId && selectedProduct?.default_supplier_id) {
       supplierId = String(selectedProduct.default_supplier_id);
     }
   });
@@ -190,7 +197,7 @@
     if (saving || loading || validation) return;
     const pid = productId ? Number(productId) : null;
     const presId = presentationId ? Number(presentationId) : null;
-    const qty = quantity;
+    const qty = clampedQuantity;
 
     if (!pid || presId === null) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
@@ -200,10 +207,10 @@
     try {
       await movementsService.create({
         product_id: pid,
-        type,
+        type: movementType,
         quantity: qty,
         presentation_id: presId,
-        supplier_id: type === "in" && supplierId ? Number(supplierId) : null,
+        supplier_id: movementType === "in" && supplierId ? Number(supplierId) : null,
         notes: notes.trim() || null,
         adjustment,
         reason: adjustment ? reason.trim() : null,
@@ -221,8 +228,8 @@
 <Modal
   title="Nuevo movimiento"
   onClose={() => modalService.close()}
-  {dirty}
-  busy={saving}
+  hasUnsavedChanges={dirty}
+  isBusy={saving}
   width="md"
 >
   <div class="form">
@@ -245,26 +252,29 @@
 
     <NumberStepper
       label="Cantidad"
-      bind:value={() => quantity, setQuantity}
+      bind:value={() => clampedQuantity, setQuantity}
       min={1}
       max={maxQuantity}
-      showBounds
+      showBoundaryButtons
     />
 
     {#if selectedProduct && selectedPresentation}
       <div class="stock-preview" aria-live="polite">
-        <p>Actual: <strong>{selectedProduct.stock} {selectedProduct.base_unit}</strong></p>
         <p>
-          {Number.isFinite(quantity) ? quantity : 0} × {selectedPresentation.factor} = {Number.isFinite(
+          Actual: <strong>{selectedProduct.stock} {selectedProduct.base_presentation_name}</strong>
+        </p>
+        <p>
+          {Number.isFinite(clampedQuantity) ? clampedQuantity : 0} × {selectedPresentation.factor} = {Number.isFinite(
             baseQuantity,
           )
             ? baseQuantity
             : 0}
-          {selectedProduct.base_unit}
+          {selectedProduct.base_presentation_name}
         </p>
         <p>
-          Resultante: <strong class={{ error: projected < 0 }}
-            >{Number.isFinite(projected) ? projected : "—"} {selectedProduct.base_unit}</strong
+          Resultante: <strong class={{ error: projectedStock < 0 }}
+            >{Number.isFinite(projectedStock) ? projectedStock : "—"}
+            {selectedProduct.base_presentation_name}</strong
           >
         </p>
       </div>
@@ -274,12 +284,12 @@
       <p class="validation" role="alert">{validation}</p>
     {/if}
 
-    <Select label="Tipo" bind:value={type} options={typeOptions} />
+    <Select label="Tipo" bind:value={movementType} options={typeOptions} />
 
     <label><input type="checkbox" bind:checked={adjustment} /> Ajuste de inventario</label>
     {#if adjustment}<Textarea label="Motivo del ajuste" bind:value={reason} />{/if}
 
-    {#if type === "in"}
+    {#if movementType === "in"}
       <div class="field-row">
         <div class="field-select">
           <SearchableSelect

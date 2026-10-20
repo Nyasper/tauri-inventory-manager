@@ -17,16 +17,16 @@
   const Icon: Component<LucideProps> = $derived(ICONS[resolvedName]);
 
   const hasColor = $derived(!!color);
-  const bg = $derived(color ?? "var(--surface-2)");
-  const fg = $derived(color ? "#ffffff" : "var(--text-muted)");
+  const background = $derived(color ?? "var(--surface-2)");
+  const foreground = $derived(color ? "#ffffff" : "var(--text-muted)");
 </script>
 
 <div
   class={["tile", { tinted: hasColor }]}
   style:width="{size}px"
   style:height="{size}px"
-  style:background={bg}
-  style:color={fg}
+  style:background
+  style:color={foreground}
 >
   <Icon size={Math.round(size * 0.5)} />
 </div>

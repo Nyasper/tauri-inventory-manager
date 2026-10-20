@@ -19,7 +19,7 @@
     onCreated?: (id: number) => void;
   } = $props();
 
-  const initial = untrack(() => supplier);
+  const initialSupplier = untrack(() => supplier);
 
   interface ContactDraft {
     key: number;
@@ -31,19 +31,19 @@
     return { key: nextContactKey++, value };
   }
 
-  let name = $state(initial?.name ?? "");
-  let contacts = $state<ContactDraft[]>(
-    initial?.contacts.length
-      ? initial.contacts.map((contact) => newContact(contact))
+  let name = $state(initialSupplier?.name ?? "");
+  let contactDrafts = $state<ContactDraft[]>(
+    initialSupplier?.contacts.length
+      ? initialSupplier.contacts.map((contact) => newContact(contact))
       : [newContact()],
   );
-  let notes = $state(initial?.notes ?? "");
+  let notes = $state(initialSupplier?.notes ?? "");
   let saving = $state(false);
   let error = $state<AppError | null>(null);
 
-  const snapshot = () => JSON.stringify({ name, contacts, notes });
-  const baseline = $state(snapshot());
-  const dirty = $derived(snapshot() !== baseline);
+  const formSnapshot = () => JSON.stringify({ name, contactDrafts, notes });
+  const initialSnapshot = $state(formSnapshot());
+  const dirty = $derived(formSnapshot() !== initialSnapshot);
 
   const validation = $derived(!name.trim() ? "El nombre es obligatorio." : "");
   const canSave = $derived(validation === "" && !saving);
@@ -56,11 +56,11 @@
     try {
       const data = {
         name: name.trim(),
-        contacts: contacts.map((contact) => contact.value),
+        contacts: contactDrafts.map((contact) => contact.value),
         notes: notes.trim() || null,
       };
-      if (initial) {
-        await suppliersService.update({ ...data, id: initial.id });
+      if (initialSupplier) {
+        await suppliersService.update({ ...data, id: initialSupplier.id });
       } else {
         const id = await suppliersService.create(data);
         onCreated?.(id);
@@ -75,10 +75,10 @@
 </script>
 
 <Modal
-  title={initial ? "Editar proveedor" : "Nuevo proveedor"}
+  title={initialSupplier ? "Editar proveedor" : "Nuevo proveedor"}
   onClose={() => modalService.close()}
-  {dirty}
-  busy={saving}
+  hasUnsavedChanges={dirty}
+  isBusy={saving}
   width="md"
 >
   <div class="form">
@@ -90,12 +90,12 @@
           size="sm"
           variant="secondary"
           icon={Plus}
-          onclick={() => (contacts = [...contacts, newContact()])}
+          onclick={() => (contactDrafts = [...contactDrafts, newContact()])}
         >
           Añadir
         </Button>
       </div>
-      {#each contacts as contact, index (contact.key)}
+      {#each contactDrafts as contact, index (contact.key)}
         <div class="contact-row">
           <div class="contact-field">
             <Input
@@ -109,8 +109,9 @@
             type="button"
             title="Quitar contacto"
             aria-label={`Quitar contacto ${index + 1}`}
-            disabled={contacts.length === 1}
-            onclick={() => (contacts = contacts.filter((item) => item.key !== contact.key))}
+            disabled={contactDrafts.length === 1}
+            onclick={() =>
+              (contactDrafts = contactDrafts.filter((item) => item.key !== contact.key))}
           >
             <Trash size={16} />
           </button>
@@ -123,7 +124,7 @@
     {/if}
     {#if error}
       <p class="error" role="alert">{error.message}</p>
-      <DuplicateHint {name} {error} kind="supplier" currentId={initial?.id} />
+      <DuplicateHint {name} {error} recordType="supplier" currentId={initialSupplier?.id} />
     {/if}
   </div>
 
@@ -132,7 +133,7 @@
       Cancelar
     </Button>
     <Button disabled={!canSave} onclick={save}>
-      {initial ? "Guardar" : "Crear"}
+      {initialSupplier ? "Guardar" : "Crear"}
     </Button>
   {/snippet}
 </Modal>

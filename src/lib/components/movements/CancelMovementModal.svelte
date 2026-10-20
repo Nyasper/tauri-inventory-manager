@@ -17,12 +17,12 @@
   const canSave = $derived(reason.trim() !== "" && !saving);
   const dirty = $derived(reason !== "");
 
-  async function save() {
+  async function cancelMovement() {
     if (!canSave) return;
     saving = true;
     error = "";
     try {
-      await movementsService.remove(movement.id, reason);
+      await movementsService.cancel(movement.id, reason);
       await productsService.load();
       modalService.close();
     } catch (e) {
@@ -33,7 +33,12 @@
   }
 </script>
 
-<Modal title="Anular movimiento" onClose={() => modalService.close()} {dirty} busy={saving}>
+<Modal
+  title="Anular movimiento"
+  onClose={() => modalService.close()}
+  hasUnsavedChanges={dirty}
+  isBusy={saving}
+>
   <p>
     Se revertirá el stock de {movement.product_name}. El movimiento y el motivo permanecerán en el
     historial.
@@ -44,7 +49,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Volver
     </Button>
-    <Button disabled={!canSave} onclick={save}>
+    <Button disabled={!canSave} onclick={cancelMovement}>
       {saving ? "Anulando…" : "Anular movimiento"}
     </Button>
   {/snippet}

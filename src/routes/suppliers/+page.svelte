@@ -17,15 +17,15 @@
 
   suppliersService.load();
   const targetId = $derived(page.url.searchParams.get("id"));
-  const archive = new ArchivedList<Supplier>((archived) => getSuppliers(archived));
-  const visible = $derived(
-    (archive.active ? archive.items : suppliersService.items).filter(
+  const archivedList = new ArchivedList<Supplier>(getSuppliers);
+  const visibleSuppliers = $derived(
+    (archivedList.showingArchived ? archivedList.items : suppliersService.items).filter(
       (supplier) => !targetId || supplier.id === Number(targetId),
     ),
   );
   async function restore(supplier: Supplier) {
     await suppliersService.restore(supplier.id);
-    await archive.reload();
+    await archivedList.reload();
   }
 
   const columnHelper = createAppColumnHelper<Supplier>();
@@ -49,7 +49,7 @@
   const table = createAppTable({
     columns,
     get data() {
-      return visible;
+      return visibleSuppliers;
     },
     manualPagination: true,
   });
@@ -62,21 +62,21 @@
     modalService.open(SupplierFormModal, { supplier });
   }
 
-  async function removeSupplier(supplier: Supplier) {
+  async function archiveSupplier(supplier: Supplier) {
     const ok = await modalService.confirm(
       `¿Archivar el proveedor "${supplier.name}"?`,
       "Archivar proveedor",
     );
-    if (ok) await suppliersService.remove(supplier.id);
+    if (ok) await suppliersService.archive(supplier.id);
   }
 
-  function removePermanently(supplier: Supplier) {
+  function deletePermanently(supplier: Supplier) {
     modalService.open(DeleteRecordModal, {
-      kind: "supplier",
+      recordType: "supplier",
       name: supplier.name,
       onConfirm: async (password: string) => {
-        await suppliersService.removePermanently(supplier.id, password);
-        await archive.reload();
+        await suppliersService.deletePermanently(supplier.id, password);
+        await archivedList.reload();
       },
     });
   }
@@ -85,20 +85,23 @@
 <div class="toolbar">
   {#if targetId}<Button variant="secondary" onclick={() => goto("/suppliers")}>Ver todos</Button
     >{/if}
-  <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
+  <label><input type="checkbox" bind:checked={archivedList.showingArchived} /> Archivados</label>
   <div class="spacer"></div>
   <Button icon={Plus} onclick={openNew}>Nuevo proveedor</Button>
 </div>
 
-{#if suppliersService.error || archive.error}<p role="alert" class="error">
-    {suppliersService.error || archive.error}
+{#if suppliersService.error || archivedList.error}<p role="alert" class="error">
+    {suppliersService.error || archivedList.error}
   </p>
-  <Button onclick={() => (archive.active ? archive.reload() : suppliersService.load())}
+  <Button
+    onclick={() => (archivedList.showingArchived ? archivedList.reload() : suppliersService.load())}
     >Reintentar</Button
   >
-{:else if suppliersService.loading || archive.loading}<p role="status">Cargando proveedores…</p>
-{:else if visible.length === 0}
-  {#if archive.active}
+{:else if suppliersService.loading || archivedList.loading}<p role="status">
+    Cargando proveedores…
+  </p>
+{:else if visibleSuppliers.length === 0}
+  {#if archivedList.showingArchived}
     <EmptyState
       icon={Archive}
       title="No hay proveedores archivados"
@@ -118,11 +121,11 @@
     {table}
     searchPlaceholder="Buscar proveedores..."
     onRowClick={openEdit}
-    rowClickable={(supplier) => !supplier.archived}
+    rowClickable={(supplier) => !supplier.isArchived}
     rowActionLabel={(supplier) => `Editar ${supplier.name}`}
   >
     {#snippet actions(supplier)}
-      {#if supplier.archived}
+      {#if supplier.isArchived}
         <div class="actions">
           <button
             class="icon-btn"
@@ -138,7 +141,7 @@
             type="button"
             title="Eliminar definitivamente"
             aria-label={`Eliminar definitivamente ${supplier.name}`}
-            onclick={() => removePermanently(supplier)}
+            onclick={() => deletePermanently(supplier)}
           >
             <Trash size={16} />
           </button>
@@ -171,7 +174,7 @@
             type="button"
             title="Archivar"
             aria-label="Archivar"
-            onclick={() => removeSupplier(supplier)}
+            onclick={() => archiveSupplier(supplier)}
           >
             <Archive size={16} />
           </button>

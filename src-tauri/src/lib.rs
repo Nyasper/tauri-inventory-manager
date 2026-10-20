@@ -35,7 +35,7 @@ pub fn run() {
             queries::list_presentations,
             queries::list_suppliers,
             queries::list_categories,
-            queries::page_movements,
+            queries::list_movements_page,
             queries::get_settings,
             queries::find_duplicate,
         ])

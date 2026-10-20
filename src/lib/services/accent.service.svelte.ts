@@ -52,33 +52,33 @@ export const ACCENTS: Accent[] = [
   },
 ];
 
-const KEY = "accent";
+const STORAGE_KEY = "accent";
 
 class AccentService {
   accent = $state<AccentColor>("blue");
 
   constructor() {
     this.accent = this.load();
-    this.apply();
+    this.persistAndApply();
   }
 
   setAccent(accent: AccentColor): void {
     this.accent = accent;
-    this.apply();
+    this.persistAndApply();
   }
 
   private load(): AccentColor {
     try {
-      const stored = localStorage.getItem(KEY);
+      const stored = localStorage.getItem(STORAGE_KEY);
       return ACCENTS.some((a) => a.id === stored) ? (stored as AccentColor) : "blue";
     } catch {
       return "blue";
     }
   }
 
-  private apply(): void {
+  private persistAndApply(): void {
     try {
-      localStorage.setItem(KEY, this.accent);
+      localStorage.setItem(STORAGE_KEY, this.accent);
     } catch {
       /* ignore */
     }

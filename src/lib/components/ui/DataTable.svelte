@@ -22,9 +22,9 @@
     rowClickable,
     rowActionLabel,
     actions,
-    fixed = false,
-    fill = false,
-    paginate = false,
+    fixedLayout = false,
+    fillHeight = false,
+    showPagination = false,
   }: {
     table: AppTable<TData>;
     searchPlaceholder?: string;
@@ -34,9 +34,9 @@
     rowClickable?: (row: TData) => boolean;
     rowActionLabel?: (row: TData) => string;
     actions?: Snippet<[TData]>;
-    fixed?: boolean;
-    fill?: boolean;
-    paginate?: boolean;
+    fixedLayout?: boolean;
+    fillHeight?: boolean;
+    showPagination?: boolean;
   } = $props();
 
   const pageCount = $derived(table.getPageCount());
@@ -52,7 +52,7 @@
   }
 </script>
 
-<div class={["table-wrap", { fill }]}>
+<div class={["table-wrap", { "fill-height": fillHeight }]}>
   {#if showSearch}
     <div class="search">
       <Search size={16} />
@@ -68,7 +68,7 @@
     </div>
   {/if}
 
-  <table class={["table", { fixed }]}>
+  <table class={["table", { "fixed-layout": fixedLayout }]}>
     <thead>
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
         <tr>
@@ -160,7 +160,7 @@
     </tbody>
   </table>
 
-  {#if paginate && pageCount > 1}
+  {#if showPagination && pageCount > 1}
     <nav class="pager" aria-label="Paginación de la tabla">
       <span class="pager-info">Página {pageIndex + 1} de {pageCount} · {rowCount} en total</span>
       <div class="pager-buttons">
@@ -217,19 +217,19 @@
     gap: 0.75rem;
   }
 
-  .table-wrap.fill {
+  .table-wrap.fill-height {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
   }
 
-  .table-wrap.fill table {
+  .table-wrap.fill-height table {
     flex: 0 0 auto;
     overflow: visible;
     border-radius: 0;
   }
 
-  .table-wrap.fill thead th {
+  .table-wrap.fill-height thead th {
     position: sticky;
     top: 0;
     z-index: 1;
@@ -267,7 +267,7 @@
     overflow: hidden;
   }
 
-  .table.fixed {
+  .table.fixed-layout {
     table-layout: fixed;
   }
 

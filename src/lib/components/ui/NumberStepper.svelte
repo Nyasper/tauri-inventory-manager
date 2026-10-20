@@ -7,14 +7,14 @@
     max = undefined,
     label,
     disabled = false,
-    showBounds = false,
+    showBoundaryButtons = false,
   }: {
     value?: number;
     min?: number;
     max?: number;
     label?: string;
     disabled?: boolean;
-    showBounds?: boolean;
+    showBoundaryButtons?: boolean;
   } = $props();
 
   const id = $props.id();
@@ -28,13 +28,13 @@
     return next;
   }
 
-  function bump(delta: number) {
+  function adjustBy(delta: number) {
     if (disabled) return;
     const current = Number.isFinite(value) ? Math.round(value) : min;
     value = clamp(current + delta);
   }
 
-  function setTo(bound: number) {
+  function jumpToBoundary(bound: number) {
     if (disabled) return;
     value = clamp(bound);
   }
@@ -44,14 +44,14 @@
   <label class="field-label" for={id}>{label}</label>
 {/if}
 <div class={["stepper", { disabled }]}>
-  {#if showBounds}
+  {#if showBoundaryButtons}
     <button
       class="bound-btn"
       type="button"
       title="Ir al mínimo"
       aria-label="Ir al mínimo"
       disabled={atMin}
-      onclick={() => setTo(min)}
+      onclick={() => jumpToBoundary(min)}
     >
       Mín
     </button>
@@ -61,7 +61,7 @@
     type="button"
     aria-label="Disminuir"
     disabled={atMin}
-    onclick={() => bump(-1)}
+    onclick={() => adjustBy(-1)}
   >
     <Minus size={14} />
   </button>
@@ -81,18 +81,18 @@
     type="button"
     aria-label="Aumentar"
     disabled={atMax}
-    onclick={() => bump(1)}
+    onclick={() => adjustBy(1)}
   >
     <Plus size={14} />
   </button>
-  {#if showBounds && max !== undefined}
+  {#if showBoundaryButtons && max !== undefined}
     <button
       class="bound-btn"
       type="button"
       title="Ir al máximo"
       aria-label="Ir al máximo"
       disabled={atMax}
-      onclick={() => setTo(max ?? min)}
+      onclick={() => jumpToBoundary(max ?? min)}
     >
       Máx
     </button>

@@ -21,28 +21,28 @@ function defaultDatabasePath(): string {
   );
 }
 
-function argumentValue(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
+function readArgument(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-const customPath = argumentValue("--db");
-if (process.argv.includes("--db") && !customPath) {
+const databasePathOverride = readArgument("--db");
+if (process.argv.includes("--db") && !databasePathOverride) {
   throw new Error("Provide a path after --db.");
 }
 
-const lang = argumentValue("--lang") ?? "es";
-if (lang !== "es" && lang !== "en") {
-  throw new Error(`Unsupported language "${lang}". Use "es" or "en".`);
+const language = readArgument("--lang") ?? "es";
+if (language !== "es" && language !== "en") {
+  throw new Error(`Unsupported language "${language}". Use "es" or "en".`);
 }
 
-const databasePath = resolve(customPath ?? defaultDatabasePath());
+const databasePath = resolve(databasePathOverride ?? defaultDatabasePath());
 mkdirSync(dirname(databasePath), { recursive: true });
 
 const schemaPath = resolve(import.meta.dir, "../src-tauri/src/schema.sql");
 const seedPath = resolve(
   import.meta.dir,
-  lang === "en" ? "../src-tauri/src/seed_en.sql" : "../src-tauri/src/seed.sql",
+  language === "en" ? "../src-tauri/src/seed_en.sql" : "../src-tauri/src/seed.sql",
 );
 if (!existsSync(schemaPath) || !existsSync(seedPath)) {
   throw new Error("Schema or seed SQL file not found.");
@@ -87,7 +87,7 @@ try {
       throw new Error("Seed failed foreign-key validation.");
     }
 
-    console.log(`Demo data (${lang}) inserted successfully.\n${databasePath}`);
+    console.log(`Demo data (${language}) inserted successfully.\n${databasePath}`);
   }
 } finally {
   db.close();

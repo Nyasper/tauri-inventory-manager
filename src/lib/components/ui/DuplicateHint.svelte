@@ -8,39 +8,39 @@
 
   let {
     name,
-    kind,
+    recordType,
     error,
     currentId,
   }: {
     name: string;
-    kind: "product" | "supplier";
+    recordType: "product" | "supplier";
     error: AppError;
     currentId?: number;
   } = $props();
 
-  function lookup(): Promise<DuplicateRecord | null> {
+  function findExistingRecord(): Promise<DuplicateRecord | null> {
     if (!isDuplicateError(error)) return Promise.resolve(null);
     const request =
-      kind === "product"
+      recordType === "product"
         ? findProductDuplicate(name, currentId)
         : findSupplierDuplicate(name, currentId);
     return request.catch(() => null);
   }
 
-  const existing = $derived(lookup());
+  const existingRecord = $derived(findExistingRecord());
 
   function open(record: DuplicateRecord) {
     modalService.closeAll();
     goto(
-      `/${kind === "product" ? "products" : "suppliers"}?id=${record.id}&archived=${record.archived}`,
+      `/${recordType === "product" ? "products" : "suppliers"}?id=${record.id}&archived=${record.isArchived ? 1 : 0}`,
     );
   }
 </script>
 
-{#await existing then record}
+{#await existingRecord then record}
   {#if record}
     <Button variant="secondary" onclick={() => open(record)}>
-      Ver registro existente{record.archived ? " (archivado)" : ""}
+      Ver registro existente{record.isArchived ? " (archivado)" : ""}
     </Button>
   {/if}
 {/await}

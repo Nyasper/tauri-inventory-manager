@@ -41,7 +41,7 @@ class MovementsService {
     await this.load();
   }
 
-  async remove(id: number, reason: string): Promise<void> {
+  async cancel(id: number, reason: string): Promise<void> {
     await cancelMovement(id, reason);
     await this.load();
   }

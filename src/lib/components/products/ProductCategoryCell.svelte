@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Product } from "$lib/types";
-  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
+  import CategoryIcon from "$lib/components/ui/CategoryIcon.svelte";
 
   let { product }: { product: Product } = $props();
 </script>
 
 {#if product.category_name}
   <span class="category">
-    <ProductIcon icon={product.category_icon} color={product.category_color} size={22} />
+    <CategoryIcon icon={product.category_icon} color={product.category_color} size={22} />
     <span class="name" title={product.category_name}>
       {product.category_name}
     </span>

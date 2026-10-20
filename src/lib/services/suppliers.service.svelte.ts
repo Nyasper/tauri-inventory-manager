@@ -37,7 +37,7 @@ class SuppliersService {
     await this.load();
   }
 
-  async remove(id: number): Promise<void> {
+  async archive(id: number): Promise<void> {
     await archiveSupplier(id);
     await this.load();
   }
@@ -47,7 +47,7 @@ class SuppliersService {
     await this.load();
   }
 
-  async removePermanently(id: number, password: string): Promise<void> {
+  async deletePermanently(id: number, password: string): Promise<void> {
     await deleteSupplier(id, password);
     await this.load();
   }

@@ -1,4 +1,4 @@
-class Feedback {
+class FeedbackService {
   message = $state("");
   isError = $state(false);
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -8,11 +8,11 @@ class Feedback {
   error(message: string) {
     this.show(message, true);
   }
-  private show(message: string, error: boolean) {
+  private show(message: string, isError: boolean) {
     clearTimeout(this.timer);
     this.message = message;
-    this.isError = error;
-    if (!error) this.timer = setTimeout(() => (this.message = ""), 4000);
+    this.isError = isError;
+    if (!isError) this.timer = setTimeout(() => (this.message = ""), 4000);
   }
 }
-export const feedback = new Feedback();
+export const feedbackService = new FeedbackService();

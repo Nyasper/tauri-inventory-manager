@@ -13,7 +13,7 @@
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
   import EditMovementSupplierModal from "$lib/components/movements/EditMovementSupplierModal.svelte";
-  import { formatDate, formatNumber } from "$lib/utils/format";
+  import { formatDateTime, formatNumber } from "$lib/utils/format";
   import { ArrowLeftRight, Undo2, Pencil, Check, X } from "@lucide/svelte";
 
   let { movement }: { movement: Movement } = $props();
@@ -65,18 +65,18 @@
 
   const isCancelled = $derived(movement.cancelled_at !== null);
   const isAdjustment = $derived(movement.kind === "adjustment");
-  const stateLabel = $derived(isCancelled ? "Anulado" : isAdjustment ? "Ajuste" : "Vigente");
-  const stateStyle = $derived(
+  const statusLabel = $derived(isCancelled ? "Anulado" : isAdjustment ? "Ajuste" : "Vigente");
+  const statusStyle = $derived(
     isCancelled
-      ? { bg: "var(--danger-soft)", color: "var(--danger)" }
+      ? { background: "var(--danger-soft)", textColor: "var(--danger)" }
       : isAdjustment
-        ? { bg: "var(--warning-soft)", color: "var(--warning)" }
-        : { bg: "var(--surface-3)", color: "var(--text-muted)" },
+        ? { background: "var(--warning-soft)", textColor: "var(--warning)" }
+        : { background: "var(--surface-3)", textColor: "var(--text-muted)" },
   );
-  const baseUnit = $derived(
+  const basePresentationName = $derived(
     movement.product_id !== null
-      ? (productsService.items.find((product) => product.id === movement.product_id)?.base_unit ??
-          "")
+      ? (productsService.items.find((product) => product.id === movement.product_id)
+          ?.base_presentation_name ?? "")
       : "",
   );
 
@@ -101,7 +101,9 @@
   <div class="detail">
     <div class="badges">
       <MovementTypeCell type={movement.type} />
-      <Badge bg={stateStyle.bg} color={stateStyle.color}>{stateLabel}</Badge>
+      <Badge background={statusStyle.background} textColor={statusStyle.textColor}
+        >{statusLabel}</Badge
+      >
       <span class="id">Movimiento #{movement.id}</span>
     </div>
 
@@ -123,7 +125,7 @@
         {movement.presentation_name}
         <span class="muted">
           = {formatNumber(movement.base_quantity)}
-          {baseUnit ? `${baseUnit} base` : "unidades base"}
+          {basePresentationName ? `${basePresentationName} base` : "unidades base"}
         </span>
       </dd>
 
@@ -196,7 +198,7 @@
       </dd>
 
       <dt>Fecha</dt>
-      <dd>{formatDate(movement.created_at)}</dd>
+      <dd>{formatDateTime(movement.created_at)}</dd>
 
       <dt>Tipo de registro</dt>
       <dd>{isAdjustment ? "Ajuste de inventario" : "Movimiento regular"}</dd>
@@ -211,7 +213,7 @@
 
       {#if isCancelled}
         <dt>Anulado el</dt>
-        <dd>{formatDate(movement.cancelled_at)}</dd>
+        <dd>{formatDateTime(movement.cancelled_at)}</dd>
 
         <dt>Motivo de anulación</dt>
         <dd class="pre-wrap">{movement.cancellation_reason ?? "—"}</dd>

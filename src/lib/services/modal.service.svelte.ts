@@ -1,6 +1,4 @@
-import type { Component } from "svelte";
-
-type AnyComponent = Component<any, any, any>;
+import type { AnyComponent } from "$lib/types";
 
 interface ModalEntry {
   id: number;

@@ -7,7 +7,7 @@
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { errorMessage } from "$lib/utils/errors";
-  import { formatDate, formatNumber } from "$lib/utils/format";
+  import { formatDateTime, formatNumber } from "$lib/utils/format";
   import type { Movement } from "$lib/types";
 
   let { movement }: { movement: Movement } = $props();
@@ -30,7 +30,7 @@
 
   const dirty = $derived(supplierId !== (movement.supplier_id ? String(movement.supplier_id) : ""));
 
-  async function save() {
+  async function saveSupplier() {
     saving = true;
     error = "";
     try {
@@ -55,8 +55,8 @@
 <Modal
   title={`Editar proveedor — Movimiento #${movement.id}`}
   onClose={() => modalService.close()}
-  {dirty}
-  busy={saving}
+  hasUnsavedChanges={dirty}
+  isBusy={saving}
   width="sm"
 >
   <div class="edit-supplier-form">
@@ -71,7 +71,7 @@
       </div>
       <div class="summary-row">
         <span class="label">Fecha:</span>
-        <span class="val">{formatDate(movement.created_at)}</span>
+        <span class="val">{formatDateTime(movement.created_at)}</span>
       </div>
     </div>
 
@@ -95,7 +95,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
-    <Button disabled={saving} onclick={save}>
+    <Button disabled={saving} onclick={saveSupplier}>
       {saving ? "Guardando…" : "Guardar cambios"}
     </Button>
   {/snippet}

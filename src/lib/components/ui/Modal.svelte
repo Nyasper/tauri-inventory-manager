@@ -11,16 +11,16 @@
     footer,
     onClose,
     width = "md",
-    dirty = false,
-    busy = false,
+    hasUnsavedChanges = false,
+    isBusy = false,
   }: {
     title: string;
     children: Snippet;
     footer?: Snippet;
     onClose?: () => void;
     width?: "sm" | "md" | "lg" | "xl";
-    dirty?: boolean;
-    busy?: boolean;
+    hasUnsavedChanges?: boolean;
+    isBusy?: boolean;
   } = $props();
 
   let dialog: HTMLDivElement;
@@ -30,8 +30,8 @@
   // El guardián bloquea el cierre mientras hay una operación en curso y pide
   // confirmación cuando el usuario tocó el formulario y hay cambios sin guardar.
   const unregisterGuard = modalService.registerCloseGuard(async () => {
-    if (busy) return false;
-    if (!dirty) return true;
+    if (isBusy) return false;
+    if (!hasUnsavedChanges) return true;
     return modalService.confirmDiscard();
   });
   onDestroy(unregisterGuard);

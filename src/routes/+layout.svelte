@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { feedback } from "$lib/services/feedback.service.svelte";
+  import { feedbackService } from "$lib/services/feedback.service.svelte";
   import { errorMessage } from "$lib/utils/errors";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
@@ -15,13 +15,7 @@
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { takeStartupNotice } from "$lib/services/db.service";
   import { keybindingsService } from "$lib/services/keybindings.service";
-
-  const VIEW_PATHS: Record<string, string> = {
-    dashboard: "/",
-    products: "/products",
-    movements: "/movements",
-    suppliers: "/suppliers",
-  };
+  import { VIEW_ROUTES } from "$lib/navigation";
 
   let { children }: { children: Snippet } = $props();
 
@@ -30,7 +24,7 @@
 
   function handleError(event: PromiseRejectionEvent) {
     event.preventDefault();
-    feedback.error(errorMessage(event.reason));
+    feedbackService.error(errorMessage(event.reason));
   }
 
   function handleContextMenu(event: MouseEvent) {
@@ -41,14 +35,14 @@
 
   onMount(async () => {
     const notice = await takeStartupNotice().catch(() => null);
-    if (notice) feedback.error(notice);
+    if (notice) feedbackService.error(notice);
     try {
       await settingsService.load();
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
       return;
     }
-    const path = VIEW_PATHS[settingsService.settings.default_view] ?? "/";
+    const path = VIEW_ROUTES[settingsService.settings.default_view] ?? "/";
     if (page.url.pathname === "/" && !page.url.search && path !== "/") goto(path);
   });
 </script>
@@ -70,10 +64,13 @@
 </div>
 
 <ModalHost />
-{#if feedback.message}
-  <div class={["toast", { error: feedback.isError }]} role={feedback.isError ? "alert" : "status"}>
-    <span class="toast-message">{feedback.message}</span>
-    <button aria-label="Cerrar aviso" onclick={() => (feedback.message = "")}>×</button>
+{#if feedbackService.message}
+  <div
+    class={["toast", { error: feedbackService.isError }]}
+    role={feedbackService.isError ? "alert" : "status"}
+  >
+    <span class="toast-message">{feedbackService.message}</span>
+    <button aria-label="Cerrar aviso" onclick={() => (feedbackService.message = "")}>×</button>
   </div>
 {/if}
 

@@ -7,32 +7,32 @@
   import { changeDeletePassword } from "$lib/services/db.service";
   import { errorMessage } from "$lib/utils/errors";
 
-  let oldPassword = $state("");
+  let currentPassword = $state("");
   let newPassword = $state("");
-  let repeatPassword = $state("");
-  let changing = $state(false);
+  let confirmPassword = $state("");
+  let isSaving = $state(false);
   let error = $state("");
 
   const canChange = $derived(
-    oldPassword.trim() !== "" &&
+    currentPassword.trim() !== "" &&
       newPassword.trim() !== "" &&
-      newPassword === repeatPassword &&
-      !changing,
+      newPassword === confirmPassword &&
+      !isSaving,
   );
 
-  const dirty = $derived(oldPassword !== "" || newPassword !== "" || repeatPassword !== "");
+  const dirty = $derived(currentPassword !== "" || newPassword !== "" || confirmPassword !== "");
 
   async function updatePassword() {
     if (!canChange) return;
-    changing = true;
+    isSaving = true;
     error = "";
     try {
-      await changeDeletePassword(oldPassword, newPassword);
+      await changeDeletePassword(currentPassword, newPassword);
       modalService.close();
     } catch (e) {
       error = errorMessage(e);
     } finally {
-      changing = false;
+      isSaving = false;
     }
   }
 </script>
@@ -40,27 +40,27 @@
 <Modal
   title="Cambiar contraseña de administrador"
   onClose={() => modalService.close()}
-  {dirty}
-  busy={changing}
+  hasUnsavedChanges={dirty}
+  isBusy={isSaving}
 >
   <p class="hint">
     La contraseña de administrador protege la eliminación masiva de movimientos y la eliminación
     definitiva de productos y proveedores archivados. La inicial es «admin».
   </p>
   <div>
-    <Input label="Contraseña actual" type="password" bind:value={oldPassword} />
+    <Input label="Contraseña actual" type="password" bind:value={currentPassword} />
   </div>
   <div class="grid">
     <Input label="Nueva contraseña" type="password" bind:value={newPassword} />
-    <Input label="Repetir nueva contraseña" type="password" bind:value={repeatPassword} />
+    <Input label="Repetir nueva contraseña" type="password" bind:value={confirmPassword} />
   </div>
-  {#if newPassword !== "" && repeatPassword !== "" && newPassword !== repeatPassword}
+  {#if newPassword !== "" && confirmPassword !== "" && newPassword !== confirmPassword}
     <p class="validation" role="status">Las contraseñas nuevas no coinciden.</p>
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <div class="section-action">
     <Button variant="secondary" icon={KeyRound} disabled={!canChange} onclick={updatePassword}>
-      {changing ? "Cambiando…" : "Cambiar contraseña"}
+      {isSaving ? "Cambiando…" : "Cambiar contraseña"}
     </Button>
   </div>
 </Modal>

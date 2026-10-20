@@ -1,25 +1,12 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import type { Component } from "svelte";
-  import type { LucideProps } from "@lucide/svelte";
-  import {
-    Boxes,
-    LayoutDashboard,
-    ArrowLeftRight,
-    Truck,
-    CircleHelp,
-    Settings,
-  } from "@lucide/svelte";
+  import { CircleHelp, Settings } from "@lucide/svelte";
   import { openHelp, openSettings } from "$lib/services/keybindings.service";
+  import { NAVIGATION } from "$lib/navigation";
 
-  const nav: { href: string; label: string; icon: Component<LucideProps> }[] = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/products", label: "Productos", icon: Boxes },
-    { href: "/movements", label: "Movimientos", icon: ArrowLeftRight },
-    { href: "/suppliers", label: "Proveedores", icon: Truck },
-  ];
+  const NAV_ITEMS = NAVIGATION;
 
-  function isActive(href: string): boolean {
+  function isRouteActive(href: string): boolean {
     const path = page.url.pathname;
     return href === "/" ? path === "/" : path.startsWith(href);
   }
@@ -47,9 +34,9 @@
   </div>
 
   <nav class="nav">
-    {#each nav as item (item.href)}
+    {#each NAV_ITEMS as item (item.href)}
       {const Icon = item.icon}
-      <a href={item.href} class={["nav-item", { active: isActive(item.href) }]}>
+      <a href={item.href} class={["nav-item", { active: isRouteActive(item.href) }]}>
         <Icon size={18} />
         <span>{item.label}</span>
       </a>

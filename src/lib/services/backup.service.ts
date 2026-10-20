@@ -1,9 +1,9 @@
 import { backupDatabase, restoreDatabase } from "$lib/services/db.service";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
-const FILTERS = [{ name: "Base de datos SQLite", extensions: ["db"] }];
+const DATABASE_FILE_FILTERS = [{ name: "Base de datos SQLite", extensions: ["db"] }];
 
-function stamp(): string {
+function timestampSuffix(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
   return [
@@ -22,8 +22,8 @@ class BackupService {
   async backup(): Promise<string | null> {
     const path = await save({
       title: "Guardar respaldo",
-      defaultPath: `inventario-${stamp()}.db`,
-      filters: FILTERS,
+      defaultPath: `inventario-${timestampSuffix()}.db`,
+      filters: DATABASE_FILE_FILTERS,
     });
     if (!path) return null;
     await backupDatabase(path);
@@ -36,7 +36,7 @@ class BackupService {
       title: "Seleccionar respaldo",
       multiple: false,
       directory: false,
-      filters: FILTERS,
+      filters: DATABASE_FILE_FILTERS,
     });
     return typeof selected === "string" ? selected : null;
   }

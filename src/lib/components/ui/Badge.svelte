@@ -3,23 +3,23 @@
 
   let {
     children,
-    bg,
-    color,
-    uniform = false,
+    background,
+    textColor,
+    fixedWidth = false,
     title,
   }: {
     children: Snippet;
-    bg?: string;
-    color?: string;
-    uniform?: boolean;
+    background?: string;
+    textColor?: string;
+    fixedWidth?: boolean;
     title?: string;
   } = $props();
 </script>
 
 <span
-  class={["badge", { uniform }]}
-  style:background={bg ?? null}
-  style:color={color ?? null}
+  class={["badge", { "fixed-width": fixedWidth }]}
+  style:background={background ?? null}
+  style:color={textColor ?? null}
   {title}
 >
   {@render children()}
@@ -39,7 +39,7 @@
     white-space: nowrap;
   }
 
-  .badge.uniform {
+  .badge.fixed-width {
     min-width: 5rem;
   }
 </style>

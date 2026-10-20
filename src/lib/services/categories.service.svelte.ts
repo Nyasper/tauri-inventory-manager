@@ -19,7 +19,7 @@ class CategoriesService {
     await this.load();
   }
 
-  async remove(id: number): Promise<void> {
+  async archive(id: number): Promise<void> {
     await archiveCategory(id);
     await this.load();
   }

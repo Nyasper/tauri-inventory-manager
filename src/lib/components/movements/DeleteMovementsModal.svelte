@@ -1,12 +1,13 @@
 <script lang="ts">
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
-  import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import type { SelectOption } from "$lib/components/ui/select-option";
   import Button from "$lib/components/ui/Button.svelte";
   import { Trash } from "@lucide/svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
-  import { feedback } from "$lib/services/feedback.service.svelte";
+  import { feedbackService } from "$lib/services/feedback.service.svelte";
   import { errorMessage } from "$lib/utils/errors";
   import {
     countMovements,
@@ -16,14 +17,14 @@
   import { formatDay } from "$lib/utils/format";
 
   let mode = $state<MovementDeleteMode>("recent");
-  let count = $state("1");
+  let countInput = $state("1");
   let from = $state("");
   let to = $state("");
   let password = $state("");
   let deleting = $state(false);
   let deleteError = $state("");
-  let preview = $state<number | null>(null);
-  let previewLoading = $state(false);
+  let matchedMovements = $state<number | null>(null);
+  let matchedMovementsLoading = $state(false);
 
   const modeOptions: SelectOption[] = [
     { value: "recent", label: "Más recientes" },
@@ -33,20 +34,20 @@
     { value: "range", label: "Entre dos fechas" },
   ];
 
-  const countValue = $derived(Number(count));
+  const count = $derived(Number(countInput));
   const needsCount = $derived(mode === "recent" || mode === "oldest");
   const needsFrom = $derived(mode === "from" || mode === "range");
   const needsTo = $derived(mode === "until" || mode === "range");
 
   const filter = $derived<MovementDeleteFilter>({
     mode,
-    count: needsCount ? countValue : undefined,
+    count: needsCount ? count : undefined,
     from: needsFrom && from ? from : undefined,
     to: needsTo && to ? to : undefined,
   });
 
   const filterError = $derived.by(() => {
-    if (needsCount && !(Number.isInteger(countValue) && countValue >= 1)) {
+    if (needsCount && !(Number.isInteger(count) && count >= 1)) {
       return "Indica una cantidad entera mayor o igual a 1.";
     }
     if (needsFrom && !from) return "Indica la fecha de inicio.";
@@ -58,34 +59,38 @@
   });
 
   const dirty = $derived(
-    password !== "" || mode !== "recent" || Number(count) !== 1 || from !== "" || to !== "",
+    password !== "" || mode !== "recent" || Number(countInput) !== 1 || from !== "" || to !== "",
   );
 
   const canDelete = $derived(
-    filterError === "" && preview !== null && preview > 0 && password.trim() !== "" && !deleting,
+    filterError === "" &&
+      matchedMovements !== null &&
+      matchedMovements > 0 &&
+      password.trim() !== "" &&
+      !deleting,
   );
 
   // Vista previa con retardo para no consultar en cada tecla del filtro.
   $effect(() => {
     if (filterError) {
-      preview = null;
-      previewLoading = false;
+      matchedMovements = null;
+      matchedMovementsLoading = false;
       return;
     }
     const current = filter;
     let cancelled = false;
-    preview = null;
-    previewLoading = true;
+    matchedMovements = null;
+    matchedMovementsLoading = true;
     const timer = setTimeout(() => {
       countMovements(current)
         .then((total) => {
-          if (!cancelled) preview = total;
+          if (!cancelled) matchedMovements = total;
         })
         .catch(() => {
-          if (!cancelled) preview = null;
+          if (!cancelled) matchedMovements = null;
         })
         .finally(() => {
-          if (!cancelled) previewLoading = false;
+          if (!cancelled) matchedMovementsLoading = false;
         });
     }, 250);
     return () => {
@@ -94,11 +99,11 @@
     };
   });
 
-  const previewText = $derived.by(() => {
+  const matchedMovementsText = $derived.by(() => {
     if (filterError) return "Completa los datos del filtro.";
-    if (previewLoading || preview === null) return "Calculando coincidencias…";
-    if (preview === 0) return "No hay movimientos que coincidan.";
-    return `Se eliminarán ${preview} movimiento${preview === 1 ? "" : "s"}.`;
+    if (matchedMovementsLoading || matchedMovements === null) return "Calculando coincidencias…";
+    if (matchedMovements === 0) return "No hay movimientos que coincidan.";
+    return `Se eliminarán ${matchedMovements} movimiento${matchedMovements === 1 ? "" : "s"}.`;
   });
 
   function describe(total: number): string {
@@ -119,10 +124,10 @@
     }
   }
 
-  async function remove() {
-    if (!canDelete || preview === null) return;
+  async function deleteMovements() {
+    if (!canDelete || matchedMovements === null) return;
     const ok = await modalService.confirm(
-      `${describe(preview)} El stock actual de los productos no cambia. Esta acción no se puede deshacer.`,
+      `${describe(matchedMovements)} El stock actual de los productos no cambia. Esta acción no se puede deshacer.`,
       "Eliminar movimientos",
     );
     if (!ok) return;
@@ -130,7 +135,7 @@
     deleteError = "";
     try {
       const deleted = await movementsService.deleteBatch(filter, password);
-      feedback.success(`Se eliminaron ${deleted} movimiento${deleted === 1 ? "" : "s"}.`);
+      feedbackService.success(`Se eliminaron ${deleted} movimiento${deleted === 1 ? "" : "s"}.`);
       modalService.close();
     } catch (e) {
       deleteError = errorMessage(e);
@@ -140,7 +145,12 @@
   }
 </script>
 
-<Modal title="Eliminar movimientos" onClose={() => modalService.close()} {dirty} busy={deleting}>
+<Modal
+  title="Eliminar movimientos"
+  onClose={() => modalService.close()}
+  hasUnsavedChanges={dirty}
+  isBusy={deleting}
+>
   <p class="hint">
     Borra movimientos del historial por cantidad (los más recientes o los más antiguos) o por fecha.
     El stock actual de los productos no cambia.
@@ -148,7 +158,7 @@
   <div class="grid">
     <Select label="Qué borrar" bind:value={mode} options={modeOptions} />
     {#if needsCount}
-      <Input label="Cantidad" type="number" bind:value={count} />
+      <Input label="Cantidad" type="number" bind:value={countInput} />
     {/if}
   </div>
   {#if needsFrom || needsTo}
@@ -167,11 +177,11 @@
   {#if filterError}
     <p class="validation" role="status">{filterError}</p>
   {:else}
-    <p class="preview" aria-live="polite">{previewText}</p>
+    <p class="matched-movements" aria-live="polite">{matchedMovementsText}</p>
   {/if}
   {#if deleteError}<p class="error" role="alert">{deleteError}</p>{/if}
   <div class="section-action">
-    <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={remove}>
+    <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={deleteMovements}>
       {deleting ? "Eliminando…" : "Eliminar movimientos"}
     </Button>
   </div>
@@ -207,7 +217,7 @@
     font-size: 0.8125rem;
   }
 
-  .preview {
+  .matched-movements {
     margin-top: 0.5rem;
     color: var(--text-muted);
     font-size: 0.8125rem;

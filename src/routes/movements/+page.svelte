@@ -18,7 +18,7 @@
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
   import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
-  import { formatNumber, formatDate } from "$lib/utils/format";
+  import { formatNumber, formatDateTime } from "$lib/utils/format";
   import Button from "$lib/components/ui/Button.svelte";
   import {
     Plus,
@@ -42,9 +42,9 @@
   let search = $state("");
   let productFilter = $derived(page.url.searchParams.get("product") ?? "");
   let supplierFilter = $state("");
-  let from = $state("");
-  let to = $state("");
-  let status = $state("all");
+  let fromDate = $state("");
+  let toDate = $state("");
+  let statusFilter = $state("all");
 
   const productOptions = $derived(
     productsService.items.map((p) => ({ value: String(p.id), label: p.name })),
@@ -63,34 +63,34 @@
 
   const pageSize = $derived(settingsService.settings.movements_page_size);
 
-  const query = $derived({
+  const filters = $derived({
     search,
     product: productFilter,
     supplier: supplierFilter,
-    from,
-    to,
-    status,
+    from: fromDate,
+    to: toDate,
+    status: statusFilter,
     type: typeFilter,
     pageSize,
   });
-  const filterKey = $derived(JSON.stringify(query));
-  let pageState = $state<{ key: string; page: number } | null>(null);
+  const queryKey = $derived(JSON.stringify(filters));
+  let paginationState = $state<{ key: string; page: number } | null>(null);
   const currentPage = $derived(
-    pageState !== null && pageState.key === filterKey ? pageState.page : 0,
+    paginationState !== null && paginationState.key === queryKey ? paginationState.page : 0,
   );
 
   const lastPage = $derived(Math.max(0, Math.ceil(movementsService.total / pageSize) - 1));
 
-  function goToPage(page: number) {
-    pageState = { key: filterKey, page };
+  function goToPage(targetPage: number) {
+    paginationState = { key: queryKey, page: targetPage };
   }
 
   function reload() {
-    void movementsService.load({ ...query, page: currentPage });
+    void movementsService.load({ ...filters, page: currentPage });
   }
 
   $effect(() => {
-    movementsService.load({ ...query, page: currentPage });
+    movementsService.load({ ...filters, page: currentPage });
   });
 
   $effect(() => {
@@ -125,7 +125,7 @@
     columnHelper.accessor(
       (m) => (m.cancelled_at ? "Anulado" : m.kind === "adjustment" ? "Ajuste" : "Vigente"),
       {
-        id: "state",
+        id: "status",
         header: () => "Estado",
         meta: { align: "center" },
       },
@@ -137,17 +137,15 @@
     columnHelper.accessor("created_at", {
       header: () => "Fecha",
       meta: { align: "center" },
-      cell: (info) => formatDate(info.getValue<string>()),
+      cell: (info) => formatDateTime(info.getValue<string>()),
     }),
   ]);
-
-  const data = $derived(movementsService.items);
 
   const table = createAppTable({
     columns,
     defaultColumn: { enableSorting: false },
     get data() {
-      return data;
+      return movementsService.items;
     },
     manualPagination: true,
   });
@@ -156,7 +154,7 @@
     modalService.open(MovementFormModal);
   }
 
-  function removeMovement(movement: Movement) {
+  function cancelMovement(movement: Movement) {
     modalService.open(CancelMovementModal, { movement });
   }
 
@@ -164,7 +162,7 @@
     modalService.open(EditMovementSupplierModal, { movement });
   }
 
-  const filters: { value: "all" | MovementType; label: string }[] = [
+  const typeFilterOptions: { value: "all" | MovementType; label: string }[] = [
     { value: "all", label: "Todos" },
     { value: "in", label: "Entradas" },
     { value: "out", label: "Salidas" },
@@ -174,7 +172,7 @@
 <div class="page">
   <div class="toolbar">
     <div class="type-filter">
-      {#each filters as filter (filter.value)}
+      {#each typeFilterOptions as filter (filter.value)}
         <button
           class={["filter-btn", { active: typeFilter === filter.value }]}
           type="button"
@@ -214,12 +212,12 @@
         options={[{ value: "", label: "Todos" }, ...supplierOptions]}
       />
     </div>
-    <label>Desde<input class="field" type="date" bind:value={from} /></label>
-    <label>Hasta<input class="field" type="date" bind:value={to} /></label>
+    <label>Desde<input class="field" type="date" bind:value={fromDate} /></label>
+    <label>Hasta<input class="field" type="date" bind:value={toDate} /></label>
     <div>
       <Select
         label="Estado"
-        bind:value={status}
+        bind:value={statusFilter}
         options={[
           { value: "all", label: "Todos" },
           { value: "active", label: "Vigentes" },
@@ -250,7 +248,7 @@
       />
     {:else}
       <DataTable
-        fill
+        fillHeight
         {table}
         showSearch={false}
         emptyText="No hay movimientos que coincidan con el filtro."
@@ -281,7 +279,7 @@
               disabled={!!movement.cancelled_at}
               onclick={(e) => {
                 e.stopPropagation();
-                removeMovement(movement);
+                cancelMovement(movement);
               }}
             >
               <Undo2 size={16} />

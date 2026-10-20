@@ -18,10 +18,10 @@ class SettingsService {
     this.settings = await getSettings();
   }
 
-  async saveThresholds(low: number, medium: number): Promise<void> {
-    await saveSettingsThresholds(low, medium);
-    this.settings.stock_low_threshold = low;
-    this.settings.stock_medium_threshold = medium;
+  async saveThresholds(lowThreshold: number, mediumThreshold: number): Promise<void> {
+    await saveSettingsThresholds(lowThreshold, mediumThreshold);
+    this.settings.stock_low_threshold = lowThreshold;
+    this.settings.stock_medium_threshold = mediumThreshold;
   }
 
   async saveDefaultView(view: DefaultView): Promise<void> {

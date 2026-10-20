@@ -7,16 +7,16 @@
   import { errorMessage } from "$lib/utils/errors";
 
   let {
-    kind,
+    recordType,
     name,
     onConfirm,
   }: {
-    kind: "product" | "supplier";
+    recordType: "product" | "supplier";
     name: string;
     onConfirm: (password: string) => Promise<void>;
   } = $props();
 
-  const label = $derived(kind === "product" ? "producto" : "proveedor");
+  const label = $derived(recordType === "product" ? "producto" : "proveedor");
 
   let password = $state("");
   let deleting = $state(false);
@@ -25,7 +25,7 @@
   const canDelete = $derived(password.trim() !== "" && !deleting);
   const dirty = $derived(password !== "");
 
-  async function submit() {
+  async function confirmDeletion() {
     if (!canDelete) return;
     deleting = true;
     error = "";
@@ -43,8 +43,8 @@
 <Modal
   title="Eliminar definitivamente"
   onClose={() => modalService.close()}
-  {dirty}
-  busy={deleting}
+  hasUnsavedChanges={dirty}
+  isBusy={deleting}
   width="sm"
 >
   <div class="delete">
@@ -64,7 +64,7 @@
     <Button variant="secondary" disabled={deleting} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
-    <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={submit}>
+    <Button variant="danger" icon={Trash} disabled={!canDelete} onclick={confirmDeletion}>
       {deleting ? "Eliminando…" : "Eliminar definitivamente"}
     </Button>
   {/snippet}

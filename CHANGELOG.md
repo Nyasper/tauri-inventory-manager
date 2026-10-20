@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Se mejoró la nomenclatura de componentes, servicios, funciones y variables internas para que describan mejor su propósito (por ejemplo, componentes de iconos y selección, utilidades de navegación y borradores de categorías), sin cambios funcionales ni en la interfaz de usuario.
 - Renombrada la configuración general de umbrales a "Límites globales de stock" en `SettingsModal`, el modal de ayuda (`HelpModal`) y el manual de usuario (`MANUAL_DE_USUARIO.md`), clarificando su función como valores por defecto heredados por los productos que no cuenten con límites propios.
 
 ### Fixed

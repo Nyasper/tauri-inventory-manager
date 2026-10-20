@@ -1,13 +1,13 @@
 type Theme = "light" | "dark";
 
-const KEY = "theme";
+const STORAGE_KEY = "theme";
 
 class ThemeService {
   theme = $state<Theme>("light");
 
   constructor() {
     this.theme = this.load();
-    this.apply();
+    this.persistAndApply();
   }
 
   get isDark(): boolean {
@@ -16,21 +16,21 @@ class ThemeService {
 
   toggle(): void {
     this.theme = this.isDark ? "light" : "dark";
-    this.apply();
+    this.persistAndApply();
   }
 
   private load(): Theme {
     try {
-      const stored = localStorage.getItem(KEY);
+      const stored = localStorage.getItem(STORAGE_KEY);
       return stored === "dark" ? "dark" : "light";
     } catch {
       return "light";
     }
   }
 
-  private apply(): void {
+  private persistAndApply(): void {
     try {
-      localStorage.setItem(KEY, this.theme);
+      localStorage.setItem(STORAGE_KEY, this.theme);
     } catch {
       /* ignore */
     }

@@ -2,45 +2,48 @@
   import { backupService } from "$lib/services/backup.service";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
-  import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import type { SelectOption } from "$lib/components/ui/select-option";
   import Button from "$lib/components/ui/Button.svelte";
   import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
   import AdminPasswordModal from "$lib/components/settings/AdminPasswordModal.svelte";
   import { ICONS, type IconName } from "$lib/icons";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload, KeyRound } from "@lucide/svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
-  import { getAppVersion } from "$lib/services/app.service";
+  import { getAppVersion } from "$lib/services/version";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { productsService } from "$lib/services/products.service.svelte";
   import { movementsService } from "$lib/services/movements.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { feedback } from "$lib/services/feedback.service.svelte";
+  import { feedbackService } from "$lib/services/feedback.service.svelte";
   import { errorMessage } from "$lib/utils/errors";
   import { modalService } from "$lib/services/modal.service.svelte";
   import type { DefaultView } from "$lib/types";
   import { accentService, ACCENTS } from "$lib/services/accent.service.svelte";
-  import { CATEGORY_COLORS, newCategoryDraft, type CategoryDraft } from "$lib/categories";
+  import { CATEGORY_COLORS, newCategoryDraft, type CategoryDraft } from "$lib/category-draft";
 
-  let low: string = $derived(String(settingsService.settings.stock_low_threshold));
-  let medium: string = $derived(String(settingsService.settings.stock_medium_threshold));
-  let defaultView: string = $derived(settingsService.settings.default_view);
-  let pageSize: string = $derived(String(settingsService.settings.movements_page_size));
-  let editingCat = $state<CategoryDraft | null>(null);
+  let lowThresholdInput: string = $derived(String(settingsService.settings.stock_low_threshold));
+  let mediumThresholdInput: string = $derived(
+    String(settingsService.settings.stock_medium_threshold),
+  );
+  let defaultViewInput: string = $derived(settingsService.settings.default_view);
+  let pageSizeInput: string = $derived(String(settingsService.settings.movements_page_size));
+  let editingCategory = $state<CategoryDraft | null>(null);
   let busy = $state(false);
 
   const appVersion = getAppVersion();
 
   const dirty = $derived(
-    Number(low) !== settingsService.settings.stock_low_threshold ||
-      Number(medium) !== settingsService.settings.stock_medium_threshold ||
-      editingCat !== null,
+    Number(lowThresholdInput) !== settingsService.settings.stock_low_threshold ||
+      Number(mediumThresholdInput) !== settingsService.settings.stock_medium_threshold ||
+      editingCategory !== null,
   );
 
   const thresholdsValid = $derived(
-    Number.isFinite(Number(low)) &&
-      Number.isFinite(Number(medium)) &&
-      Number(low) >= 0 &&
-      Number(low) < Number(medium),
+    Number.isFinite(Number(lowThresholdInput)) &&
+      Number.isFinite(Number(mediumThresholdInput)) &&
+      Number(lowThresholdInput) >= 0 &&
+      Number(lowThresholdInput) < Number(mediumThresholdInput),
   );
 
   const viewOptions: SelectOption[] = [
@@ -66,7 +69,7 @@
     try {
       await settingsService.saveDefaultView(view);
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
       await settingsService.load().catch(() => {});
     }
   }
@@ -76,7 +79,7 @@
     try {
       await settingsService.savePageSize(size);
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
       await settingsService.load().catch(() => {});
     }
   }
@@ -84,19 +87,19 @@
   async function saveThresholds() {
     if (!thresholdsValid) return;
     try {
-      await settingsService.saveThresholds(Number(low), Number(medium));
+      await settingsService.saveThresholds(Number(lowThresholdInput), Number(mediumThresholdInput));
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
       await settingsService.load().catch(() => {});
     }
   }
 
   function startNewCategory() {
-    editingCat = newCategoryDraft();
+    editingCategory = newCategoryDraft();
   }
 
   function startEditCategory(id: number, name: string, color: string | null, icon: string | null) {
-    editingCat = {
+    editingCategory = {
       id,
       name,
       color: color ?? CATEGORY_COLORS[0],
@@ -105,17 +108,17 @@
   }
 
   async function handleCategorySaved() {
-    editingCat = null;
+    editingCategory = null;
     await productsService.load();
   }
 
-  async function removeCategory(id: number, name: string) {
+  async function archiveCategory(id: number, name: string) {
     const ok = await modalService.confirm(
       `¿Eliminar la categoría "${name}"? Los productos asociados quedarán sin categoría.`,
       "Eliminar categoría",
     );
     if (ok) {
-      await categoriesService.remove(id);
+      await categoriesService.archive(id);
       await productsService.load();
     }
   }
@@ -125,9 +128,9 @@
     busy = true;
     try {
       const path = await backupService.backup();
-      if (path) feedback.success("Respaldo creado correctamente.");
+      if (path) feedbackService.success("Respaldo creado correctamente.");
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
     } finally {
       busy = false;
     }
@@ -139,7 +142,7 @@
     try {
       path = await backupService.pickRestoreFile();
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
       return;
     }
     if (!path) return;
@@ -158,16 +161,22 @@
         productsService.load(),
         movementsService.load(),
       ]);
-      feedback.success("Base de datos restaurada correctamente.");
+      feedbackService.success("Base de datos restaurada correctamente.");
     } catch (e) {
-      feedback.error(errorMessage(e));
+      feedbackService.error(errorMessage(e));
     } finally {
       busy = false;
     }
   }
 </script>
 
-<Modal title="Configuración" onClose={() => modalService.close()} {dirty} {busy} width="md">
+<Modal
+  title="Configuración"
+  onClose={() => modalService.close()}
+  hasUnsavedChanges={dirty}
+  isBusy={busy}
+  width="md"
+>
   <div class="settings">
     <section>
       <h3>Límites globales de stock</h3>
@@ -177,10 +186,10 @@
       </p>
       <div class="thresholds">
         <div>
-          <Input label="Límite bajo global" type="number" bind:value={low} />
+          <Input label="Límite bajo global" type="number" bind:value={lowThresholdInput} />
         </div>
         <div>
-          <Input label="Límite medio global" type="number" bind:value={medium} />
+          <Input label="Límite medio global" type="number" bind:value={mediumThresholdInput} />
         </div>
       </div>
       <div class="section-action">
@@ -216,25 +225,25 @@
     <section>
       <h3>Vista por defecto</h3>
       <p class="hint">Vista que se muestra al abrir la aplicación.</p>
-      <Select bind:value={defaultView} options={viewOptions} onchange={saveDefaultView} />
+      <Select bind:value={defaultViewInput} options={viewOptions} onchange={saveDefaultView} />
     </section>
 
     <section>
       <h3>Movimientos por página</h3>
       <p class="hint">Cantidad de movimientos que se muestran en cada página del historial.</p>
-      <Select bind:value={pageSize} options={pageSizeOptions} onchange={savePageSize} />
+      <Select bind:value={pageSizeInput} options={pageSizeOptions} onchange={savePageSize} />
     </section>
 
     <section>
       <h3>Categorías</h3>
       <p class="hint">Los productos muestran el icono y el color de su categoría.</p>
 
-      {#if editingCat}
+      {#if editingCategory}
         <div class="cat-editor">
           <CategoryEditor
-            bind:draft={editingCat}
+            bind:draft={editingCategory}
             onSaved={handleCategorySaved}
-            onCancel={() => (editingCat = null)}
+            onCancel={() => (editingCategory = null)}
           />
         </div>
       {:else}
@@ -279,7 +288,7 @@
                   type="button"
                   title="Eliminar categoría"
                   aria-label="Eliminar categoría"
-                  onclick={() => removeCategory(category.id, category.name)}
+                  onclick={() => archiveCategory(category.id, category.name)}
                 >
                   <Trash size={16} />
                 </button>

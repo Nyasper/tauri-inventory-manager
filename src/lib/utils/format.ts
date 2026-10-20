@@ -16,7 +16,7 @@ export function formatNumber(value: number): string {
   return NUMBER_FORMAT.format(value);
 }
 
-export function formatDate(value: string | null): string {
+export function formatDateTime(value: string | null): string {
   if (!value) return "—";
   const normalized = SQLITE_DATETIME.test(value) ? `${value.replace(" ", "T")}Z` : value;
   const date = new Date(normalized);
