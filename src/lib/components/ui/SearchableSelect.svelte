@@ -36,6 +36,7 @@
   let searchQuery = $state("");
   let highlightedIndex = $state(0);
   let container: HTMLDivElement | null = $state(null);
+  let triggerElement: HTMLButtonElement | null = $state(null);
   let searchInput: HTMLInputElement | null = $state(null);
   let listElement: HTMLUListElement | null = $state(null);
 
@@ -125,7 +126,11 @@
 
     if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       isOpen = false;
+      triggerElement?.focus();
+      return;
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (filteredOptions.length > 0) {
@@ -170,6 +175,7 @@
   <div class="trigger-wrap">
     <button
       {id}
+      bind:this={triggerElement}
       type="button"
       class="trigger"
       onclick={toggleOpen}
@@ -207,6 +213,7 @@
           class="search-input"
           placeholder={searchPlaceholder}
           bind:value={searchQuery}
+          onkeydown={handleKeydown}
           autocomplete="off"
         />
         {#if searchQuery}

@@ -12,6 +12,7 @@
   import Badge from "$lib/components/ui/Badge.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
+  import EditMovementSupplierModal from "$lib/components/movements/EditMovementSupplierModal.svelte";
   import { formatDate, formatNumber } from "$lib/utils/format";
   import { ArrowLeftRight, Undo2, Pencil, Check, X } from "@lucide/svelte";
 
@@ -88,6 +89,11 @@
   function cancelMovement() {
     modalService.close();
     modalService.open(CancelMovementModal, { movement });
+  }
+
+  function openEditSupplierModal() {
+    modalService.close();
+    modalService.open(EditMovementSupplierModal, { movement });
   }
 </script>
 
@@ -217,6 +223,11 @@
     {#if movement.product_id !== null}
       <Button variant="secondary" icon={ArrowLeftRight} onclick={viewProductMovements}>
         Ver movimientos del producto
+      </Button>
+    {/if}
+    {#if movement.type === "in" && !isCancelled}
+      <Button variant="secondary" icon={Pencil} onclick={openEditSupplierModal}>
+        Editar proveedor
       </Button>
     {/if}
     {#if !isCancelled}

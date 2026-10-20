@@ -14,6 +14,7 @@
   import Select from "$lib/components/ui/Select.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
+  import EditMovementSupplierModal from "$lib/components/movements/EditMovementSupplierModal.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
   import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
@@ -21,6 +22,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import {
     Plus,
+    Pencil,
     ArrowLeftRight,
     Trash,
     Undo2,
@@ -158,6 +160,10 @@
     modalService.open(CancelMovementModal, { movement });
   }
 
+  function editSupplier(movement: Movement) {
+    modalService.open(EditMovementSupplierModal, { movement });
+  }
+
   const filters: { value: "all" | MovementType; label: string }[] = [
     { value: "all", label: "Todos" },
     { value: "in", label: "Entradas" },
@@ -252,16 +258,35 @@
         rowActionLabel={(movement) => `Ver detalle del movimiento #${movement.id}`}
       >
         {#snippet actions(movement)}
-          <button
-            class="icon-btn danger"
-            type="button"
-            title={movement.cancelled_at ? "Movimiento anulado" : "Anular movimiento"}
-            aria-label="Anular movimiento"
-            disabled={!!movement.cancelled_at}
-            onclick={() => removeMovement(movement)}
-          >
-            <Undo2 size={16} />
-          </button>
+          <div class="actions">
+            {#if movement.type === "in" && !movement.cancelled_at}
+              <button
+                class="icon-btn"
+                type="button"
+                title="Editar proveedor"
+                aria-label={`Editar proveedor del movimiento #${movement.id}`}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  editSupplier(movement);
+                }}
+              >
+                <Pencil size={16} />
+              </button>
+            {/if}
+            <button
+              class="icon-btn danger"
+              type="button"
+              title={movement.cancelled_at ? "Movimiento anulado" : "Anular movimiento"}
+              aria-label="Anular movimiento"
+              disabled={!!movement.cancelled_at}
+              onclick={(e) => {
+                e.stopPropagation();
+                removeMovement(movement);
+              }}
+            >
+              <Undo2 size={16} />
+            </button>
+          </div>
         {/snippet}
       </DataTable>
     {/if}
@@ -365,6 +390,12 @@
     gap: 0.5rem;
   }
 
+  .actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
   .icon-btn {
     display: inline-flex;
     align-items: center;
@@ -378,7 +409,12 @@
     cursor: pointer;
   }
 
-  .icon-btn.danger:hover {
+  .icon-btn:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .icon-btn.danger:hover:not(:disabled) {
     background: var(--danger-soft);
     color: var(--danger);
   }
