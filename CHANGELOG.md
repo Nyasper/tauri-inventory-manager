@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Navigation history controls: Back and Forward buttons added next to the view title in the top layout header (`Header.svelte`) with history state detection.
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
 - Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and inline action in `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.
 - English demo dataset (`src-tauri/src/seed_en.sql`) selectable with `bun run seed -- --lang en`: 8 categories, 15 suppliers, 50 products with 122 presentations and 121 movements, including adjustments, cancelled movements and a mix of zero, low and healthy stock levels; covered by a Rust test that validates counts, foreign keys, the single active base presentation per product and stock coherence against the movement history.
