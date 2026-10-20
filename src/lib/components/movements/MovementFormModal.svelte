@@ -11,6 +11,7 @@
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select, { type SelectOption } from "$lib/components/ui/Select.svelte";
+  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import { Plus } from "@lucide/svelte";
@@ -210,11 +211,12 @@
   width="md"
 >
   <div class="form">
-    <Select
+    <SearchableSelect
       label="Producto"
       bind:value={productId}
       options={productOptions}
       placeholder="Selecciona un producto"
+      searchPlaceholder="Buscar producto..."
     />
 
     {#if loading}<p role="status">Cargando presentaciones…</p>{/if}
@@ -265,7 +267,13 @@
     {#if type === "in"}
       <div class="field-row">
         <div class="field-select">
-          <Select label="Proveedor" bind:value={supplierId} options={supplierOptions} />
+          <SearchableSelect
+            label="Proveedor"
+            bind:value={supplierId}
+            options={supplierOptions}
+            placeholder="Selecciona un proveedor"
+            searchPlaceholder="Buscar proveedor..."
+          />
         </div>
         <Button variant="secondary" icon={Plus} onclick={openNewSupplier}>Nuevo</Button>
       </div>

@@ -17,6 +17,7 @@
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
   import Select from "$lib/components/ui/Select.svelte";
+  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { Plus, Trash } from "@lucide/svelte";
 
@@ -156,11 +157,13 @@
       <div class="span-2">
         <div class="category-row">
           <div class="category-select">
-            <Select
+            <SearchableSelect
               label="Categoría"
               bind:value={categoryId}
               options={categoryOptions}
               disabled={loading}
+              placeholder="Selecciona una categoría"
+              searchPlaceholder="Buscar categoría..."
             />
           </div>
           <Button variant="secondary" icon={Plus} onclick={openNewCategory} disabled={loading}>

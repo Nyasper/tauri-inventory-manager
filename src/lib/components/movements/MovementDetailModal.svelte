@@ -8,6 +8,7 @@
   import { errorMessage } from "$lib/utils/errors";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
@@ -125,16 +126,16 @@
         {#if isEditingSupplier}
           <div class="supplier-edit-box">
             <div class="supplier-edit-row">
-              <select
-                bind:value={selectedSupplierId}
-                class="supplier-select"
-                disabled={isSavingSupplier}
-                aria-label="Seleccionar proveedor"
-              >
-                {#each supplierOptions as opt}
-                  <option value={opt.value}>{opt.label}</option>
-                {/each}
-              </select>
+              <div class="supplier-select-wrap">
+                <SearchableSelect
+                  bind:value={selectedSupplierId}
+                  options={supplierOptions}
+                  disabled={isSavingSupplier}
+                  placeholder="Seleccionar proveedor"
+                  searchPlaceholder="Buscar proveedor..."
+                  ariaLabel="Seleccionar proveedor"
+                />
+              </div>
               <button
                 type="button"
                 class="action-btn save"
@@ -322,21 +323,12 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
+    max-width: 320px;
   }
 
-  .supplier-select {
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    font-size: 0.8125rem;
-    outline: none;
-    max-width: 220px;
-  }
-
-  .supplier-select:focus {
-    border-color: var(--primary);
+  .supplier-select-wrap {
+    flex: 1;
+    min-width: 0;
   }
 
   .action-btn {
