@@ -8,11 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Límites de stock configurables por producto individual: cada producto puede definir opcionalmente sus propios límites (`stock_low_threshold` y `stock_medium_threshold`), respaldados por una migración SQLite automática no destructiva en el arranque; si no se personalizan, se heredan automáticamente los límites globales del sistema.
+- Tooltips informativos en las insignias de estado de stock (`StockBadge`), indicando si la clasificación responde a límites personalizados o a los límites globales por defecto.
 - Default supplier per product: products can now define an optional default supplier (`default_supplier_id`) via `SearchableSelect` in `ProductFormModal`, backed by a non-destructive automatic SQLite schema migration on startup; creating an inbound movement for the product automatically pre-selects its default supplier in `MovementFormModal` while preserving full manual editing.
 - Navigation history controls: Back and Forward buttons added next to the view title in the top layout header (`Header.svelte`) with history state detection.
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
 - Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and dedicated `EditMovementSupplierModal` accessible directly from the movements table actions as well as `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.
 - English demo dataset (`src-tauri/src/seed_en.sql`) selectable with `bun run seed -- --lang en`: 8 categories, 15 suppliers, 50 products with 122 presentations and 121 movements, including adjustments, cancelled movements and a mix of zero, low and healthy stock levels; covered by a Rust test that validates counts, foreign keys, the single active base presentation per product and stock coherence against the movement history.
+
+### Changed
+
+- Renombrada la configuración general de umbrales a "Límites globales de stock" en `SettingsModal`, el modal de ayuda (`HelpModal`) y el manual de usuario (`MANUAL_DE_USUARIO.md`), clarificando su función como valores por defecto heredados por los productos que no cuenten con límites propios.
 
 ### Fixed
 

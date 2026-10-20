@@ -8,7 +8,7 @@
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
-  import { getStockStatus } from "$lib/utils/stock";
+  import { resolveProductStockStatus } from "$lib/utils/stock";
   import { formatNumber, formatDate } from "$lib/utils/format";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
@@ -34,8 +34,8 @@
   const PANEL_SIZE = 10;
 
   function statusOf(product: Product) {
-    return getStockStatus(
-      product.stock,
+    return resolveProductStockStatus(
+      product,
       settingsService.settings.stock_low_threshold,
       settingsService.settings.stock_medium_threshold,
     );
@@ -158,11 +158,11 @@
               <span class="row-meta">
                 <span class="row-stock">{formatNumber(product.stock)} {product.base_unit}</span>
                 <StockBadge
-                  status={getStockStatus(
-                    product.stock,
-                    settingsService.settings.stock_low_threshold,
-                    settingsService.settings.stock_medium_threshold,
-                  )}
+                  status={statusOf(product)}
+                  title={product.stock_low_threshold != null &&
+                  product.stock_medium_threshold != null
+                    ? `Límites personalizados: Bajo ≤ ${product.stock_low_threshold}, Medio ≤ ${product.stock_medium_threshold}`
+                    : `Límites globales: Bajo ≤ ${settingsService.settings.stock_low_threshold}, Medio ≤ ${settingsService.settings.stock_medium_threshold}`}
                 />
               </span>
             </button>

@@ -3,7 +3,7 @@
   import { STOCK_LABELS } from "$lib/utils/stock";
   import Badge from "./Badge.svelte";
 
-  let { status }: { status: StockStatus } = $props();
+  let { status, title }: { status: StockStatus; title?: string } = $props();
 
   const styles: Record<StockStatus, { bg: string; color: string }> = {
     out: { bg: "var(--stock-out)", color: "#ffffff" },
@@ -13,6 +13,6 @@
   };
 </script>
 
-<Badge bg={styles[status].bg} color={styles[status].color}>
+<Badge bg={styles[status].bg} color={styles[status].color} {title}>
   {STOCK_LABELS[status]}
 </Badge>

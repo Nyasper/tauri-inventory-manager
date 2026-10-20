@@ -18,7 +18,7 @@
   import ProductNameCell from "$lib/components/products/ProductNameCell.svelte";
   import ProductCategoryCell from "$lib/components/products/ProductCategoryCell.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import { getStockStatus } from "$lib/utils/stock";
+  import { resolveProductStockStatus } from "$lib/utils/stock";
   import { formatNumber } from "$lib/utils/format";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -45,11 +45,18 @@
   });
 
   function statusOf(product: Product) {
-    return getStockStatus(
-      product.stock,
+    return resolveProductStockStatus(
+      product,
       settingsService.settings.stock_low_threshold,
       settingsService.settings.stock_medium_threshold,
     );
+  }
+
+  function thresholdTitle(product: Product): string {
+    if (product.stock_low_threshold != null && product.stock_medium_threshold != null) {
+      return `Límites personalizados: Bajo ≤ ${product.stock_low_threshold}, Medio ≤ ${product.stock_medium_threshold}`;
+    }
+    return `Límites globales: Bajo ≤ ${settingsService.settings.stock_low_threshold}, Medio ≤ ${settingsService.settings.stock_medium_threshold}`;
   }
 
   function statusRank(product: Product): number {
@@ -87,7 +94,11 @@
       header: () => "Estado",
       enableGlobalFilter: false,
       meta: { align: "center", width: "14%" },
-      cell: (info) => renderComponent(StockBadge, { status: statusOf(info.row.original) }),
+      cell: (info) =>
+        renderComponent(StockBadge, {
+          status: statusOf(info.row.original),
+          title: thresholdTitle(info.row.original),
+        }),
     }),
   ]);
 

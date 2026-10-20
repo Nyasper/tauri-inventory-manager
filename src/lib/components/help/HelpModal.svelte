@@ -271,22 +271,27 @@
                 <td><strong>Bajo</strong></td>
                 <td><StockBadge status="low" /></td>
                 <td>0 &lt; Stock &le; Límite bajo</td>
-                <td>Nivel crítico; requiere reposición pronta.</td>
+                <td>Nivel crítico; requiere reposición pronta (límite propio o global).</td>
               </tr>
               <tr>
                 <td><strong>Medio</strong></td>
                 <td><StockBadge status="medium" /></td>
                 <td>Límite bajo &lt; Stock &le; Límite medio</td>
-                <td>Aviso preventivo de reposición regular.</td>
+                <td>Aviso preventivo de reposición regular (límite propio o global).</td>
               </tr>
               <tr>
                 <td><strong>Alto</strong></td>
                 <td><StockBadge status="high" /></td>
                 <td>Stock &gt; Límite medio</td>
-                <td>Existencias óptimas y suficientes.</td>
+                <td>Existencias óptimas y suficientes (límite propio o global).</td>
               </tr>
             </tbody>
           </table>
+          <p class="hint">
+            Cada producto puede definir sus propios límites individuales desde su ventana de
+            creación o edición. Si no se personalizan, se aplican automáticamente los
+            <strong>Límites Globales de Stock</strong> definidos en Configuración.
+          </p>
 
           <h3>Presentaciones y Factores de Conversión</h3>
           <p>
@@ -503,11 +508,12 @@
 
           <div class="card-grid">
             <div class="info-card">
-              <h3>Límites de Stock</h3>
+              <h3>Límites Globales de Stock</h3>
               <p>
-                Configura los límites numéricos de stock <strong>Bajo</strong> y
-                <strong>Medio</strong>. Debe cumplirse la relación:
-                <code>0 &le; Bajo &lt; Medio</code>.
+                Configura los límites numéricos globales de stock <strong>Bajo</strong> y
+                <strong>Medio</strong> aplicados por defecto a todos los productos. Debe cumplirse:
+                <code>0 &le; Bajo &lt; Medio</code>. Cada producto puede además personalizar sus
+                propios límites desde su formulario de edición.
               </p>
             </div>
 

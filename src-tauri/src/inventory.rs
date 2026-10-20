@@ -173,6 +173,7 @@ struct LegacySchema {
     product_required: bool,
     supplier_set_null: bool,
     missing_default_supplier: bool,
+    missing_stock_thresholds: bool,
 }
 
 impl LegacySchema {
@@ -182,6 +183,7 @@ impl LegacySchema {
             || self.product_required
             || !self.supplier_set_null
             || self.missing_default_supplier
+            || self.missing_stock_thresholds
     }
 }
 
@@ -213,15 +215,19 @@ async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
     let prod_columns = sqlx::query("PRAGMA table_info(products)")
         .fetch_all(db)
         .await?;
-    let missing_default_supplier = !prod_columns.iter().any(|row| {
-        row.get::<String, _>("name") == "default_supplier_id"
-    });
+    let missing_default_supplier = !prod_columns
+        .iter()
+        .any(|row| row.get::<String, _>("name") == "default_supplier_id");
+    let missing_stock_thresholds = !prod_columns
+        .iter()
+        .any(|row| row.get::<String, _>("name") == "stock_low_threshold");
     Ok(LegacySchema {
         person_columns,
         persons_table,
         product_required,
         supplier_set_null,
         missing_default_supplier,
+        missing_stock_thresholds,
     })
 }
 
@@ -239,6 +245,14 @@ async fn migrate_legacy_schema(db: &Db, legacy: &LegacySchema) -> Result<(), sql
     }
     if legacy.missing_default_supplier {
         sqlx::query("ALTER TABLE products ADD COLUMN default_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL")
+            .execute(db)
+            .await?;
+    }
+    if legacy.missing_stock_thresholds {
+        sqlx::query("ALTER TABLE products ADD COLUMN stock_low_threshold REAL")
+            .execute(db)
+            .await?;
+        sqlx::query("ALTER TABLE products ADD COLUMN stock_medium_threshold REAL")
             .execute(db)
             .await?;
     }
@@ -345,12 +359,14 @@ pub struct PresentationInput {
 }
 #[derive(Deserialize)]
 pub struct ProductInput {
-    id: Option<i64>,
-    name: String,
-    description: Option<String>,
-    category_id: Option<i64>,
-    default_supplier_id: Option<i64>,
-    presentations: Vec<PresentationInput>,
+    pub id: Option<i64>,
+    pub name: String,
+    pub description: Option<String>,
+    pub category_id: Option<i64>,
+    pub default_supplier_id: Option<i64>,
+    pub stock_low_threshold: Option<f64>,
+    pub stock_medium_threshold: Option<f64>,
+    pub presentations: Vec<PresentationInput>,
 }
 #[tauri::command]
 pub async fn save_product(
@@ -362,6 +378,19 @@ pub async fn save_product(
 }
 async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandError> {
     let (display, key) = name(&input.name)?;
+    if let (Some(low), Some(med)) = (input.stock_low_threshold, input.stock_medium_threshold) {
+        if low < 0.0 || low >= med || med > 1_000_000_000.0 {
+            return Err(CommandError::new(
+                "invalid_thresholds",
+                "Los límites de stock deben cumplir: 0 ≤ bajo < medio ≤ 1.000.000.000.",
+            ));
+        }
+    } else if input.stock_low_threshold.is_some() || input.stock_medium_threshold.is_some() {
+        return Err(CommandError::new(
+            "invalid_thresholds",
+            "Debes definir ambos límites de stock (bajo y medio) o dejarlos vacíos para usar los globales.",
+        ));
+    }
     if input.presentations.is_empty()
         || input
             .presentations
@@ -396,13 +425,12 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
     }
     let mut tx = db.begin().await.map_err(error)?;
     if let Some(supp_id) = input.default_supplier_id {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM suppliers WHERE id=? AND archived=0",
-        )
-        .bind(supp_id)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(error)?;
+        let count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM suppliers WHERE id=? AND archived=0")
+                .bind(supp_id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(error)?;
         if count == 0 {
             return Err(CommandError::new(
                 "unavailable",
@@ -426,8 +454,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 ));
             }
         }
-        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,default_supplier_id=?,updated_at=datetime('now') WHERE id=?")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
+        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,default_supplier_id=?,stock_low_threshold=?,stock_medium_threshold=?,updated_at=datetime('now') WHERE id=?")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
         id
     } else {
         if !ids.is_empty() {
@@ -436,8 +464,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 "Las presentaciones nuevas no deben tener identificador.",
             ));
         }
-        sqlx::query("INSERT INTO products(name,name_key,description,category_id,default_supplier_id,base_presentation_id) VALUES(?,?,?,?,?, -1)")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
+        sqlx::query("INSERT INTO products(name,name_key,description,category_id,default_supplier_id,stock_low_threshold,stock_medium_threshold,base_presentation_id) VALUES(?,?,?,?,?,?,?, -1)")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
     };
     // Retire omitted presentations; historical references remain valid.
     sqlx::query("UPDATE presentations SET archived=1 WHERE product_id=?")
@@ -906,16 +934,14 @@ pub(crate) async fn update_movement_supplier_db(
 
     let supplier_name = if let Some(sid) = supplier_id {
         Some(
-            sqlx::query_scalar::<_, String>(
-                "SELECT name FROM suppliers WHERE id=? AND archived=0",
-            )
-            .bind(sid)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(error)?
-            .ok_or_else(|| {
-                CommandError::new("unavailable", "El proveedor no está disponible.")
-            })?,
+            sqlx::query_scalar::<_, String>("SELECT name FROM suppliers WHERE id=? AND archived=0")
+                .bind(sid)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(error)?
+                .ok_or_else(|| {
+                    CommandError::new("unavailable", "El proveedor no está disponible.")
+                })?,
         )
     } else {
         None
@@ -1732,6 +1758,8 @@ mod tests {
             description: None,
             category_id: None,
             default_supplier_id: None,
+            stock_low_threshold: None,
+            stock_medium_threshold: None,
             presentations: vec![PresentationInput {
                 id: pres,
                 name: "Unidad".into(),
@@ -3423,7 +3451,10 @@ mod tests {
             let rows = list_products_db(&db, false).await.unwrap();
             let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
             assert_eq!(found.default_supplier_id, Some(supplier));
-            assert_eq!(found.default_supplier_name.as_deref(), Some("Distribuidora"));
+            assert_eq!(
+                found.default_supplier_name.as_deref(),
+                Some("Distribuidora")
+            );
 
             // Actualizar a None (quitar proveedor por defecto)
             let mut update_prod = product(Some(prod_id), "Yerba", None);
@@ -3453,6 +3484,128 @@ mod tests {
                 save_product_db(&db, archived_supp).await.unwrap_err().code,
                 "unavailable"
             );
+        });
+    }
+
+    #[test]
+    fn product_stock_thresholds_can_be_configured_updated_and_migrated() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::list_products_db;
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+
+            // 1. Guardar producto con umbrales personalizados
+            let mut prod = product(None, "Arroz", None);
+            prod.stock_low_threshold = Some(3.0);
+            prod.stock_medium_threshold = Some(12.0);
+            let prod_id = save_product_db(&db, prod).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.stock_low_threshold, Some(3.0));
+            assert_eq!(found.stock_medium_threshold, Some(12.0));
+
+            // 2. Modificar umbrales
+            let mut update_prod = product(Some(prod_id), "Arroz", None);
+            update_prod.stock_low_threshold = Some(6.0);
+            update_prod.stock_medium_threshold = Some(24.0);
+            save_product_db(&db, update_prod).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.stock_low_threshold, Some(6.0));
+            assert_eq!(found.stock_medium_threshold, Some(24.0));
+
+            // 3. Volver a umbrales globales (None, None)
+            let mut reset_prod = product(Some(prod_id), "Arroz", None);
+            reset_prod.stock_low_threshold = None;
+            reset_prod.stock_medium_threshold = None;
+            save_product_db(&db, reset_prod).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.stock_low_threshold, None);
+            assert_eq!(found.stock_medium_threshold, None);
+
+            // 4. Rechazar bajo >= medio
+            let mut invalid_range = product(None, "Fideos", None);
+            invalid_range.stock_low_threshold = Some(15.0);
+            invalid_range.stock_medium_threshold = Some(10.0);
+            assert_eq!(
+                save_product_db(&db, invalid_range).await.unwrap_err().code,
+                "invalid_thresholds"
+            );
+
+            // 5. Rechazar bajo negativo
+            let mut invalid_negative = product(None, "Sal", None);
+            invalid_negative.stock_low_threshold = Some(-1.0);
+            invalid_negative.stock_medium_threshold = Some(10.0);
+            assert_eq!(
+                save_product_db(&db, invalid_negative)
+                    .await
+                    .unwrap_err()
+                    .code,
+                "invalid_thresholds"
+            );
+
+            // 6. Rechazar definir sólo uno de los dos límites
+            let mut only_low = product(None, "Azúcar", None);
+            only_low.stock_low_threshold = Some(5.0);
+            assert_eq!(
+                save_product_db(&db, only_low).await.unwrap_err().code,
+                "invalid_thresholds"
+            );
+
+            // 7. Migración desde base de datos heredada sin columnas de umbrales
+            let dir = temp_dir("migrate-legacy-thresholds");
+            std::fs::create_dir_all(&dir).unwrap();
+            let file = dir.join("inventory.db");
+            let legacy_sql = r#"
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE,
+                    description TEXT, category_id INTEGER, default_supplier_id INTEGER,
+                    base_presentation_id INTEGER NOT NULL, stock REAL NOT NULL DEFAULT 0,
+                    archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+                CREATE TABLE presentations (
+                    id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+                    name TEXT NOT NULL, name_key TEXT NOT NULL, factor REAL NOT NULL,
+                    archived INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(product_id, id)
+                );
+                CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, color TEXT, icon TEXT);
+                CREATE TABLE suppliers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, contact TEXT, notes TEXT, archived INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE movements (
+                    id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id), type TEXT NOT NULL,
+                    quantity REAL NOT NULL, presentation_id INTEGER, presentation_name TEXT NOT NULL,
+                    product_name TEXT NOT NULL, factor REAL NOT NULL, base_quantity REAL NOT NULL,
+                    supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT, notes TEXT,
+                    reason TEXT, kind TEXT NOT NULL DEFAULT 'regular', created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    cancelled_at TEXT, cancellation_reason TEXT
+                );
+                CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO products(id, name, name_key, base_presentation_id, stock) VALUES(1, 'Harina', 'harina', 1, 10);
+                INSERT INTO presentations(id, product_id, name, name_key, factor) VALUES(1, 1, 'Kilo', 'kilo', 1.0);
+            "#;
+            {
+                let options = SqliteConnectOptions::new()
+                    .filename(&file)
+                    .create_if_missing(true);
+                let raw = SqlitePoolOptions::new()
+                    .connect_with(options)
+                    .await
+                    .unwrap();
+                sqlx::raw_sql(legacy_sql).execute(&raw).await.unwrap();
+                raw.close().await;
+            }
+            // Abrir con connect migra automáticamente
+            let migrated = connect(&file).await.unwrap();
+            let rows = list_products_db(&migrated, false).await.unwrap();
+            let harina = rows.into_iter().find(|p| p.id == 1).unwrap();
+            assert_eq!(harina.name, "Harina");
+            assert_eq!(harina.stock_low_threshold, None);
+            assert_eq!(harina.stock_medium_threshold, None);
         });
     }
 }

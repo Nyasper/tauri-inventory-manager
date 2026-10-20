@@ -11,13 +11,13 @@
   import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
   import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { settingsService } from "$lib/services/settings.service.svelte";
   import CategoryFormModal from "$lib/components/categories/CategoryFormModal.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
-  import Select from "$lib/components/ui/Select.svelte";
   import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { Plus, Trash } from "@lucide/svelte";
@@ -44,13 +44,35 @@
     initial?.default_supplier_id != null ? String(initial.default_supplier_id) : "",
   );
   let presentations = $state<DraftPresentation[]>([newPresentation("Unidad", 1)]);
+  const hasCustomInitial =
+    initial?.stock_low_threshold != null && initial?.stock_medium_threshold != null;
+  let useCustomThresholds = $state(hasCustomInitial);
+  let customLow = $state(
+    initial?.stock_low_threshold != null
+      ? String(initial.stock_low_threshold)
+      : String(settingsService.settings.stock_low_threshold),
+  );
+  let customMedium = $state(
+    initial?.stock_medium_threshold != null
+      ? String(initial.stock_medium_threshold)
+      : String(settingsService.settings.stock_medium_threshold),
+  );
   let saving = $state(false);
   let loading = $state(!!initial?.id);
   let loadFailed = $state(false);
   let error = $state<AppError | null>(null);
 
   const snapshot = () =>
-    JSON.stringify({ name, description, categoryId, defaultSupplierId, presentations });
+    JSON.stringify({
+      name,
+      description,
+      categoryId,
+      defaultSupplierId,
+      presentations,
+      useCustomThresholds,
+      customLow: useCustomThresholds ? customLow : null,
+      customMedium: useCustomThresholds ? customMedium : null,
+    });
   let baseline = $state<string | null>(initial?.id ? null : snapshot());
   const dirty = $derived(baseline !== null && snapshot() !== baseline);
 
@@ -109,6 +131,19 @@
     if (presentations.filter((p) => Number(p.factor) === 1).length !== 1) {
       return "Debe haber exactamente una presentación base con factor 1.";
     }
+    if (useCustomThresholds) {
+      const lowNum = Number(customLow);
+      const medNum = Number(customMedium);
+      if (
+        !Number.isFinite(lowNum) ||
+        !Number.isFinite(medNum) ||
+        lowNum < 0 ||
+        lowNum >= medNum ||
+        medNum > 1_000_000_000
+      ) {
+        return "Los límites de stock deben cumplir: 0 ≤ bajo < medio ≤ 1.000.000.000.";
+      }
+    }
     return "";
   });
 
@@ -132,6 +167,8 @@
       description: description.trim() || null,
       category_id: categoryId ? Number(categoryId) : null,
       default_supplier_id: defaultSupplierId ? Number(defaultSupplierId) : null,
+      stock_low_threshold: useCustomThresholds ? Number(customLow) : null,
+      stock_medium_threshold: useCustomThresholds ? Number(customMedium) : null,
       presentations: presentations.map(({ id, name: presentationName, factor }) => ({
         id,
         name: presentationName.trim(),
@@ -206,6 +243,44 @@
           disabled={loading}
         />
       </div>
+    </div>
+
+    <div class="thresholds-group">
+      <label class="checkbox-label">
+        <input type="checkbox" bind:checked={useCustomThresholds} disabled={loading} />
+        <span>Personalizar límites de stock para este producto</span>
+      </label>
+      {#if useCustomThresholds}
+        <div class="grid thresholds-grid">
+          <div>
+            <Input
+              label="Límite bajo"
+              type="number"
+              bind:value={customLow}
+              placeholder={`Por defecto global: ${settingsService.settings.stock_low_threshold}`}
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <Input
+              label="Límite medio"
+              type="number"
+              bind:value={customMedium}
+              placeholder={`Por defecto global: ${settingsService.settings.stock_medium_threshold}`}
+              disabled={loading}
+            />
+          </div>
+        </div>
+        <p class="hint">
+          Sobrescribe los límites globales ({settingsService.settings.stock_low_threshold} y {settingsService
+            .settings.stock_medium_threshold}) para la clasificación de este producto.
+        </p>
+      {:else}
+        <p class="hint">
+          Usa los límites globales por defecto: Bajo &le; {settingsService.settings
+            .stock_low_threshold}, Medio &le; {settingsService.settings.stock_medium_threshold}.
+        </p>
+      {/if}
     </div>
 
     <section class="presentations">
@@ -387,6 +462,31 @@
   .error {
     color: var(--danger);
     font-size: 0.8125rem;
+  }
+
+  .thresholds-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+
+  .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .thresholds-grid {
+    margin-top: 0.25rem;
   }
 
   .validation {

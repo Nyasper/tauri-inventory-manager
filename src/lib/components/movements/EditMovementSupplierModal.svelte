@@ -28,9 +28,7 @@
     })),
   ]);
 
-  const dirty = $derived(
-    supplierId !== (movement.supplier_id ? String(movement.supplier_id) : ""),
-  );
+  const dirty = $derived(supplierId !== (movement.supplier_id ? String(movement.supplier_id) : ""));
 
   async function save() {
     saving = true;

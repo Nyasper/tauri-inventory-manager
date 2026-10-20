@@ -21,6 +21,8 @@ export interface Product {
   default_supplier_id?: number | null;
   default_supplier_name?: string | null;
   stock: number;
+  stock_low_threshold?: number | null;
+  stock_medium_threshold?: number | null;
   category_name?: string | null;
   category_color?: string | null;
   category_icon?: string | null;

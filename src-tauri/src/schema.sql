@@ -14,9 +14,15 @@ CREATE TABLE IF NOT EXISTS products (
  default_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
  base_presentation_id INTEGER NOT NULL,
  stock REAL NOT NULL DEFAULT 0 CHECK(stock >= 0 AND stock <= 1000000000),
+ stock_low_threshold REAL CHECK(stock_low_threshold IS NULL OR (stock_low_threshold >= 0 AND stock_low_threshold <= 1000000000)),
+ stock_medium_threshold REAL CHECK(stock_medium_threshold IS NULL OR (stock_medium_threshold >= 0 AND stock_medium_threshold <= 1000000000)),
  archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')),
- FOREIGN KEY(id, base_presentation_id) REFERENCES presentations(product_id,id) DEFERRABLE INITIALLY DEFERRED
+ FOREIGN KEY(id, base_presentation_id) REFERENCES presentations(product_id,id) DEFERRABLE INITIALLY DEFERRED,
+ CHECK(
+  (stock_low_threshold IS NULL AND stock_medium_threshold IS NULL) OR
+  (stock_low_threshold IS NOT NULL AND stock_medium_threshold IS NOT NULL AND stock_low_threshold < stock_medium_threshold)
+ )
 );
 CREATE TABLE IF NOT EXISTS presentations (
  id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),

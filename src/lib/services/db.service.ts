@@ -25,6 +25,8 @@ export interface ProductInput {
   description: string | null;
   category_id: number | null;
   default_supplier_id?: number | null;
+  stock_low_threshold?: number | null;
+  stock_medium_threshold?: number | null;
   presentations: PresentationInput[];
 }
 

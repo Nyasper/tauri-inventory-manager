@@ -170,23 +170,28 @@
 <Modal title="Configuración" onClose={() => modalService.close()} {dirty} {busy} width="md">
   <div class="settings">
     <section>
-      <h3>Límites de stock</h3>
-      <p class="hint">Define los límites para clasificar el estado de stock de cada producto.</p>
+      <h3>Límites globales de stock</h3>
+      <p class="hint">
+        Define los límites globales por defecto para clasificar el estado de stock. Los productos
+        que no tengan límites individuales configurados usarán estos valores.
+      </p>
       <div class="thresholds">
         <div>
-          <Input label="Límite bajo" type="number" bind:value={low} />
+          <Input label="Límite bajo global" type="number" bind:value={low} />
         </div>
         <div>
-          <Input label="Límite medio" type="number" bind:value={medium} />
+          <Input label="Límite medio global" type="number" bind:value={medium} />
         </div>
       </div>
       <div class="section-action">
         <Button size="sm" disabled={!thresholdsValid} onclick={saveThresholds}
-          >Guardar límites</Button
+          >Guardar límites globales</Button
         >
       </div>
       {#if !thresholdsValid}
-        <p class="validation" role="status">Los límites deben cumplir: 0 ≤ bajo &lt; medio.</p>
+        <p class="validation" role="status">
+          Los límites globales deben cumplir: 0 ≤ bajo &lt; medio.
+        </p>
       {/if}
     </section>
 

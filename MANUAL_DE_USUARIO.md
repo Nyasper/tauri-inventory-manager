@@ -45,7 +45,7 @@ Bienvenido al **Manual de Usuario oficial de Inventory Manager**, la solución d
    - [Gestión de Múltiples Líneas de Contacto](#gestión-de-múltiples-líneas-de-contacto)
    - [Archivado y Restauración de Proveedores](#archivado-y-restauración-de-proveedores)
 8. [Configuración y Personalización del Sistema](#8-configuración-y-personalización-del-sistema)
-   - [Límites de Stock](#límites-de-stock)
+   - [Límites Globales de Stock](#límites-globales-de-stock)
    - [Paleta de Colores de Acento](#paleta-de-colores-de-acento)
    - [Vista por Defecto al Iniciar](#vista-por-defecto-al-iniciar)
    - [Movimientos por Página](#movimientos-por-página)
@@ -226,15 +226,17 @@ El stock de cada producto se clasifica automáticamente en 4 niveles según los 
 | **Alto** | $\text{Stock} > \text{Límite Medio}$ | Transparente / Verde sutil | Existencias óptimas y abundantes. |
 
 > [!NOTE]
-> Los valores por defecto de los límites son **5** para Bajo y **20** para Medio, pero pueden personalizarse a cualquier valor en la Configuración del sistema.
+> Los valores por defecto de los límites globales son **5** para Bajo y **20** para Medio, pero pueden personalizarse a nivel global en la Configuración del sistema o de forma individual para cada producto específico.
 
 ### Creación de un Producto Nuevo
 Para crear un artículo, haga clic en el botón **"Nuevo producto"**:
 
 1. **Nombre**: Denominación del producto (obligatorio, de 1 a 200 caracteres). El sistema normaliza automáticamente los espacios en blanco.
 2. **Categoría**: Seleccione una categoría preconfigurada en el desplegable (o elija "Sin categoría").
-3. **Observaciones**: Campo multilínea opcional para registrar especificaciones técnicas, código interno, ubicación en almacén, etc.
-4. **Presentaciones**: Definición de cómo se fracciona o empaqueta el producto.
+3. **Proveedor por defecto (opcional)**: Asigne el proveedor habitual para acelerar la carga de compras y reposiciones.
+4. **Observaciones**: Campo multilínea opcional para registrar especificaciones técnicas, código interno, ubicación en almacén, etc.
+5. **Límites de Stock Individuales (opcional)**: Active la casilla *"Personalizar límites de stock para este producto"* si desea definir niveles de alerta críticos específicos para este artículo (ej. para productos de baja o alta rotación). Si no se activa, el producto heredará automáticamente los **Límites Globales de Stock**.
+6. **Presentaciones**: Definición de cómo se fracciona o empaqueta el producto.
 
 ### Presentaciones y Factores de Conversión (Múltiples Unidades)
 Un producto puede comprarse, almacenarse y retirarse en diferentes envases o formatos (por ejemplo: por unidad individual, por six-pack, por caja de 24 o por pallet de 480).
@@ -435,9 +437,9 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 +-------------------------------------------------------------------+
 | CONFIGURACIÓN                                                 [X] |
 +-------------------------------------------------------------------+
-| LÍMITES DE STOCK                                                  |
+| LÍMITES GLOBALES DE STOCK                                         |
 | Límite bajo: [ 5.00 ]         Límite medio: [ 20.00 ]             |
-|                                            [Guardar límites]      |
+|                                     [Guardar límites globales]     |
 |                                                                   |
 | COLOR DE ACENTO                                                   |
 | (• Azul) (Violeta) (Esmeralda) (Ámbar) (Rosa) (Teal) (Gris)       |
@@ -460,13 +462,13 @@ Haga clic en el botón **Ajustes (⚙)** ubicado en la parte inferior de la barr
 +-------------------------------------------------------------------+
 ```
 
-### Límites de Stock
-Permite parametrizar las reglas que determinan las insignias de estado de todos los productos:
-- **Límite bajo**: Nivel a partir del cual el stock se considera crítico (ej. 5 unidades).
-- **Límite medio**: Nivel a partir del cual el stock se considera en aviso preventivo (ej. 20 unidades).
+### Límites Globales de Stock
+Permite parametrizar las reglas por defecto que determinan las insignias de estado de los productos (salvo que un producto tenga definidos sus propios límites individuales):
+- **Límite bajo global**: Nivel a partir del cual el stock se considera crítico (ej. 5 unidades).
+- **Límite medio global**: Nivel a partir del cual el stock se considera en aviso preventivo (ej. 20 unidades).
 - **Validación matemática**: Debe cumplirse siempre la regla:
   $$0 \le \text{Límite Bajo} < \text{Límite Medio} \le 1.000.000.000$$
-- Pulse **"Guardar límites"** para aplicar los cambios en todo el inventario.
+- Pulse **"Guardar límites globales"** para aplicar los cambios a todos los productos que utilicen la configuración estándar.
 
 ### Paleta de Colores de Acento
 Personalice la identidad visual de la aplicación según sus preferencias estéticas o institucionales. Se ofrecen 7 temas cromáticos diseñados para máxima legibilidad tanto en modo claro como en modo oscuro:

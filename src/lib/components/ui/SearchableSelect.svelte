@@ -62,7 +62,7 @@
 
   $effect(() => {
     // Escuchar cambios en la búsqueda para resetear el índice resaltado
-    searchQuery;
+    void searchQuery;
     highlightedIndex = 0;
   });
 

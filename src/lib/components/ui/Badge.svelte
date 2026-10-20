@@ -6,15 +6,22 @@
     bg,
     color,
     uniform = false,
+    title,
   }: {
     children: Snippet;
     bg?: string;
     color?: string;
     uniform?: boolean;
+    title?: string;
   } = $props();
 </script>
 
-<span class={["badge", { uniform }]} style:background={bg ?? null} style:color={color ?? null}>
+<span
+  class={["badge", { uniform }]}
+  style:background={bg ?? null}
+  style:color={color ?? null}
+  {title}
+>
   {@render children()}
 </span>
 

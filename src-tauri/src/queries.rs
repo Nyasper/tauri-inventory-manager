@@ -43,6 +43,8 @@ pub struct ProductRow {
     pub default_supplier_id: Option<i64>,
     pub default_supplier_name: Option<String>,
     pub stock: f64,
+    pub stock_low_threshold: Option<f64>,
+    pub stock_medium_threshold: Option<f64>,
     pub archived: i64,
     pub base_unit: Option<String>,
     pub category_name: Option<String>,
@@ -144,7 +146,8 @@ pub(crate) async fn list_products_db(
     archived: bool,
 ) -> Result<Vec<ProductRow>, CommandError> {
     sqlx::query_as::<_, ProductRow>(
-        "SELECT p.id, p.name, p.description, p.category_id, p.default_supplier_id, p.stock, p.archived,
+        "SELECT p.id, p.name, p.description, p.category_id, p.default_supplier_id, p.stock,
+                p.stock_low_threshold, p.stock_medium_threshold, p.archived,
                 b.name AS base_unit, c.name AS category_name,
                 c.color AS category_color, c.icon AS category_icon,
                 s.name AS default_supplier_name
