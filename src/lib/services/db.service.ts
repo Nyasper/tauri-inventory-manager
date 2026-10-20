@@ -24,6 +24,7 @@ export interface ProductInput {
   name: string;
   description: string | null;
   category_id: number | null;
+  default_supplier_id?: number | null;
   presentations: PresentationInput[];
 }
 

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Default supplier per product: products can now define an optional default supplier (`default_supplier_id`) via `SearchableSelect` in `ProductFormModal`, backed by a non-destructive automatic SQLite schema migration on startup; creating an inbound movement for the product automatically pre-selects its default supplier in `MovementFormModal` while preserving full manual editing.
 - Navigation history controls: Back and Forward buttons added next to the view title in the top layout header (`Header.svelte`) with history state detection.
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
 - Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and dedicated `EditMovementSupplierModal` accessible directly from the movements table actions as well as `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.

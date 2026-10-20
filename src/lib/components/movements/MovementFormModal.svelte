@@ -131,6 +131,15 @@
       return;
     }
 
+    const product = productsService.items.find((p) => p.id === pid);
+    if (type === "in") {
+      if (product?.default_supplier_id) {
+        supplierId = String(product.default_supplier_id);
+      } else if (!initialSupplierId || pid !== Number(initialProductId)) {
+        supplierId = "";
+      }
+    }
+
     let cancelled = false;
     loading = true;
     presentationId = "";
@@ -161,6 +170,12 @@
     return () => {
       cancelled = true;
     };
+  });
+
+  $effect(() => {
+    if (type === "in" && !supplierId && selectedProduct?.default_supplier_id) {
+      supplierId = String(selectedProduct.default_supplier_id);
+    }
   });
 
   function openNewSupplier() {

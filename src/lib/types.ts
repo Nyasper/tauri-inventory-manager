@@ -18,6 +18,8 @@ export interface Product {
   name: string;
   description: string | null;
   category_id: number | null;
+  default_supplier_id?: number | null;
+  default_supplier_name?: string | null;
   stock: number;
   category_name?: string | null;
   category_color?: string | null;

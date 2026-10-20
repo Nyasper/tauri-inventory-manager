@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS products (
  id INTEGER PRIMARY KEY, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
  name_key TEXT NOT NULL UNIQUE CHECK(length(name_key)>0), description TEXT,
  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+ default_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
  base_presentation_id INTEGER NOT NULL,
  stock REAL NOT NULL DEFAULT 0 CHECK(stock >= 0 AND stock <= 1000000000),
  archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),

@@ -172,6 +172,7 @@ struct LegacySchema {
     persons_table: bool,
     product_required: bool,
     supplier_set_null: bool,
+    missing_default_supplier: bool,
 }
 
 impl LegacySchema {
@@ -180,6 +181,7 @@ impl LegacySchema {
             || self.persons_table
             || self.product_required
             || !self.supplier_set_null
+            || self.missing_default_supplier
     }
 }
 
@@ -208,11 +210,18 @@ async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
         row.get::<String, _>("from") == "supplier_id"
             && row.get::<String, _>("on_delete") == "SET NULL"
     });
+    let prod_columns = sqlx::query("PRAGMA table_info(products)")
+        .fetch_all(db)
+        .await?;
+    let missing_default_supplier = !prod_columns.iter().any(|row| {
+        row.get::<String, _>("name") == "default_supplier_id"
+    });
     Ok(LegacySchema {
         person_columns,
         persons_table,
         product_required,
         supplier_set_null,
+        missing_default_supplier,
     })
 }
 
@@ -225,6 +234,11 @@ async fn migrate_legacy_schema(db: &Db, legacy: &LegacySchema) -> Result<(), sql
     }
     if legacy.persons_table {
         sqlx::query("DROP TABLE IF EXISTS responsible_persons")
+            .execute(db)
+            .await?;
+    }
+    if legacy.missing_default_supplier {
+        sqlx::query("ALTER TABLE products ADD COLUMN default_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL")
             .execute(db)
             .await?;
     }
@@ -335,6 +349,7 @@ pub struct ProductInput {
     name: String,
     description: Option<String>,
     category_id: Option<i64>,
+    default_supplier_id: Option<i64>,
     presentations: Vec<PresentationInput>,
 }
 #[tauri::command]
@@ -380,6 +395,21 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
         }
     }
     let mut tx = db.begin().await.map_err(error)?;
+    if let Some(supp_id) = input.default_supplier_id {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM suppliers WHERE id=? AND archived=0",
+        )
+        .bind(supp_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(error)?;
+        if count == 0 {
+            return Err(CommandError::new(
+                "unavailable",
+                "El proveedor por defecto no está disponible.",
+            ));
+        }
+    }
     let id = if let Some(id) = input.id {
         let row=sqlx::query("SELECT base_presentation_id, EXISTS(SELECT 1 FROM movements WHERE product_id=products.id) AS used FROM products WHERE id=? AND archived=0")
             .bind(id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or_else(|| CommandError::new("unavailable", "El producto no está disponible."))?;
@@ -396,8 +426,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 ));
             }
         }
-        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,updated_at=datetime('now') WHERE id=?")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
+        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,default_supplier_id=?,updated_at=datetime('now') WHERE id=?")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
         id
     } else {
         if !ids.is_empty() {
@@ -406,8 +436,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 "Las presentaciones nuevas no deben tener identificador.",
             ));
         }
-        sqlx::query("INSERT INTO products(name,name_key,description,category_id,base_presentation_id) VALUES(?,?,?,?, -1)")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
+        sqlx::query("INSERT INTO products(name,name_key,description,category_id,default_supplier_id,base_presentation_id) VALUES(?,?,?,?,?, -1)")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
     };
     // Retire omitted presentations; historical references remain valid.
     sqlx::query("UPDATE presentations SET archived=1 WHERE product_id=?")
@@ -1701,6 +1731,7 @@ mod tests {
             name: name.into(),
             description: None,
             category_id: None,
+            default_supplier_id: None,
             presentations: vec![PresentationInput {
                 id: pres,
                 name: "Unidad".into(),
@@ -3370,6 +3401,57 @@ mod tests {
                     .unwrap_err()
                     .code,
                 "supplier_not_allowed"
+            );
+        });
+    }
+
+    #[test]
+    fn product_default_supplier_can_be_saved_updated_and_migrated() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::list_products_db;
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Distribuidora"))
+                .await
+                .unwrap();
+
+            // Guardar producto con proveedor por defecto
+            let mut prod = product(None, "Yerba", None);
+            prod.default_supplier_id = Some(supplier);
+            let prod_id = save_product_db(&db, prod).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.default_supplier_id, Some(supplier));
+            assert_eq!(found.default_supplier_name.as_deref(), Some("Distribuidora"));
+
+            // Actualizar a None (quitar proveedor por defecto)
+            let mut update_prod = product(Some(prod_id), "Yerba", None);
+            update_prod.default_supplier_id = None;
+            save_product_db(&db, update_prod).await.unwrap();
+
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.default_supplier_id, None);
+            assert_eq!(found.default_supplier_name, None);
+
+            // Rechaza proveedor inexistente
+            let mut invalid = product(None, "Café", None);
+            invalid.default_supplier_id = Some(9999);
+            assert_eq!(
+                save_product_db(&db, invalid).await.unwrap_err().code,
+                "unavailable"
+            );
+
+            // Rechaza proveedor archivado
+            archive_record_db(&db, "supplier".into(), supplier, false)
+                .await
+                .unwrap();
+            let mut archived_supp = product(None, "Té", None);
+            archived_supp.default_supplier_id = Some(supplier);
+            assert_eq!(
+                save_product_db(&db, archived_supp).await.unwrap_err().code,
+                "unavailable"
             );
         });
     }

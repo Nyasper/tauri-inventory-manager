@@ -10,6 +10,7 @@
   import { toAppError, type AppError } from "$lib/utils/errors";
   import { productsService } from "$lib/services/products.service.svelte";
   import { categoriesService } from "$lib/services/categories.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
   import CategoryFormModal from "$lib/components/categories/CategoryFormModal.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
@@ -34,16 +35,22 @@
     return { key: nextPresentationKey++, name, factor };
   }
 
+  suppliersService.load();
+
   let name = $state(initial?.name ?? "");
   let description = $state(initial?.description ?? "");
   let categoryId = $state(initial?.category_id != null ? String(initial.category_id) : "");
+  let defaultSupplierId = $state(
+    initial?.default_supplier_id != null ? String(initial.default_supplier_id) : "",
+  );
   let presentations = $state<DraftPresentation[]>([newPresentation("Unidad", 1)]);
   let saving = $state(false);
   let loading = $state(!!initial?.id);
   let loadFailed = $state(false);
   let error = $state<AppError | null>(null);
 
-  const snapshot = () => JSON.stringify({ name, description, categoryId, presentations });
+  const snapshot = () =>
+    JSON.stringify({ name, description, categoryId, defaultSupplierId, presentations });
   let baseline = $state<string | null>(initial?.id ? null : snapshot());
   const dirty = $derived(baseline !== null && snapshot() !== baseline);
 
@@ -70,6 +77,14 @@
     ...categoriesService.items.map((c) => ({
       value: String(c.id),
       label: c.name,
+    })),
+  ]);
+
+  const supplierOptions = $derived([
+    { value: "", label: "(Sin proveedor por defecto)" },
+    ...suppliersService.items.map((s) => ({
+      value: String(s.id),
+      label: s.name,
     })),
   ]);
 
@@ -116,6 +131,7 @@
       name: name.trim(),
       description: description.trim() || null,
       category_id: categoryId ? Number(categoryId) : null,
+      default_supplier_id: defaultSupplierId ? Number(defaultSupplierId) : null,
       presentations: presentations.map(({ id, name: presentationName, factor }) => ({
         id,
         name: presentationName.trim(),
@@ -170,6 +186,17 @@
             Nueva
           </Button>
         </div>
+      </div>
+      <div class="span-2">
+        <SearchableSelect
+          label="Proveedor por defecto (opcional)"
+          bind:value={defaultSupplierId}
+          options={supplierOptions}
+          disabled={loading}
+          placeholder="Selecciona un proveedor por defecto"
+          searchPlaceholder="Buscar proveedor..."
+          clearable
+        />
       </div>
       <div class="span-2">
         <Textarea
