@@ -8,9 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Opción para ignorar alertas de stock por producto: permite desactivar alertas de reposición para artículos bajo demanda o de stock mínimo permanente (`ignore_stock_alerts`), excluyéndolos del panel de stock bajo del Dashboard y mostrándolos con la insignia distintiva "Sin alertas" en la tabla de productos.
-- Límites de stock configurables por producto individual: cada producto puede definir opcionalmente sus propios límites (`stock_low_threshold` y `stock_medium_threshold`), respaldados por una migración SQLite automática no destructiva en el arranque; si no se personalizan, se heredan automáticamente los límites globales del sistema.
-- Tooltips informativos en las insignias de estado de stock (`StockBadge`), indicando si la clasificación responde a límites personalizados o a los límites globales por defecto.
+- Option to ignore stock alerts per product: allows disabling replenishment alerts for on-demand or permanently low-stock items (`ignore_stock_alerts`), excluding them from the Dashboard low-stock panel and displaying them with the "Sin alertas" badge in the products table.
+- Configurable stock thresholds per individual product: each product can optionally define its own thresholds (`stock_low_threshold` and `stock_medium_threshold`), backed by an automatic non-destructive SQLite migration on startup; if not customized, they automatically inherit the system global thresholds.
+- Informative tooltips on stock status badges (`StockBadge`), indicating whether the classification is based on custom thresholds or the default global thresholds.
 - Default supplier per product: products can now define an optional default supplier (`default_supplier_id`) via `SearchableSelect` in `ProductFormModal`, backed by a non-destructive automatic SQLite schema migration on startup; creating an inbound movement for the product automatically pre-selects its default supplier in `MovementFormModal` while preserving full manual editing.
 - Navigation history controls: Back and Forward buttons added next to the view title in the top layout header (`Header.svelte`) with history state detection.
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
@@ -19,8 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Se mejoró la nomenclatura de componentes, servicios, funciones y variables internas para que describan mejor su propósito (por ejemplo, componentes de iconos y selección, utilidades de navegación y borradores de categorías), sin cambios funcionales ni en la interfaz de usuario.
-- Renombrada la configuración general de umbrales a "Límites globales de stock" en `SettingsModal`, el modal de ayuda (`HelpModal`) y el manual de usuario (`MANUAL_DE_USUARIO.md`), clarificando su función como valores por defecto heredados por los productos que no cuenten con límites propios.
+- Improved naming of internal components, services, functions, and variables to better describe their purpose (for example, icon and selection components, navigation utilities, and category drafts), with no functional or user interface changes.
+- Renamed general threshold settings to "Límites globales de stock" in `SettingsModal`, the in-app help modal (`HelpModal`), and the user manual (`MANUAL_DE_USUARIO.md`), clarifying their role as default values inherited by products without custom thresholds.
 
 ### Fixed
 
