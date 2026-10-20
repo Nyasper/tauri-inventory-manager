@@ -1,14 +1,14 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
-  import { formatDateTime, formatNumber } from "$lib/utils/format";
-  import type { Movement } from "$lib/types";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import SearchableSelect from "#lib/components/ui/SearchableSelect.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import { formatDateTime, formatNumber } from "#lib/utils/format.js";
+  import type { Movement } from "#lib/types.js";
 
   let { movement }: { movement: Movement } = $props();
 

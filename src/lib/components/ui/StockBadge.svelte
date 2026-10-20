@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { StockStatus } from "$lib/types";
-  import { STOCK_LABELS } from "$lib/utils/stock";
+  import type { StockStatus } from "#lib/types.js";
+  import { STOCK_LABELS } from "#lib/utils/stock.js";
   import Badge from "./Badge.svelte";
   import { BellOff } from "@lucide/svelte";
 

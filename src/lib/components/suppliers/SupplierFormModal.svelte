@@ -1,15 +1,15 @@
 <script lang="ts">
-  import DuplicateHint from "$lib/components/ui/DuplicateHint.svelte";
+  import DuplicateHint from "#lib/components/ui/DuplicateHint.svelte";
   import { untrack } from "svelte";
   import { Plus, Trash } from "@lucide/svelte";
-  import type { Supplier } from "$lib/types";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { toAppError, type AppError } from "$lib/utils/errors";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Textarea from "$lib/components/ui/Textarea.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import type { Supplier } from "#lib/types.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { toAppError, type AppError } from "#lib/utils/errors.js";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Textarea from "#lib/components/ui/Textarea.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   let {
     supplier = null,

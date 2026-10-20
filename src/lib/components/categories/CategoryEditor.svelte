@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Input from "$lib/components/ui/Input.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import IconPicker from "$lib/components/ui/IconPicker.svelte";
-  import { categoriesService } from "$lib/services/categories.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
-  import { CATEGORY_COLORS, type CategoryDraft } from "$lib/category-draft";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import IconPicker from "#lib/components/ui/IconPicker.svelte";
+  import { categoriesService } from "#lib/services/categories.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import { CATEGORY_COLORS, type CategoryDraft } from "#lib/category-draft.js";
 
   let {
     draft = $bindable(),

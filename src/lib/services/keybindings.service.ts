@@ -1,9 +1,9 @@
 import { goto } from "$app/navigation";
-import HelpModal from "$lib/components/help/HelpModal.svelte";
-import SettingsModal from "$lib/components/settings/SettingsModal.svelte";
-import { modalService } from "$lib/services/modal.service.svelte";
-import { themeService } from "$lib/services/theme.service.svelte";
-import type { AnyComponent } from "$lib/types";
+import HelpModal from "#lib/components/help/HelpModal.svelte";
+import SettingsModal from "#lib/components/settings/SettingsModal.svelte";
+import { modalService } from "#lib/services/modal.service.svelte.js";
+import { themeService } from "#lib/services/theme.service.svelte.js";
+import type { AnyComponent } from "#lib/types.js";
 
 type ShortcutId =
   | "help"

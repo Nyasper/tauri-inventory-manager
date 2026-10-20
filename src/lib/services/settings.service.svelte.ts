@@ -1,10 +1,10 @@
-import type { AppSettings, DefaultView } from "$lib/types";
+import type { AppSettings, DefaultView } from "#lib/types.js";
 import {
   getSettings,
   saveSettingsDefaultView,
   saveSettingsPageSize,
   saveSettingsThresholds,
-} from "$lib/services/db.service";
+} from "#lib/services/db.service.js";
 
 class SettingsService {
   settings = $state<AppSettings>({

@@ -1,4 +1,4 @@
-import type { Product, StockStatus } from "$lib/types";
+import type { Product, StockStatus } from "#lib/types.js";
 
 export function getStockStatus(
   stock: number,

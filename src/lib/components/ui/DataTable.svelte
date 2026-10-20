@@ -2,7 +2,7 @@
   import { FlexRender } from "@tanstack/svelte-table";
   import type { RowData } from "@tanstack/svelte-table";
   import type { Snippet } from "svelte";
-  import type { AppColumnMeta, AppTable } from "$lib/components/ui/table";
+  import type { AppColumnMeta, AppTable } from "#lib/components/ui/table.js";
   import {
     Search,
     ChevronUp,

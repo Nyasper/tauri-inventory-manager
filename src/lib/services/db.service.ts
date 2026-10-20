@@ -1,6 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-import { feedbackService } from "$lib/services/feedback.service.svelte";
-import { toAppError } from "$lib/utils/errors";
+import { feedbackService } from "#lib/services/feedback.service.svelte.js";
+import { toAppError } from "#lib/utils/errors.js";
 import type {
   AppSettings,
   Category,
@@ -11,7 +11,7 @@ import type {
   Presentation,
   Product,
   Supplier,
-} from "$lib/types";
+} from "#lib/types.js";
 
 export interface PresentationInput {
   id?: number;

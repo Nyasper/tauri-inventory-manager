@@ -1,20 +1,20 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import type { Presentation, MovementType } from "$lib/types";
-  import { getPresentations } from "$lib/services/db.service";
-  import { errorMessage } from "$lib/utils/errors";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
-  import Textarea from "$lib/components/ui/Textarea.svelte";
-  import Select from "$lib/components/ui/Select.svelte";
-  import type { SelectOption } from "$lib/components/ui/select-option";
-  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
+  import type { Presentation, MovementType } from "#lib/types.js";
+  import { getPresentations } from "#lib/services/db.service.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import NumberStepper from "#lib/components/ui/NumberStepper.svelte";
+  import Textarea from "#lib/components/ui/Textarea.svelte";
+  import Select from "#lib/components/ui/Select.svelte";
+  import type { SelectOption } from "#lib/components/ui/select-option.js";
+  import SearchableSelect from "#lib/components/ui/SearchableSelect.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import SupplierFormModal from "#lib/components/suppliers/SupplierFormModal.svelte";
   import { Plus } from "@lucide/svelte";
 
   let {

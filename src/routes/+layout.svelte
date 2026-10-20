@@ -1,21 +1,21 @@
 <script lang="ts">
   import "../app.css";
-  import { feedbackService } from "$lib/services/feedback.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
+  import { feedbackService } from "#lib/services/feedback.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import type { Snippet } from "svelte";
-  import Sidebar from "$lib/components/layout/Sidebar.svelte";
-  import Header from "$lib/components/layout/Header.svelte";
-  import ModalHost from "$lib/components/ui/ModalHost.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { categoriesService } from "$lib/services/categories.service.svelte";
-  import { settingsService } from "$lib/services/settings.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { takeStartupNotice } from "$lib/services/db.service";
-  import { keybindingsService } from "$lib/services/keybindings.service";
-  import { VIEW_ROUTES } from "$lib/navigation";
+  import Sidebar from "#lib/components/layout/Sidebar.svelte";
+  import Header from "#lib/components/layout/Header.svelte";
+  import ModalHost from "#lib/components/ui/ModalHost.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { categoriesService } from "#lib/services/categories.service.svelte.js";
+  import { settingsService } from "#lib/services/settings.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { takeStartupNotice } from "#lib/services/db.service.js";
+  import { keybindingsService } from "#lib/services/keybindings.service.js";
+  import { VIEW_ROUTES } from "#lib/navigation.js";
 
   let { children }: { children: Snippet } = $props();
 

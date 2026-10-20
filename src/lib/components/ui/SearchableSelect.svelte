@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ChevronDown, Search, Check, X } from "@lucide/svelte";
-  import type { SelectOption } from "$lib/components/ui/select-option";
+  import type { SelectOption } from "#lib/components/ui/select-option.js";
 
   let {
     label,

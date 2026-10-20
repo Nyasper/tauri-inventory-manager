@@ -1,7 +1,7 @@
 import type { Component } from "svelte";
 import type { LucideProps } from "@lucide/svelte";
 import { ArrowLeftRight, Boxes, LayoutDashboard, Truck } from "@lucide/svelte";
-import type { DefaultView } from "$lib/types";
+import type { DefaultView } from "#lib/types.js";
 
 export interface NavigationItem {
   view: DefaultView;

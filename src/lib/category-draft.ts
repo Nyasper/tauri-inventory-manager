@@ -1,4 +1,4 @@
-import type { IconName } from "$lib/icons";
+import type { IconName } from "#lib/icons.js";
 
 export const CATEGORY_COLORS = [
   "#3b82f6",

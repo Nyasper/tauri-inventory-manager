@@ -1,5 +1,5 @@
-import type { Category } from "$lib/types";
-import { archiveCategory, getCategories, saveCategory } from "$lib/services/db.service";
+import type { Category } from "#lib/types.js";
+import { archiveCategory, getCategories, saveCategory } from "#lib/services/db.service.js";
 
 class CategoriesService {
   items = $state<Category[]>([]);

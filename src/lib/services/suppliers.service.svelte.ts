@@ -1,5 +1,5 @@
-import type { Supplier } from "$lib/types";
-import { errorMessage } from "$lib/utils/errors";
+import type { Supplier } from "#lib/types.js";
+import { errorMessage } from "#lib/utils/errors.js";
 import {
   archiveSupplier,
   deleteSupplier,
@@ -7,7 +7,7 @@ import {
   restoreSupplier,
   saveSupplier,
   type SupplierInput,
-} from "$lib/services/db.service";
+} from "#lib/services/db.service.js";
 
 class SuppliersService {
   items = $state<Supplier[]>([]);

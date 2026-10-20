@@ -1,5 +1,5 @@
-import type { Movement } from "$lib/types";
-import { errorMessage } from "$lib/utils/errors";
+import type { Movement } from "#lib/types.js";
+import { errorMessage } from "#lib/utils/errors.js";
 import {
   cancelMovement,
   createMovement,
@@ -9,7 +9,7 @@ import {
   type MovementDeleteFilter,
   type MovementFilters,
   type MovementInput,
-} from "$lib/services/db.service";
+} from "#lib/services/db.service.js";
 
 class MovementsService {
   items = $state<Movement[]>([]);

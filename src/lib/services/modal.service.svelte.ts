@@ -1,4 +1,4 @@
-import type { AnyComponent } from "$lib/types";
+import type { AnyComponent } from "#lib/types.js";
 
 interface ModalEntry {
   id: number;
@@ -93,7 +93,7 @@ class ModalService {
   }
 
   async confirm(message: string, title = "¿Estás seguro?"): Promise<boolean> {
-    const { default: ConfirmDialog } = await import("$lib/components/ui/ConfirmDialog.svelte");
+    const { default: ConfirmDialog } = await import("#lib/components/ui/ConfirmDialog.svelte");
     return new Promise<boolean>((resolve) => {
       const id = this.open(ConfirmDialog, {
         title,

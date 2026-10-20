@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { modalService } from "$lib/services/modal.service.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
 </script>
 
 {#each modalService.modals as modal (modal.id)}

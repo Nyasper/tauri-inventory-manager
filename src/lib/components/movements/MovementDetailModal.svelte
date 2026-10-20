@@ -1,19 +1,19 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import type { Movement } from "$lib/types";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
-  import Badge from "$lib/components/ui/Badge.svelte";
-  import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
-  import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
-  import EditMovementSupplierModal from "$lib/components/movements/EditMovementSupplierModal.svelte";
-  import { formatDateTime, formatNumber } from "$lib/utils/format";
+  import type { Movement } from "#lib/types.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import SearchableSelect from "#lib/components/ui/SearchableSelect.svelte";
+  import Badge from "#lib/components/ui/Badge.svelte";
+  import MovementTypeCell from "#lib/components/movements/MovementTypeCell.svelte";
+  import CancelMovementModal from "#lib/components/movements/CancelMovementModal.svelte";
+  import EditMovementSupplierModal from "#lib/components/movements/EditMovementSupplierModal.svelte";
+  import { formatDateTime, formatNumber } from "#lib/utils/format.js";
   import { ArrowLeftRight, Undo2, Pencil, Check, X } from "@lucide/svelte";
 
   let { movement }: { movement: Movement } = $props();

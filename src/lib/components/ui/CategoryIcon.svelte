@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ICONS, iconNameFor, type IconName } from "$lib/icons";
+  import { ICONS, iconNameFor, type IconName } from "#lib/icons.js";
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
 

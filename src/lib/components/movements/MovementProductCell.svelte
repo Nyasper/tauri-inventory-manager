@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Movement } from "$lib/types";
+  import type { Movement } from "#lib/types.js";
 
   let { movement }: { movement: Movement } = $props();
 </script>

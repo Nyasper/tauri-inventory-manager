@@ -1,11 +1,11 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import { KeyRound } from "@lucide/svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { changeDeletePassword } from "$lib/services/db.service";
-  import { errorMessage } from "$lib/utils/errors";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { changeDeletePassword } from "#lib/services/db.service.js";
+  import { errorMessage } from "#lib/utils/errors.js";
 
   let currentPassword = $state("");
   let newPassword = $state("");

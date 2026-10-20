@@ -1,19 +1,19 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { getSuppliers } from "$lib/services/db.service";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import type { Supplier } from "$lib/types";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
-  import { ArchivedList } from "$lib/utils/archived.svelte";
-  import DataTable from "$lib/components/ui/DataTable.svelte";
-  import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
-  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
-  import DeleteRecordModal from "$lib/components/ui/DeleteRecordModal.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import { getSuppliers } from "#lib/services/db.service.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import type { Supplier } from "#lib/types.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { createAppTable, createAppColumnHelper } from "#lib/components/ui/table.js";
+  import { ArchivedList } from "#lib/utils/archived.svelte.js";
+  import DataTable from "#lib/components/ui/DataTable.svelte";
+  import SupplierFormModal from "#lib/components/suppliers/SupplierFormModal.svelte";
+  import MovementFormModal from "#lib/components/movements/MovementFormModal.svelte";
+  import DeleteRecordModal from "#lib/components/ui/DeleteRecordModal.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import { Plus, Truck, Pencil, Trash, Archive, Undo2 } from "@lucide/svelte";
-  import EmptyState from "$lib/components/ui/EmptyState.svelte";
+  import EmptyState from "#lib/components/ui/EmptyState.svelte";
 
   suppliersService.load();
   const targetId = $derived(page.url.searchParams.get("id"));

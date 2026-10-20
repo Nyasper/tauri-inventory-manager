@@ -1,4 +1,4 @@
-import { backupDatabase, restoreDatabase } from "$lib/services/db.service";
+import { backupDatabase, restoreDatabase } from "#lib/services/db.service.js";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 const DATABASE_FILE_FILTERS = [{ name: "Base de datos SQLite", extensions: ["db"] }];

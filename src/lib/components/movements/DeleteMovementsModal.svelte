@@ -1,20 +1,20 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Select from "$lib/components/ui/Select.svelte";
-  import type { SelectOption } from "$lib/components/ui/select-option";
-  import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Select from "#lib/components/ui/Select.svelte";
+  import type { SelectOption } from "#lib/components/ui/select-option.js";
+  import Button from "#lib/components/ui/Button.svelte";
   import { Trash } from "@lucide/svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { feedbackService } from "$lib/services/feedback.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { feedbackService } from "#lib/services/feedback.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
   import {
     countMovements,
     type MovementDeleteFilter,
     type MovementDeleteMode,
-  } from "$lib/services/db.service";
-  import { formatDay } from "$lib/utils/format";
+  } from "#lib/services/db.service.js";
+  import { formatDay } from "#lib/utils/format.js";
 
   let mode = $state<MovementDeleteMode>("recent");
   let countInput = $state("1");

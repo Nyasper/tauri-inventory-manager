@@ -2,8 +2,8 @@
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
   import { Sun, Moon, ArrowLeft, ArrowRight } from "@lucide/svelte";
-  import { themeService } from "$lib/services/theme.service.svelte";
-  import { PAGE_TITLES } from "$lib/navigation";
+  import { themeService } from "#lib/services/theme.service.svelte.js";
+  import { PAGE_TITLES } from "#lib/navigation.js";
 
   const title = $derived.by(() => {
     const path = page.url.pathname;
@@ -33,7 +33,9 @@
     }
   }
 
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === "goto") return;
+
     updateNavState();
   });
 

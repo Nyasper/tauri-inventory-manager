@@ -2,21 +2,21 @@
   import { goto } from "$app/navigation";
   import type { Component } from "svelte";
   import type { LucideProps } from "@lucide/svelte";
-  import type { Product } from "$lib/types";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { settingsService } from "$lib/services/settings.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { resolveProductStockStatus } from "$lib/utils/stock";
-  import { formatNumber, formatDateTime } from "$lib/utils/format";
-  import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
-  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
-  import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
-  import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
-  import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import Badge from "$lib/components/ui/Badge.svelte";
-  import CategoryIcon from "$lib/components/ui/CategoryIcon.svelte";
+  import type { Product } from "#lib/types.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { settingsService } from "#lib/services/settings.service.svelte.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { resolveProductStockStatus } from "#lib/utils/stock.js";
+  import { formatNumber, formatDateTime } from "#lib/utils/format.js";
+  import ProductFormModal from "#lib/components/products/ProductFormModal.svelte";
+  import MovementFormModal from "#lib/components/movements/MovementFormModal.svelte";
+  import MovementDetailModal from "#lib/components/movements/MovementDetailModal.svelte";
+  import SupplierFormModal from "#lib/components/suppliers/SupplierFormModal.svelte";
+  import StockBadge from "#lib/components/ui/StockBadge.svelte";
+  import Badge from "#lib/components/ui/Badge.svelte";
+  import CategoryIcon from "#lib/components/ui/CategoryIcon.svelte";
   import {
     Box,
     TriangleAlert,

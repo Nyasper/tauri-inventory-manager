@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { MovementType } from "$lib/types";
-  import Badge from "$lib/components/ui/Badge.svelte";
+  import type { MovementType } from "#lib/types.js";
+  import Badge from "#lib/components/ui/Badge.svelte";
   import { ArrowDownToLine, ArrowUpFromLine } from "@lucide/svelte";
 
   let { type }: { type: MovementType } = $props();

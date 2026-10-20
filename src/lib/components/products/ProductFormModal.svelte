@@ -1,25 +1,25 @@
 <script lang="ts">
-  import DuplicateHint from "$lib/components/ui/DuplicateHint.svelte";
+  import DuplicateHint from "#lib/components/ui/DuplicateHint.svelte";
   import { untrack } from "svelte";
-  import type { Product } from "$lib/types";
+  import type { Product } from "#lib/types.js";
   import {
     getPresentations,
     type PresentationInput,
     type ProductInput,
-  } from "$lib/services/db.service";
-  import { toAppError, type AppError } from "$lib/utils/errors";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { categoriesService } from "$lib/services/categories.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { settingsService } from "$lib/services/settings.service.svelte";
-  import CategoryFormModal from "$lib/components/categories/CategoryFormModal.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import NumberStepper from "$lib/components/ui/NumberStepper.svelte";
-  import Textarea from "$lib/components/ui/Textarea.svelte";
-  import SearchableSelect from "$lib/components/ui/SearchableSelect.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  } from "#lib/services/db.service.js";
+  import { toAppError, type AppError } from "#lib/utils/errors.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { categoriesService } from "#lib/services/categories.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { settingsService } from "#lib/services/settings.service.svelte.js";
+  import CategoryFormModal from "#lib/components/categories/CategoryFormModal.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import NumberStepper from "#lib/components/ui/NumberStepper.svelte";
+  import Textarea from "#lib/components/ui/Textarea.svelte";
+  import SearchableSelect from "#lib/components/ui/SearchableSelect.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import { Plus, Trash } from "@lucide/svelte";
 
   let { product = null }: { product?: Product | null } = $props();

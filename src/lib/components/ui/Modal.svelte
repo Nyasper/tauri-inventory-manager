@@ -3,7 +3,7 @@
   import { fade } from "svelte/transition";
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
 
   let {
     title,

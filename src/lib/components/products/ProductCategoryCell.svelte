@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Product } from "$lib/types";
-  import CategoryIcon from "$lib/components/ui/CategoryIcon.svelte";
+  import type { Product } from "#lib/types.js";
+  import CategoryIcon from "#lib/components/ui/CategoryIcon.svelte";
 
   let { product }: { product: Product } = $props();
 </script>

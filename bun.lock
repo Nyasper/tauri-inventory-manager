@@ -5,7 +5,7 @@
     "": {
       "name": "tauri-inventory-manager",
       "dependencies": {
-        "@lucide/svelte": "^1.45.0",
+        "@lucide/svelte": "^1.60.0",
         "@tanstack/svelte-table": "^9.3.1",
         "@tauri-apps/api": "^2.12.4",
         "@tauri-apps/plugin-dialog": "^2.8.3",
@@ -14,6 +14,7 @@
         "@eslint/js": "^10.0.1",
         "@sveltejs/adapter-static": "^4.0.0",
         "@sveltejs/kit": "^3.1.0",
+        "@sveltejs/load-config": "^0.2.2",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tauri-apps/cli": "^2.12.3",
         "eslint": "^10.13.0",
@@ -74,7 +75,7 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
-    "@lucide/svelte": ["@lucide/svelte@1.45.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-SBqLvcYGEDz82Lwz7meR4qM+SGeDKRU/RBo8BhAhARNUzIXTrykbFLabW9X1Fokp01Yw2kOFx/AsLUUIxj0NLA=="],
+    "@lucide/svelte": ["@lucide/svelte@1.60.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-Q4lkuuBLrhxjBK8yuJ6GjeHZDOzrxlRH5GOzCzI7HJBeCE+Rj1kwi4KsD81XM50bjnfwhPhSFrh/j+D4vn8jUg=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.154.0", "", {}, "sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA=="],
 

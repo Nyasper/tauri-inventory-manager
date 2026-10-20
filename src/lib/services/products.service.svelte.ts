@@ -1,5 +1,5 @@
-import type { Product } from "$lib/types";
-import { errorMessage } from "$lib/utils/errors";
+import type { Product } from "#lib/types.js";
+import { errorMessage } from "#lib/utils/errors.js";
 import {
   archiveProduct,
   deleteProduct,
@@ -7,7 +7,7 @@ import {
   restoreProduct,
   saveProduct,
   type ProductInput,
-} from "$lib/services/db.service";
+} from "#lib/services/db.service.js";
 
 class ProductsService {
   items = $state<Product[]>([]);

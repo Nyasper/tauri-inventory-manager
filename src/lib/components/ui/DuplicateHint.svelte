@@ -1,10 +1,10 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { findProductDuplicate, findSupplierDuplicate } from "$lib/services/db.service";
-  import { isDuplicateError, type AppError } from "$lib/utils/errors";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { DuplicateRecord } from "$lib/types";
+  import { findProductDuplicate, findSupplierDuplicate } from "#lib/services/db.service.js";
+  import { isDuplicateError, type AppError } from "#lib/utils/errors.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { DuplicateRecord } from "#lib/types.js";
 
   let {
     name,

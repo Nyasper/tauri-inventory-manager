@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Badge from "$lib/components/ui/Badge.svelte";
-  import StockBadge from "$lib/components/ui/StockBadge.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import type { Shortcut } from "$lib/services/keybindings.service";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import Badge from "#lib/components/ui/Badge.svelte";
+  import StockBadge from "#lib/components/ui/StockBadge.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import type { Shortcut } from "#lib/services/keybindings.service.js";
   import {
     BookOpen,
     LayoutDashboard,

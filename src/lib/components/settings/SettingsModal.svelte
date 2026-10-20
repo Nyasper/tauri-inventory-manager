@@ -1,26 +1,26 @@
 <script lang="ts">
-  import { backupService } from "$lib/services/backup.service";
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Select from "$lib/components/ui/Select.svelte";
-  import type { SelectOption } from "$lib/components/ui/select-option";
-  import Button from "$lib/components/ui/Button.svelte";
-  import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
-  import AdminPasswordModal from "$lib/components/settings/AdminPasswordModal.svelte";
-  import { ICONS, type IconName } from "$lib/icons";
+  import { backupService } from "#lib/services/backup.service.js";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Select from "#lib/components/ui/Select.svelte";
+  import type { SelectOption } from "#lib/components/ui/select-option.js";
+  import Button from "#lib/components/ui/Button.svelte";
+  import CategoryEditor from "#lib/components/categories/CategoryEditor.svelte";
+  import AdminPasswordModal from "#lib/components/settings/AdminPasswordModal.svelte";
+  import { ICONS, type IconName } from "#lib/icons.js";
   import { Plus, Pencil, Trash, DatabaseBackup, Upload, KeyRound } from "@lucide/svelte";
-  import { settingsService } from "$lib/services/settings.service.svelte";
-  import { getAppVersion } from "$lib/services/version";
-  import { categoriesService } from "$lib/services/categories.service.svelte";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { feedbackService } from "$lib/services/feedback.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import type { DefaultView } from "$lib/types";
-  import { accentService, ACCENTS } from "$lib/services/accent.service.svelte";
-  import { CATEGORY_COLORS, newCategoryDraft, type CategoryDraft } from "$lib/category-draft";
+  import { settingsService } from "#lib/services/settings.service.svelte.js";
+  import { getAppVersion } from "#lib/services/version.js";
+  import { categoriesService } from "#lib/services/categories.service.svelte.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { feedbackService } from "#lib/services/feedback.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import type { DefaultView } from "#lib/types.js";
+  import { accentService, ACCENTS } from "#lib/services/accent.service.svelte.js";
+  import { CATEGORY_COLORS, newCategoryDraft, type CategoryDraft } from "#lib/category-draft.js";
 
   let lowThresholdInput: string = $derived(String(settingsService.settings.stock_low_threshold));
   let mediumThresholdInput: string = $derived(

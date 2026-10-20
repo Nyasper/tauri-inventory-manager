@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Textarea from "$lib/components/ui/Textarea.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
-  import type { Movement } from "$lib/types";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Textarea from "#lib/components/ui/Textarea.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
+  import type { Movement } from "#lib/types.js";
 
   let { movement }: { movement: Movement } = $props();
 

@@ -1,4 +1,4 @@
-import type { AccentColor } from "$lib/types";
+import type { AccentColor } from "#lib/types.js";
 
 export interface Accent {
   id: AccentColor;

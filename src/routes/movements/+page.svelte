@@ -1,25 +1,25 @@
 <script lang="ts">
   import { renderComponent } from "@tanstack/svelte-table";
-  import type { Movement, MovementType } from "$lib/types";
-  import { movementsService } from "$lib/services/movements.service.svelte";
-  import { settingsService } from "$lib/services/settings.service.svelte";
-  import { productsService } from "$lib/services/products.service.svelte";
-  import { suppliersService } from "$lib/services/suppliers.service.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { createAppTable, createAppColumnHelper } from "$lib/components/ui/table";
-  import DataTable from "$lib/components/ui/DataTable.svelte";
-  import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
-  import DeleteMovementsModal from "$lib/components/movements/DeleteMovementsModal.svelte";
+  import type { Movement, MovementType } from "#lib/types.js";
+  import { movementsService } from "#lib/services/movements.service.svelte.js";
+  import { settingsService } from "#lib/services/settings.service.svelte.js";
+  import { productsService } from "#lib/services/products.service.svelte.js";
+  import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { createAppTable, createAppColumnHelper } from "#lib/components/ui/table.js";
+  import DataTable from "#lib/components/ui/DataTable.svelte";
+  import CancelMovementModal from "#lib/components/movements/CancelMovementModal.svelte";
+  import DeleteMovementsModal from "#lib/components/movements/DeleteMovementsModal.svelte";
   import { page } from "$app/state";
-  import Select from "$lib/components/ui/Select.svelte";
-  import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
-  import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
-  import EditMovementSupplierModal from "$lib/components/movements/EditMovementSupplierModal.svelte";
-  import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
-  import MovementProductCell from "$lib/components/movements/MovementProductCell.svelte";
-  import MovementSupplierCell from "$lib/components/movements/MovementSupplierCell.svelte";
-  import { formatNumber, formatDateTime } from "$lib/utils/format";
-  import Button from "$lib/components/ui/Button.svelte";
+  import Select from "#lib/components/ui/Select.svelte";
+  import MovementFormModal from "#lib/components/movements/MovementFormModal.svelte";
+  import MovementDetailModal from "#lib/components/movements/MovementDetailModal.svelte";
+  import EditMovementSupplierModal from "#lib/components/movements/EditMovementSupplierModal.svelte";
+  import MovementTypeCell from "#lib/components/movements/MovementTypeCell.svelte";
+  import MovementProductCell from "#lib/components/movements/MovementProductCell.svelte";
+  import MovementSupplierCell from "#lib/components/movements/MovementSupplierCell.svelte";
+  import { formatNumber, formatDateTime } from "#lib/utils/format.js";
+  import Button from "#lib/components/ui/Button.svelte";
   import {
     Plus,
     Pencil,
@@ -31,7 +31,7 @@
     ChevronRight,
     ChevronLast,
   } from "@lucide/svelte";
-  import EmptyState from "$lib/components/ui/EmptyState.svelte";
+  import EmptyState from "#lib/components/ui/EmptyState.svelte";
 
   productsService.load();
 

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { CircleHelp, Settings } from "@lucide/svelte";
-  import { openHelp, openSettings } from "$lib/services/keybindings.service";
-  import { NAVIGATION } from "$lib/navigation";
+  import { openHelp, openSettings } from "#lib/services/keybindings.service.js";
+  import { NAVIGATION } from "#lib/navigation.js";
 
   const NAV_ITEMS = NAVIGATION;
 

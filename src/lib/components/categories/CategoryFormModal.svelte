@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import CategoryEditor from "$lib/components/categories/CategoryEditor.svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { newCategoryDraft, type CategoryDraft } from "$lib/category-draft";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import CategoryEditor from "#lib/components/categories/CategoryEditor.svelte";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { newCategoryDraft, type CategoryDraft } from "#lib/category-draft.js";
 
   let { onCreated }: { onCreated?: (id: number) => void } = $props();
 

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Modal from "$lib/components/ui/Modal.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "#lib/components/ui/Modal.svelte";
+  import Input from "#lib/components/ui/Input.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import { Trash } from "@lucide/svelte";
-  import { modalService } from "$lib/services/modal.service.svelte";
-  import { errorMessage } from "$lib/utils/errors";
+  import { modalService } from "#lib/services/modal.service.svelte.js";
+  import { errorMessage } from "#lib/utils/errors.js";
 
   let {
     recordType,

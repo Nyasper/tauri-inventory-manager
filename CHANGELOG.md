@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Upgraded project dependencies, notably migrating to SvelteKit 3 (`@sveltejs/kit` v3.1, `svelte` v5.57, `vite` v8.3 with Rolldown, TypeScript 6): migrated configuration into `vite.config.js`, replaced `$lib` with native `#lib` subpath imports, updated `tsconfig.json` to extend `$app/tsconfig`, and adapted navigation and state APIs (`goto({ reset: false })`, `ReadonlyURLSearchParams`).
+- Improved naming of internal components, services, functions, and variables to better describe their purpose (for example, icon and selection components, navigation utilities, and category drafts), with no functional or user interface changes.
+- Renamed general threshold settings to "Límites globales de stock" in `SettingsModal`, the in-app help modal (`HelpModal`), and the user manual (`MANUAL_DE_USUARIO.md`), clarifying their role as default values inherited by products without custom thresholds.
+
 ### Added
 
 - Option to ignore stock alerts per product: allows disabling replenishment alerts for on-demand or permanently low-stock items (`ignore_stock_alerts`), excluding them from the Dashboard low-stock panel and displaying them with the "Sin alertas" badge in the products table.
@@ -16,11 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
 - Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and dedicated `EditMovementSupplierModal` accessible directly from the movements table actions as well as `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.
 - English demo dataset (`src-tauri/src/seed_en.sql`) selectable with `bun run seed -- --lang en`: 8 categories, 15 suppliers, 50 products with 122 presentations and 121 movements, including adjustments, cancelled movements and a mix of zero, low and healthy stock levels; covered by a Rust test that validates counts, foreign keys, the single active base presentation per product and stock coherence against the movement history.
-
-### Changed
-
-- Improved naming of internal components, services, functions, and variables to better describe their purpose (for example, icon and selection components, navigation utilities, and category drafts), with no functional or user interface changes.
-- Renamed general threshold settings to "Límites globales de stock" in `SettingsModal`, the in-app help modal (`HelpModal`), and the user manual (`MANUAL_DE_USUARIO.md`), clarifying their role as default values inherited by products without custom thresholds.
 
 ### Fixed
 
