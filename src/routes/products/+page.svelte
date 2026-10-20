@@ -30,8 +30,10 @@
   const columnHelper = createAppColumnHelper<Product>();
 
   let search = $state("");
-  const archive = new ArchivedList<Product>((archived) => getProducts(archived));
-  const visible = $derived(archive.active ? archive.items : productsService.items);
+  const archivedList = new ArchivedList<Product>(getProducts);
+  const sourceItems = $derived(
+    archivedList.showingArchived ? archivedList.items : productsService.items,
+  );
   let stockFilter = $derived(page.url.searchParams.get("stock") ?? "");
   const targetId = $derived(page.url.searchParams.get("id"));
   let categoryFilter = $state("");
@@ -44,7 +46,7 @@
     if (!exists) categoryFilter = "";
   });
 
-  function statusOf(product: Product) {
+  function getProductStockStatus(product: Product) {
     return resolveProductStockStatus(
       product,
       settingsService.settings.stock_low_threshold,
@@ -53,6 +55,9 @@
   }
 
   function thresholdTitle(product: Product): string {
+    if (product.ignore_stock_alerts) {
+      return `Alertas desactivadas para este producto (Stock actual: ${formatNumber(product.stock)} ${product.base_presentation_name ?? ""})`;
+    }
     if (product.stock_low_threshold != null && product.stock_medium_threshold != null) {
       return `Límites personalizados: Bajo ≤ ${product.stock_low_threshold}, Medio ≤ ${product.stock_medium_threshold}`;
     }
@@ -60,7 +65,10 @@
   }
 
   function statusRank(product: Product): number {
-    switch (statusOf(product)) {
+    if (product.ignore_stock_alerts) {
+      return 4;
+    }
+    switch (getProductStockStatus(product)) {
       case "out":
         return 0;
       case "low":
@@ -87,7 +95,7 @@
       header: () => "Stock",
       meta: { align: "center", width: "14%" },
       cell: (info) =>
-        `${formatNumber(info.getValue<number>())} ${info.row.original.base_unit ?? ""}`,
+        `${formatNumber(info.getValue<number>())} ${info.row.original.base_presentation_name ?? ""}`,
     }),
     columnHelper.accessor(statusRank, {
       id: "status",
@@ -96,18 +104,23 @@
       meta: { align: "center", width: "14%" },
       cell: (info) =>
         renderComponent(StockBadge, {
-          status: statusOf(info.row.original),
+          status: getProductStockStatus(info.row.original),
           title: thresholdTitle(info.row.original),
+          ignored: Boolean(info.row.original.ignore_stock_alerts),
         }),
     }),
   ]);
 
-  const filtered = $derived.by(() => {
+  const filteredProducts = $derived.by(() => {
     const q = search.trim().toLowerCase();
     const cat = categoryFilter && categoryFilter !== "none" ? Number(categoryFilter) : null;
-    return visible.filter((p) => {
+    return sourceItems.filter((p) => {
       if (targetId && p.id !== Number(targetId)) return false;
-      if (stockFilter === "low" && !["low", "out"].includes(statusOf(p))) return false;
+      if (
+        stockFilter === "low" &&
+        (p.ignore_stock_alerts || !["low", "out"].includes(getProductStockStatus(p)))
+      )
+        return false;
       if (categoryFilter === "none") {
         if (p.category_id !== null) return false;
       } else if (cat !== null && p.category_id !== cat) return false;
@@ -122,7 +135,7 @@
   const table = createAppTable({
     columns,
     get data() {
-      return filtered;
+      return filteredProducts;
     },
     initialState: { sorting: initialSort, pagination: { pageIndex: 0, pageSize: 50 } },
   });
@@ -145,33 +158,33 @@
   }
 
   function restoreArchived(product: Product) {
-    void productsService.restore(product.id).then(() => archive.reload());
+    void productsService.restore(product.id).then(() => archivedList.reload());
   }
 
-  async function removeProduct(product: Product) {
+  async function archiveProduct(product: Product) {
     const ok = await modalService.confirm(
       `¿Archivar el producto "${product.name}"? Se conservará el historial. El stock debe ser cero.`,
       "Archivar producto",
     );
     if (ok) {
-      await productsService.remove(product.id);
+      await productsService.archive(product.id);
     }
   }
 
-  function removePermanently(product: Product) {
+  function deletePermanently(product: Product) {
     modalService.open(DeleteRecordModal, {
-      kind: "product",
+      recordType: "product",
       name: product.name,
       onConfirm: async (password: string) => {
-        await productsService.removePermanently(product.id, password);
-        await archive.reload();
+        await productsService.deletePermanently(product.id, password);
+        await archivedList.reload();
       },
     });
   }
 </script>
 
 <div class="toolbar">
-  <label><input type="checkbox" bind:checked={archive.active} /> Archivados</label>
+  <label><input type="checkbox" bind:checked={archivedList.showingArchived} /> Archivados</label>
   <label
     ><input
       type="checkbox"
@@ -202,15 +215,17 @@
 </div>
 
 <div class="products">
-  {#if productsService.error || archive.error}<p class="error" role="alert">
-      {productsService.error || archive.error}
+  {#if productsService.error || archivedList.error}<p class="error" role="alert">
+      {productsService.error || archivedList.error}
     </p>
-    <Button onclick={() => (archive.active ? archive.reload() : productsService.load())}
+    <Button
+      onclick={() =>
+        archivedList.showingArchived ? archivedList.reload() : productsService.load()}
       >Reintentar</Button
     >
-  {:else if productsService.loading || archive.loading}<p role="status">Cargando productos…</p>
-  {:else if visible.length === 0}
-    {#if archive.active}
+  {:else if productsService.loading || archivedList.loading}<p role="status">Cargando productos…</p>
+  {:else if sourceItems.length === 0}
+    {#if archivedList.showingArchived}
       <EmptyState
         icon={Archive}
         title="No hay productos archivados"
@@ -224,7 +239,7 @@
         onAction={openNew}
       />
     {/if}
-  {:else if filtered.length === 0}
+  {:else if filteredProducts.length === 0}
     <EmptyState
       icon={Search}
       title="Sin resultados"
@@ -233,15 +248,15 @@
   {:else}
     <DataTable
       {table}
-      fixed
-      paginate
+      fixedLayout
+      showPagination
       onRowClick={openEdit}
-      rowClickable={(product) => !product.archived}
+      rowClickable={(product) => !product.isArchived}
       rowActionLabel={(product) => `Editar ${product.name}`}
       showSearch={false}
     >
       {#snippet actions(product)}
-        {#if product.archived}
+        {#if product.isArchived}
           <div class="actions">
             <button
               class="icon-btn"
@@ -262,7 +277,7 @@
               aria-label={`Eliminar definitivamente ${product.name}`}
               onclick={(e) => {
                 e.stopPropagation();
-                removePermanently(product);
+                deletePermanently(product);
               }}
             >
               <Trash size={16} />
@@ -334,7 +349,7 @@
                 disabled={product.stock > 0}
                 onclick={(e) => {
                   e.stopPropagation();
-                  removeProduct(product);
+                  archiveProduct(product);
                 }}
               >
                 <Archive size={16} />

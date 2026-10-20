@@ -174,6 +174,7 @@ struct LegacySchema {
     supplier_set_null: bool,
     missing_default_supplier: bool,
     missing_stock_thresholds: bool,
+    missing_ignore_stock_alerts: bool,
 }
 
 impl LegacySchema {
@@ -184,6 +185,7 @@ impl LegacySchema {
             || !self.supplier_set_null
             || self.missing_default_supplier
             || self.missing_stock_thresholds
+            || self.missing_ignore_stock_alerts
     }
 }
 
@@ -221,6 +223,9 @@ async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
     let missing_stock_thresholds = !prod_columns
         .iter()
         .any(|row| row.get::<String, _>("name") == "stock_low_threshold");
+    let missing_ignore_stock_alerts = !prod_columns
+        .iter()
+        .any(|row| row.get::<String, _>("name") == "ignore_stock_alerts");
     Ok(LegacySchema {
         person_columns,
         persons_table,
@@ -228,6 +233,7 @@ async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
         supplier_set_null,
         missing_default_supplier,
         missing_stock_thresholds,
+        missing_ignore_stock_alerts,
     })
 }
 
@@ -256,6 +262,13 @@ async fn migrate_legacy_schema(db: &Db, legacy: &LegacySchema) -> Result<(), sql
             .execute(db)
             .await?;
     }
+    if legacy.missing_ignore_stock_alerts {
+        sqlx::query(
+            "ALTER TABLE products ADD COLUMN ignore_stock_alerts INTEGER NOT NULL DEFAULT 0",
+        )
+        .execute(db)
+        .await?;
+    }
     Ok(())
 }
 
@@ -275,7 +288,7 @@ async fn seed_demo_data(db: &Db) -> Result<(), sqlx::Error> {
         .await?;
     tx.commit().await
 }
-fn error(e: sqlx::Error) -> CommandError {
+fn sqlx_error(e: sqlx::Error) -> CommandError {
     if let Some(db) = e.as_database_error() {
         if db.is_unique_violation() {
             return duplicate_error("record", "un registro");
@@ -310,17 +323,17 @@ fn duplicate_error(context: &str, entity: &str) -> CommandError {
 
 /// Error de base de datos con la entidad esperada, para nombrar duplicados sin
 /// depender del texto del mensaje de SQLite.
-fn error_as(e: sqlx::Error, context: &str, entity: &str) -> CommandError {
+fn sqlx_error_as(e: sqlx::Error, context: &str, entity: &str) -> CommandError {
     if let Some(db) = e.as_database_error() {
         if db.is_unique_violation() {
             return duplicate_error(context, entity);
         }
     }
-    error(e)
+    sqlx_error(e)
 }
 /// Normaliza un nombre para mostrarlo y para compararlo de forma única:
 /// colapsa espacios, aplica NFC y calcula su clave en minúsculas.
-pub(crate) fn name(value: &str) -> Result<(String, String), CommandError> {
+pub(crate) fn normalize_name(value: &str) -> Result<(String, String), CommandError> {
     let display = value
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -336,7 +349,7 @@ pub(crate) fn name(value: &str) -> Result<(String, String), CommandError> {
     let key = display.to_lowercase().nfc().collect();
     Ok((display, key))
 }
-fn positive(value: f64) -> Result<(), CommandError> {
+fn ensure_positive_quantity(value: f64) -> Result<(), CommandError> {
     if !value.is_finite() || value <= 0.0 || value > 1e9 {
         return Err(CommandError::new(
             "invalid_quantity",
@@ -366,6 +379,7 @@ pub struct ProductInput {
     pub default_supplier_id: Option<i64>,
     pub stock_low_threshold: Option<f64>,
     pub stock_medium_threshold: Option<f64>,
+    pub ignore_stock_alerts: Option<bool>,
     pub presentations: Vec<PresentationInput>,
 }
 #[tauri::command]
@@ -377,7 +391,12 @@ pub async fn save_product(
     save_product_db(&db, input).await
 }
 async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandError> {
-    let (display, key) = name(&input.name)?;
+    let (display, key) = normalize_name(&input.name)?;
+    let ignore_alerts = if input.ignore_stock_alerts.unwrap_or(false) {
+        1
+    } else {
+        0
+    };
     if let (Some(low), Some(med)) = (input.stock_low_threshold, input.stock_medium_threshold) {
         if low < 0.0 || low >= med || med > 1_000_000_000.0 {
             return Err(CommandError::new(
@@ -407,8 +426,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
     let mut keys = std::collections::HashSet::new();
     let mut ids = std::collections::HashSet::new();
     for p in &input.presentations {
-        positive(p.factor)?;
-        if !keys.insert(name(&p.name)?.1) {
+        ensure_positive_quantity(p.factor)?;
+        if !keys.insert(normalize_name(&p.name)?.1) {
             return Err(CommandError::new(
                 "duplicate_presentation",
                 "Hay presentaciones con el mismo nombre.",
@@ -423,14 +442,14 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             }
         }
     }
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     if let Some(supp_id) = input.default_supplier_id {
         let count: i64 =
             sqlx::query_scalar("SELECT count(*) FROM suppliers WHERE id=? AND archived=0")
                 .bind(supp_id)
                 .fetch_one(&mut *tx)
                 .await
-                .map_err(error)?;
+                .map_err(sqlx_error)?;
         if count == 0 {
             return Err(CommandError::new(
                 "unavailable",
@@ -440,7 +459,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
     }
     let id = if let Some(id) = input.id {
         let row=sqlx::query("SELECT base_presentation_id, EXISTS(SELECT 1 FROM movements WHERE product_id=products.id) AS used FROM products WHERE id=? AND archived=0")
-            .bind(id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or_else(|| CommandError::new("unavailable", "El producto no está disponible."))?;
+            .bind(id).fetch_optional(&mut *tx).await.map_err(sqlx_error)?.ok_or_else(|| CommandError::new("unavailable", "El producto no está disponible."))?;
         if row.get::<bool, _>("used") {
             let base = input
                 .presentations
@@ -454,8 +473,8 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 ));
             }
         }
-        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,default_supplier_id=?,stock_low_threshold=?,stock_medium_threshold=?,updated_at=datetime('now') WHERE id=?")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).bind(id).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?;
+        sqlx::query("UPDATE products SET name=?,name_key=?,description=?,category_id=?,default_supplier_id=?,stock_low_threshold=?,stock_medium_threshold=?,ignore_stock_alerts=?,updated_at=datetime('now') WHERE id=?")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).bind(ignore_alerts).bind(id).execute(&mut *tx).await.map_err(|e| sqlx_error_as(e, "product", "un producto"))?;
         id
     } else {
         if !ids.is_empty() {
@@ -464,18 +483,18 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
                 "Las presentaciones nuevas no deben tener identificador.",
             ));
         }
-        sqlx::query("INSERT INTO products(name,name_key,description,category_id,default_supplier_id,stock_low_threshold,stock_medium_threshold,base_presentation_id) VALUES(?,?,?,?,?,?,?, -1)")
-            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).execute(&mut *tx).await.map_err(|e| error_as(e, "product", "un producto"))?.last_insert_rowid()
+        sqlx::query("INSERT INTO products(name,name_key,description,category_id,default_supplier_id,stock_low_threshold,stock_medium_threshold,ignore_stock_alerts,base_presentation_id) VALUES(?,?,?,?,?,?,?,?, -1)")
+            .bind(&display).bind(&key).bind(&input.description).bind(input.category_id).bind(input.default_supplier_id).bind(input.stock_low_threshold).bind(input.stock_medium_threshold).bind(ignore_alerts).execute(&mut *tx).await.map_err(|e| sqlx_error_as(e, "product", "un producto"))?.last_insert_rowid()
     };
     // Retire omitted presentations; historical references remain valid.
     sqlx::query("UPDATE presentations SET archived=1 WHERE product_id=?")
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
+        .map_err(sqlx_error)?;
     let mut base = 0;
     for mut p in input.presentations {
-        let (display, key) = name(&p.name)?;
+        let (display, key) = normalize_name(&p.name)?;
         if p.id.is_none() {
             p.id = sqlx::query_scalar(
                 "SELECT id FROM presentations WHERE product_id=? AND name_key=? AND archived=1",
@@ -484,11 +503,11 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             .bind(&key)
             .fetch_optional(&mut *tx)
             .await
-            .map_err(error)?;
+            .map_err(sqlx_error)?;
         }
         let pres = if let Some(pid) = p.id {
             let old=sqlx::query("SELECT factor, EXISTS(SELECT 1 FROM movements WHERE presentation_id=presentations.id) AS used FROM presentations WHERE id=? AND product_id=?")
-                .bind(pid).bind(id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or_else(|| CommandError::new("invalid_presentations", "La presentación no pertenece a este producto."))?;
+                .bind(pid).bind(id).fetch_optional(&mut *tx).await.map_err(sqlx_error)?.ok_or_else(|| CommandError::new("invalid_presentations", "La presentación no pertenece a este producto."))?;
             if old.get::<bool, _>("used") && old.get::<f64, _>("factor") != p.factor {
                 return Err(CommandError::new("factor_locked", "Una presentación con historial no puede cambiar de factor. Crea otra presentación."));
             }
@@ -501,7 +520,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             .bind(pid)
             .execute(&mut *tx)
             .await
-            .map_err(|e| error_as(e, "presentation", "una presentación de este producto"))?;
+            .map_err(|e| sqlx_error_as(e, "presentation", "una presentación de este producto"))?;
             pid
         } else {
             sqlx::query(
@@ -513,7 +532,7 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
             .bind(p.factor)
             .execute(&mut *tx)
             .await
-            .map_err(|e| error_as(e, "presentation", "una presentación de este producto"))?
+            .map_err(|e| sqlx_error_as(e, "presentation", "una presentación de este producto"))?
             .last_insert_rowid()
         };
         if p.factor == 1.0 {
@@ -525,13 +544,14 @@ async fn save_product_db(db: &Db, input: ProductInput) -> Result<i64, CommandErr
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
-    tx.commit().await.map_err(error)?;
+        .map_err(sqlx_error)?;
+    tx.commit().await.map_err(sqlx_error)?;
     Ok(id)
 }
 #[derive(Deserialize)]
 pub struct CatalogInput {
-    kind: String,
+    #[serde(rename = "recordType")]
+    record_type: String,
     id: Option<i64>,
     name: String,
     contact: Option<String>,
@@ -548,16 +568,16 @@ pub async fn save_catalog(
     save_catalog_db(&db, input).await
 }
 async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandError> {
-    let (display, key) = name(&input.name)?;
-    let mut tx = db.begin().await.map_err(error)?;
-    let id = match input.kind.as_str() {
+    let (display, key) = normalize_name(&input.name)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
+    let id = match input.record_type.as_str() {
         "supplier" => {
             if let Some(id) = input.id {
                 let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM suppliers WHERE id=?")
                     .bind(id)
                     .fetch_optional(&mut *tx)
                     .await
-                    .map_err(error)?;
+                    .map_err(sqlx_error)?;
                 if exists.is_none() {
                     return Err(CommandError::new("not_found", "El proveedor no existe."));
                 }
@@ -569,7 +589,7 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
                     .bind(id)
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| error_as(e, "supplier", "un proveedor"))?;
+                    .map_err(|e| sqlx_error_as(e, "supplier", "un proveedor"))?;
                 id
             } else {
                 sqlx::query("INSERT INTO suppliers(name,name_key,contact,notes) VALUES(?,?,?,?)")
@@ -579,7 +599,7 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
                     .bind(&input.notes)
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| error_as(e, "supplier", "un proveedor"))?
+                    .map_err(|e| sqlx_error_as(e, "supplier", "un proveedor"))?
                     .last_insert_rowid()
             }
         }
@@ -590,7 +610,7 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
                         .bind(id)
                         .fetch_optional(&mut *tx)
                         .await
-                        .map_err(error)?;
+                        .map_err(sqlx_error)?;
                 if exists.is_none() {
                     return Err(CommandError::new("not_found", "La categoría no existe."));
                 }
@@ -602,7 +622,7 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
                     .bind(id)
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| error_as(e, "category", "una categoría"))?;
+                    .map_err(|e| sqlx_error_as(e, "category", "una categoría"))?;
                 id
             } else {
                 sqlx::query("INSERT INTO categories(name,name_key,color,icon) VALUES(?,?,?,?)")
@@ -612,7 +632,7 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
                     .bind(&input.icon)
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| error_as(e, "category", "una categoría"))?
+                    .map_err(|e| sqlx_error_as(e, "category", "una categoría"))?
                     .last_insert_rowid()
             }
         }
@@ -623,26 +643,26 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
             ))
         }
     };
-    tx.commit().await.map_err(error)?;
+    tx.commit().await.map_err(sqlx_error)?;
     Ok(id)
 }
 #[tauri::command]
 pub async fn archive_record(
     db: State<'_, DbState>,
-    kind: String,
+    record_type: String,
     id: i64,
     restore: bool,
 ) -> Result<(), CommandError> {
     let db = db.0.read().await;
-    archive_record_db(&db, kind, id, restore).await
+    archive_record_db(&db, record_type, id, restore).await
 }
 async fn archive_record_db(
     db: &Db,
-    kind: String,
+    record_type: String,
     id: i64,
     restore: bool,
 ) -> Result<(), CommandError> {
-    let table = match kind.as_str() {
+    let table = match record_type.as_str() {
         "product" => "products",
         "supplier" => "suppliers",
         "category" => "categories",
@@ -653,7 +673,7 @@ async fn archive_record_db(
             ))
         }
     };
-    let sql = match (kind.as_str(), restore) {
+    let sql = match (record_type.as_str(), restore) {
         ("product", false) => "UPDATE products SET archived=1 WHERE id=? AND stock=0",
         ("product", true) => "UPDATE products SET archived=0 WHERE id=?",
         ("supplier", false) => "UPDATE suppliers SET archived=1 WHERE id=?",
@@ -670,7 +690,7 @@ async fn archive_record_db(
         .bind(id)
         .execute(db)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .rows_affected();
     if affected == 1 {
         return Ok(());
@@ -680,7 +700,7 @@ async fn archive_record_db(
             .bind(id)
             .fetch_one(db)
             .await
-            .map_err(error)?;
+            .map_err(sqlx_error)?;
     if exists {
         Err(CommandError::new(
             "archive_requires_zero_stock",
@@ -704,12 +724,12 @@ pub async fn delete_product(
 /// "producto eliminado" gracias a los snapshots de nombre.
 async fn delete_product_db(db: &Db, id: i64, password: String) -> Result<(), CommandError> {
     check_delete_password(db, &password).await?;
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     let row = sqlx::query("SELECT archived, stock FROM products WHERE id=?")
         .bind(id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .ok_or_else(|| CommandError::new("not_found", "El producto no existe."))?;
     if row.get::<i64, _>("archived") != 1 {
         return Err(CommandError::new(
@@ -727,13 +747,13 @@ async fn delete_product_db(db: &Db, id: i64, password: String) -> Result<(), Com
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
+        .map_err(sqlx_error)?;
     sqlx::query("DELETE FROM products WHERE id=?")
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
-    tx.commit().await.map_err(error)
+        .map_err(sqlx_error)?;
+    tx.commit().await.map_err(sqlx_error)
 }
 #[tauri::command]
 pub async fn delete_supplier(
@@ -748,12 +768,12 @@ pub async fn delete_supplier(
 /// el nombre del proveedor y quedan marcados como "proveedor eliminado".
 async fn delete_supplier_db(db: &Db, id: i64, password: String) -> Result<(), CommandError> {
     check_delete_password(db, &password).await?;
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     let archived: i64 = sqlx::query_scalar("SELECT archived FROM suppliers WHERE id=?")
         .bind(id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .ok_or_else(|| CommandError::new("not_found", "El proveedor no existe."))?;
     if archived != 1 {
         return Err(CommandError::new(
@@ -765,8 +785,8 @@ async fn delete_supplier_db(db: &Db, id: i64, password: String) -> Result<(), Co
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
-    tx.commit().await.map_err(error)
+        .map_err(sqlx_error)?;
+    tx.commit().await.map_err(sqlx_error)
 }
 #[derive(Deserialize)]
 pub struct MovementInput {
@@ -790,7 +810,7 @@ pub async fn create_movement(
     create_movement_db(&db, input).await
 }
 async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), CommandError> {
-    positive(input.quantity)?;
+    ensure_positive_quantity(input.quantity)?;
     if !["in", "out"].contains(&input.movement_type.as_str()) {
         return Err(CommandError::new(
             "invalid_type",
@@ -809,12 +829,12 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), Command
             "Indica el motivo del ajuste.",
         ));
     }
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     let row=sqlx::query("SELECT r.factor,r.name,p.name AS product_name FROM presentations r JOIN products p ON p.id=r.product_id WHERE r.id=? AND p.id=? AND r.archived=0 AND p.archived=0")
-        .bind(input.presentation_id).bind(input.product_id).fetch_optional(&mut *tx).await.map_err(error)?.ok_or_else(|| CommandError::new("unavailable", "El producto o la presentación no están disponibles."))?;
+        .bind(input.presentation_id).bind(input.product_id).fetch_optional(&mut *tx).await.map_err(sqlx_error)?.ok_or_else(|| CommandError::new("unavailable", "El producto o la presentación no están disponibles."))?;
     let factor: f64 = row.get("factor");
     let base = input.quantity * factor;
-    positive(base)?;
+    ensure_positive_quantity(base)?;
     let base = (base * 1e6).round() / 1e6;
     let supplier_name = if let Some(id) = input.supplier_id {
         Some(
@@ -822,7 +842,7 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), Command
                 .bind(id)
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(error)?
+                .map_err(sqlx_error)?
                 .ok_or_else(|| {
                     CommandError::new("unavailable", "El proveedor no está disponible.")
                 })?,
@@ -836,7 +856,7 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), Command
         -base
     };
     if sqlx::query("UPDATE products SET stock=round(stock+?,6),updated_at=datetime('now') WHERE id=? AND round(stock+?,6)>=0 AND round(stock+?,6)<=1000000000")
-        .bind(delta).bind(input.product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 {
+        .bind(delta).bind(input.product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(sqlx_error)?.rows_affected()!=1 {
         return Err(CommandError::new(
             "insufficient_stock",
             "Stock insuficiente o cantidad fuera del límite permitido.",
@@ -847,8 +867,8 @@ async fn create_movement_db(db: &Db, input: MovementInput) -> Result<(), Command
         .bind(row.get::<String,_>("name")).bind(row.get::<String,_>("product_name")).bind(factor).bind(base)
         .bind(input.supplier_id).bind(&supplier_name).bind(input.notes)
         .bind(if input.adjustment {"adjustment"} else {"regular"}).bind(input.reason)
-        .execute(&mut *tx).await.map_err(error)?;
-    tx.commit().await.map_err(error)
+        .execute(&mut *tx).await.map_err(sqlx_error)?;
+    tx.commit().await.map_err(sqlx_error)
 }
 #[tauri::command]
 pub async fn cancel_movement(
@@ -866,14 +886,14 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Comm
             "Indica el motivo de la anulación.",
         ));
     }
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     if sqlx::query("UPDATE movements SET cancelled_at=datetime('now'),cancellation_reason=? WHERE id=? AND cancelled_at IS NULL")
-        .bind(reason.trim()).bind(id).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 { return Err(CommandError::new("already_cancelled", "El movimiento ya está anulado o no existe.")); }
+        .bind(reason.trim()).bind(id).execute(&mut *tx).await.map_err(sqlx_error)?.rows_affected()!=1 { return Err(CommandError::new("already_cancelled", "El movimiento ya está anulado o no existe.")); }
     let row = sqlx::query("SELECT product_id,type,base_quantity FROM movements WHERE id=?")
         .bind(id)
         .fetch_one(&mut *tx)
         .await
-        .map_err(error)?;
+        .map_err(sqlx_error)?;
     // Los movimientos de productos eliminados conservan su registro, pero ya
     // no tienen stock que revertir.
     if let Some(product_id) = row.get::<Option<i64>, _>("product_id") {
@@ -884,14 +904,14 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Comm
             base
         };
         if sqlx::query("UPDATE products SET stock=round(stock+?,6),updated_at=datetime('now') WHERE id=? AND archived=0 AND round(stock+?,6)>=0 AND round(stock+?,6)<=1000000000")
-            .bind(delta).bind(product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(error)?.rows_affected()!=1 {
+            .bind(delta).bind(product_id).bind(delta).bind(delta).execute(&mut *tx).await.map_err(sqlx_error)?.rows_affected()!=1 {
             return Err(CommandError::new(
                 "insufficient_stock",
                 "No se puede anular: stock insuficiente o producto archivado.",
             ));
         }
     }
-    tx.commit().await.map_err(error)
+    tx.commit().await.map_err(sqlx_error)
 }
 #[tauri::command]
 pub async fn update_movement_supplier(
@@ -907,12 +927,12 @@ pub(crate) async fn update_movement_supplier_db(
     id: i64,
     supplier_id: Option<i64>,
 ) -> Result<(), CommandError> {
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     let row = sqlx::query("SELECT type, cancelled_at FROM movements WHERE id=?")
         .bind(id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .ok_or_else(|| CommandError::new("not_found", "El movimiento no existe."))?;
 
     let m_type: String = row.get("type");
@@ -938,7 +958,7 @@ pub(crate) async fn update_movement_supplier_db(
                 .bind(sid)
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(error)?
+                .map_err(sqlx_error)?
                 .ok_or_else(|| {
                     CommandError::new("unavailable", "El proveedor no está disponible.")
                 })?,
@@ -953,26 +973,26 @@ pub(crate) async fn update_movement_supplier_db(
         .bind(id)
         .execute(&mut *tx)
         .await
-        .map_err(error)?;
+        .map_err(sqlx_error)?;
 
-    tx.commit().await.map_err(error)
+    tx.commit().await.map_err(sqlx_error)
 }
 /// Contraseña en texto plano que protege las eliminaciones: movimientos en
 /// lote y borrado definitivo de productos y proveedores archivados.
 const DEFAULT_DELETE_PASSWORD: &str = "admin";
 
-async fn delete_password_db(db: &Db) -> Result<String, CommandError> {
+async fn get_delete_password(db: &Db) -> Result<String, CommandError> {
     let value =
         sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key='delete_password'")
             .fetch_optional(db)
             .await
-            .map_err(error)?;
+            .map_err(sqlx_error)?;
     Ok(value.unwrap_or_else(|| DEFAULT_DELETE_PASSWORD.into()))
 }
 
 /// Valida la contraseña de administración que protege las eliminaciones.
 async fn check_delete_password(db: &Db, password: &str) -> Result<(), CommandError> {
-    if password.trim() != delete_password_db(db).await? {
+    if password.trim() != get_delete_password(db).await? {
         return Err(CommandError::new(
             "wrong_password",
             "Contraseña incorrecta.",
@@ -982,7 +1002,7 @@ async fn check_delete_password(db: &Db, password: &str) -> Result<(), CommandErr
 }
 
 /// Filtro de borrado en lote de movimientos. `from` es inclusivo y `to`
-/// exclusivo, ambos en UTC (`YYYY-MM-DD HH:MM:SS`), como en `page_movements`.
+/// exclusivo, ambos en UTC (`YYYY-MM-DD HH:MM:SS`), como en `list_movements_page`.
 #[derive(Deserialize)]
 pub struct MovementDeleteFilter {
     pub mode: String,
@@ -1107,8 +1127,8 @@ async fn count_movements_db(db: &Db, filter: &MovementDeleteFilter) -> Result<i6
     let filter = validate_delete_filter(filter)?;
     let mut query = QueryBuilder::<Sqlite>::new("SELECT count(*) FROM movements");
     apply_delete_filter(&mut query, &filter);
-    let row = query.build().fetch_one(db).await.map_err(error)?;
-    row.try_get::<i64, _>(0).map_err(error)
+    let row = query.build().fetch_one(db).await.map_err(sqlx_error)?;
+    row.try_get::<i64, _>(0).map_err(sqlx_error)
 }
 
 /// Borra en lote los movimientos que coincidan con el filtro (por cantidad o
@@ -1130,7 +1150,7 @@ async fn delete_movements_db(
 ) -> Result<i64, CommandError> {
     let filter = validate_delete_filter(&filter)?;
     check_delete_password(db, &password).await?;
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     let deleted = if let Some(limit) = filter.limit {
         let order = if filter.descending {
             "created_at DESC, id DESC"
@@ -1143,7 +1163,7 @@ async fn delete_movements_db(
         .bind(limit)
         .execute(&mut *tx)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .rows_affected()
     } else {
         let mut query = QueryBuilder::<Sqlite>::new("DELETE FROM movements");
@@ -1152,10 +1172,10 @@ async fn delete_movements_db(
             .build()
             .execute(&mut *tx)
             .await
-            .map_err(error)?
+            .map_err(sqlx_error)?
             .rows_affected()
     };
-    tx.commit().await.map_err(error)?;
+    tx.commit().await.map_err(sqlx_error)?;
     Ok(deleted as i64)
 }
 
@@ -1166,14 +1186,14 @@ pub async fn change_delete_password(
     new_password: String,
 ) -> Result<(), CommandError> {
     let db = db.0.read().await;
-    change_delete_password_db(&db, old_password, new_password).await
+    update_delete_password(&db, old_password, new_password).await
 }
-async fn change_delete_password_db(
+async fn update_delete_password(
     db: &Db,
     old_password: String,
     new_password: String,
 ) -> Result<(), CommandError> {
-    if old_password.trim() != delete_password_db(db).await? {
+    if old_password.trim() != get_delete_password(db).await? {
         return Err(CommandError::new(
             "wrong_password",
             "La contraseña actual es incorrecta.",
@@ -1190,7 +1210,7 @@ async fn change_delete_password_db(
         .bind(new_password)
         .execute(db)
         .await
-        .map_err(error)?;
+        .map_err(sqlx_error)?;
     Ok(())
 }
 
@@ -1212,7 +1232,7 @@ async fn save_settings_db(
     view: Option<String>,
     page_size: Option<i64>,
 ) -> Result<(), CommandError> {
-    let mut tx = db.begin().await.map_err(error)?;
+    let mut tx = db.begin().await.map_err(sqlx_error)?;
     if let (Some(low), Some(medium)) = (low, medium) {
         if !low.is_finite() || !medium.is_finite() || low < 0.0 || medium <= low || medium > 1e9 {
             return Err(CommandError::new(
@@ -1229,7 +1249,7 @@ async fn save_settings_db(
                 .bind(key)
                 .execute(&mut *tx)
                 .await
-                .map_err(error)?
+                .map_err(sqlx_error)?
                 .rows_affected();
             if updated != 1 {
                 return Err(CommandError::new(
@@ -1252,7 +1272,7 @@ async fn save_settings_db(
             .bind(view)
             .execute(&mut *tx)
             .await
-            .map_err(error)?
+            .map_err(sqlx_error)?
             .rows_affected();
         if updated != 1 {
             return Err(CommandError::new(
@@ -1277,7 +1297,7 @@ async fn save_settings_db(
         .bind(page_size.to_string())
         .execute(&mut *tx)
         .await
-        .map_err(error)?
+        .map_err(sqlx_error)?
         .rows_affected();
         if updated != 1 {
             return Err(CommandError::new(
@@ -1286,7 +1306,7 @@ async fn save_settings_db(
             ));
         }
     }
-    tx.commit().await.map_err(error)
+    tx.commit().await.map_err(sqlx_error)
 }
 
 /// Absolute path of the SQLite database file managed by the application.
@@ -1483,7 +1503,7 @@ async fn validate_backup(path: &Path) -> Result<(), CommandError> {
     result
 }
 
-fn damaged_backup() -> CommandError {
+fn damaged_backup_error() -> CommandError {
     CommandError::new(
         "invalid_backup",
         "El archivo de respaldo está dañado o no es compatible.",
@@ -1502,7 +1522,7 @@ async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError>
     .bind("settings")
     .fetch_one(&mut *conn)
     .await
-    .map_err(|_| damaged_backup())?;
+    .map_err(|_| damaged_backup_error())?;
     if found != BACKUP_SCHEMA.len() as i64 {
         return Err(CommandError::new(
             "invalid_backup",
@@ -1513,7 +1533,7 @@ async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError>
         let columns = sqlx::query(&format!("PRAGMA table_info({table})"))
             .fetch_all(&mut *conn)
             .await
-            .map_err(|_| damaged_backup())?;
+            .map_err(|_| damaged_backup_error())?;
         let names: Vec<String> = columns
             .iter()
             .map(|row| row.get::<String, _>("name"))
@@ -1534,7 +1554,7 @@ async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError>
     let integrity: String = sqlx::query_scalar("PRAGMA integrity_check")
         .fetch_one(&mut *conn)
         .await
-        .map_err(|_| damaged_backup())?;
+        .map_err(|_| damaged_backup_error())?;
     if integrity != "ok" {
         return Err(CommandError::new(
             "invalid_backup",
@@ -1544,7 +1564,7 @@ async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError>
     let violations = sqlx::query("PRAGMA foreign_key_check")
         .fetch_all(&mut *conn)
         .await
-        .map_err(|_| damaged_backup())?;
+        .map_err(|_| damaged_backup_error())?;
     if !violations.is_empty() {
         return Err(CommandError::new(
             "invalid_backup",
@@ -1760,6 +1780,7 @@ mod tests {
             default_supplier_id: None,
             stock_low_threshold: None,
             stock_medium_threshold: None,
+            ignore_stock_alerts: None,
             presentations: vec![PresentationInput {
                 id: pres,
                 name: "Unidad".into(),
@@ -1767,9 +1788,9 @@ mod tests {
             }],
         }
     }
-    fn catalog(kind: &str, id: Option<i64>, name: &str) -> CatalogInput {
+    fn catalog(record_type: &str, id: Option<i64>, name: &str) -> CatalogInput {
         CatalogInput {
-            kind: kind.into(),
+            record_type: record_type.into(),
             id,
             name: name.into(),
             contact: None,
@@ -1789,11 +1810,11 @@ mod tests {
             .unwrap();
         (id, pres)
     }
-    fn movement(pair: (i64, i64), kind: &str, quantity: f64) -> MovementInput {
+    fn movement(pair: (i64, i64), movement_type: &str, quantity: f64) -> MovementInput {
         MovementInput {
             product_id: pair.0,
             presentation_id: pair.1,
-            movement_type: kind.into(),
+            movement_type: movement_type.into(),
             quantity,
             supplier_id: None,
             notes: None,
@@ -1882,20 +1903,23 @@ mod tests {
             save_product_db(&db, product(Some(a.0), "Café Molido", Some(a.1)))
                 .await
                 .unwrap();
-            for kind in ["supplier", "category"] {
-                let id = save_catalog_db(&db, catalog(kind, None, "  ÁRBOL  Norte "))
+            for record_type in ["supplier", "category"] {
+                let id = save_catalog_db(&db, catalog(record_type, None, "  ÁRBOL  Norte "))
                     .await
                     .unwrap();
                 assert!(
-                    save_catalog_db(&db, catalog(kind, None, "a\u{301}rbol norte"))
+                    save_catalog_db(&db, catalog(record_type, None, "a\u{301}rbol norte"))
                         .await
                         .is_err()
                 );
-                save_catalog_db(&db, catalog(kind, Some(id), "Árbol Norte"))
+                save_catalog_db(&db, catalog(record_type, Some(id), "Árbol Norte"))
                     .await
                     .unwrap();
             }
-            assert_ne!(name("año").unwrap().1, name("ano").unwrap().1);
+            assert_ne!(
+                normalize_name("año").unwrap().1,
+                normalize_name("ano").unwrap().1
+            );
             assert!(save_product_db(&db, product(None, "  ", None))
                 .await
                 .is_err());
@@ -2463,19 +2487,17 @@ mod tests {
     fn delete_password_can_be_changed_with_the_current_one() {
         tauri::async_runtime::block_on(async {
             let db = connect(Path::new(":memory:")).await.unwrap();
-            assert_eq!(delete_password_db(&db).await.unwrap(), "admin");
-            assert!(
-                change_delete_password_db(&db, "otra".into(), "nueva".into())
-                    .await
-                    .is_err()
-            );
-            assert!(change_delete_password_db(&db, "admin".into(), "   ".into())
+            assert_eq!(get_delete_password(&db).await.unwrap(), "admin");
+            assert!(update_delete_password(&db, "otra".into(), "nueva".into())
                 .await
                 .is_err());
-            change_delete_password_db(&db, "admin".into(), "  nueva  ".into())
+            assert!(update_delete_password(&db, "admin".into(), "   ".into())
+                .await
+                .is_err());
+            update_delete_password(&db, "admin".into(), "  nueva  ".into())
                 .await
                 .unwrap();
-            assert_eq!(delete_password_db(&db).await.unwrap(), "nueva");
+            assert_eq!(get_delete_password(&db).await.unwrap(), "nueva");
 
             let water = fixture(&db, "Agua").await;
             create_movement_db(&db, movement(water, "in", 1.0))
@@ -2761,7 +2783,7 @@ mod tests {
 
             let rows = list_products_db(&db, false).await.unwrap();
             let row = rows.iter().find(|row| row.id == id).unwrap();
-            assert_eq!(row.base_unit.as_deref(), Some("Unidad"));
+            assert_eq!(row.base_presentation_name.as_deref(), Some("Unidad"));
             assert_eq!(row.category_name.as_deref(), Some("Bebidas"));
             assert_eq!(row.archived, 0);
             assert!(list_products_db(&db, true).await.unwrap().is_empty());
@@ -2770,7 +2792,7 @@ mod tests {
     #[test]
     fn queries_filter_search_dates_status_and_pagination() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters, DEFAULT_PAGE_SIZE};
+            use crate::queries::{list_movements_page_db, MovementFilters, DEFAULT_PAGE_SIZE};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -2784,7 +2806,7 @@ mod tests {
             underscore.notes = Some("a_b".into());
             create_movement_db(&db, underscore).await.unwrap();
 
-            let escaped = page_movements_db(
+            let escaped = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     search: Some("_".into()),
@@ -2796,7 +2818,7 @@ mod tests {
             assert_eq!(escaped.total, 1);
             assert_eq!(escaped.items[0].notes.as_deref(), Some("a_b"));
 
-            let found = page_movements_db(
+            let found = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     search: Some("café".into()),
@@ -2808,7 +2830,7 @@ mod tests {
             assert_eq!(found.total, 1);
             assert_eq!(found.items[0].product_id, Some(coffee.0));
 
-            let by_product = page_movements_db(
+            let by_product = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     product: Some(water.0),
@@ -2819,7 +2841,7 @@ mod tests {
             .unwrap();
             assert_eq!(by_product.total, 1);
 
-            let by_type = page_movements_db(
+            let by_type = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     movement_type: Some("out".into()),
@@ -2833,7 +2855,7 @@ mod tests {
             create_movement_db(&db, movement(water, "out", 1.0))
                 .await
                 .unwrap();
-            let outgoing = page_movements_db(
+            let outgoing = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     movement_type: Some("out".into()),
@@ -2844,7 +2866,7 @@ mod tests {
             .unwrap();
             assert_eq!(outgoing.total, 1);
 
-            let cancelled = page_movements_db(
+            let cancelled = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     status: Some("cancelled".into()),
@@ -2858,7 +2880,7 @@ mod tests {
             cancel_movement_db(&db, 3, "Error de carga".into())
                 .await
                 .unwrap();
-            let cancelled = page_movements_db(
+            let cancelled = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     status: Some("cancelled".into()),
@@ -2878,12 +2900,12 @@ mod tests {
                     .unwrap();
             }
             let expected_total = DEFAULT_PAGE_SIZE + 6;
-            let first = page_movements_db(&db, &MovementFilters::default())
+            let first = list_movements_page_db(&db, &MovementFilters::default())
                 .await
                 .unwrap();
             assert_eq!(first.total, expected_total);
             assert_eq!(first.items.len(), DEFAULT_PAGE_SIZE as usize);
-            let second = page_movements_db(
+            let second = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page: Some(1),
@@ -3035,7 +3057,7 @@ mod tests {
     #[test]
     fn movement_page_out_of_range_reports_real_total() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters};
+            use crate::queries::{list_movements_page_db, MovementFilters};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -3045,7 +3067,7 @@ mod tests {
                     .unwrap();
             }
 
-            let page = page_movements_db(
+            let page = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page: Some(9),
@@ -3061,7 +3083,7 @@ mod tests {
     #[test]
     fn movement_page_size_from_filter_is_respected() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters, MIN_PAGE_SIZE};
+            use crate::queries::{list_movements_page_db, MovementFilters, MIN_PAGE_SIZE};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -3071,7 +3093,7 @@ mod tests {
                     .unwrap();
             }
 
-            let first = page_movements_db(
+            let first = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page_size: Some(10),
@@ -3083,7 +3105,7 @@ mod tests {
             assert_eq!(first.total, 25);
             assert_eq!(first.items.len(), 10);
 
-            let third = page_movements_db(
+            let third = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page_size: Some(10),
@@ -3097,7 +3119,7 @@ mod tests {
             assert_eq!(third.items.len(), 5);
 
             // Un tamaño fuera del rango permitido se acota al mínimo.
-            let clamped = page_movements_db(
+            let clamped = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page_size: Some(1),
@@ -3112,7 +3134,7 @@ mod tests {
     #[test]
     fn search_escapes_percent_and_backslash() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{escape_like, page_movements_db, MovementFilters};
+            use crate::queries::{escape_like, list_movements_page_db, MovementFilters};
 
             assert_eq!(escape_like("100%_\\"), "100\\%\\_\\\\");
             assert_eq!(escape_like("plain"), "plain");
@@ -3126,7 +3148,7 @@ mod tests {
             second.notes = Some("sin descuento".into());
             create_movement_db(&db, second).await.unwrap();
 
-            let found = page_movements_db(
+            let found = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     search: Some("%".into()),
@@ -3319,7 +3341,7 @@ mod tests {
     #[test]
     fn movement_page_index_is_clamped_without_overflow() {
         tauri::async_runtime::block_on(async {
-            use crate::queries::{page_movements_db, MovementFilters};
+            use crate::queries::{list_movements_page_db, MovementFilters};
 
             let db = connect(Path::new(":memory:")).await.unwrap();
             let water = fixture(&db, "Agua").await;
@@ -3328,7 +3350,7 @@ mod tests {
                     .await
                     .unwrap();
             }
-            let page = page_movements_db(
+            let page = list_movements_page_db(
                 &db,
                 &MovementFilters {
                     page: Some(i64::MAX),
@@ -3498,23 +3520,27 @@ mod tests {
             let mut prod = product(None, "Arroz", None);
             prod.stock_low_threshold = Some(3.0);
             prod.stock_medium_threshold = Some(12.0);
+            prod.ignore_stock_alerts = Some(true);
             let prod_id = save_product_db(&db, prod).await.unwrap();
 
             let rows = list_products_db(&db, false).await.unwrap();
             let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
             assert_eq!(found.stock_low_threshold, Some(3.0));
             assert_eq!(found.stock_medium_threshold, Some(12.0));
+            assert_eq!(found.ignore_stock_alerts, 1);
 
             // 2. Modificar umbrales
             let mut update_prod = product(Some(prod_id), "Arroz", None);
             update_prod.stock_low_threshold = Some(6.0);
             update_prod.stock_medium_threshold = Some(24.0);
+            update_prod.ignore_stock_alerts = Some(false);
             save_product_db(&db, update_prod).await.unwrap();
 
             let rows = list_products_db(&db, false).await.unwrap();
             let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
             assert_eq!(found.stock_low_threshold, Some(6.0));
             assert_eq!(found.stock_medium_threshold, Some(24.0));
+            assert_eq!(found.ignore_stock_alerts, 0);
 
             // 3. Volver a umbrales globales (None, None)
             let mut reset_prod = product(Some(prod_id), "Arroz", None);
@@ -3606,6 +3632,7 @@ mod tests {
             assert_eq!(harina.name, "Harina");
             assert_eq!(harina.stock_low_threshold, None);
             assert_eq!(harina.stock_medium_threshold, None);
+            assert_eq!(harina.ignore_stock_alerts, 0);
         });
     }
 }

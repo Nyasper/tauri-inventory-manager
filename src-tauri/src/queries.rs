@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, QueryBuilder, Row, Sqlite};
 use tauri::State;
 
-use crate::inventory::{name as normalize_name, CommandError, DbState};
+use crate::inventory::{normalize_name, CommandError, DbState};
 
 type Db = Pool<Sqlite>;
 
@@ -45,8 +45,9 @@ pub struct ProductRow {
     pub stock: f64,
     pub stock_low_threshold: Option<f64>,
     pub stock_medium_threshold: Option<f64>,
+    pub ignore_stock_alerts: i64,
     pub archived: i64,
-    pub base_unit: Option<String>,
+    pub base_presentation_name: Option<String>,
     pub category_name: Option<String>,
     pub category_color: Option<String>,
     pub category_icon: Option<String>,
@@ -113,7 +114,7 @@ pub struct MovementRow {
 }
 
 #[derive(Serialize)]
-pub struct MovementsPage {
+pub struct MovementPage {
     pub items: Vec<MovementRow>,
     pub total: i64,
 }
@@ -143,12 +144,12 @@ pub struct MovementFilters {
 
 pub(crate) async fn list_products_db(
     db: &Db,
-    archived: bool,
+    archived_only: bool,
 ) -> Result<Vec<ProductRow>, CommandError> {
     sqlx::query_as::<_, ProductRow>(
         "SELECT p.id, p.name, p.description, p.category_id, p.default_supplier_id, p.stock,
-                p.stock_low_threshold, p.stock_medium_threshold, p.archived,
-                b.name AS base_unit, c.name AS category_name,
+                p.stock_low_threshold, p.stock_medium_threshold, p.ignore_stock_alerts, p.archived,
+                b.name AS base_presentation_name, c.name AS category_name,
                 c.color AS category_color, c.icon AS category_icon,
                 s.name AS default_supplier_name
          FROM products p
@@ -158,7 +159,7 @@ pub(crate) async fn list_products_db(
          WHERE p.archived = ?
          ORDER BY p.name COLLATE NOCASE",
     )
-    .bind(archived)
+    .bind(archived_only)
     .fetch_all(db)
     .await
     .map_err(query_error)
@@ -182,7 +183,7 @@ pub(crate) async fn list_presentations_db(
 
 pub(crate) async fn list_suppliers_db(
     db: &Db,
-    archived: bool,
+    archived_only: bool,
 ) -> Result<Vec<SupplierRow>, CommandError> {
     sqlx::query_as::<_, SupplierRow>(
         "SELECT id, name, contact, notes, archived
@@ -190,7 +191,7 @@ pub(crate) async fn list_suppliers_db(
          WHERE archived = ?
          ORDER BY name COLLATE NOCASE",
     )
-    .bind(archived)
+    .bind(archived_only)
     .fetch_all(db)
     .await
     .map_err(query_error)
@@ -205,10 +206,10 @@ pub(crate) async fn list_categories_db(db: &Db) -> Result<Vec<CategoryRow>, Comm
     .map_err(query_error)
 }
 
-pub(crate) async fn page_movements_db(
+pub(crate) async fn list_movements_page_db(
     db: &Db,
     filters: &MovementFilters,
-) -> Result<MovementsPage, CommandError> {
+) -> Result<MovementPage, CommandError> {
     // El total se consulta aparte: `count(*) OVER ()` obliga a SQLite a
     // materializar y ordenar todas las filas que cumplen los filtros
     // (~45 ms con 100.000 movimientos frente a ~0,2 ms con el count
@@ -241,7 +242,7 @@ pub(crate) async fn page_movements_db(
     for row in &rows {
         items.push(MovementRow::from_row(row).map_err(query_error)?);
     }
-    Ok(MovementsPage { items, total })
+    Ok(MovementPage { items, total })
 }
 
 /// Añade las condiciones de los filtros de movimientos a un `QueryBuilder`.
@@ -266,7 +267,7 @@ fn apply_movement_filters(query: &mut QueryBuilder<Sqlite>, filters: &MovementFi
             .push(" ESCAPE '\\')");
         separator = " AND ";
     }
-    if let Some(kind) = filters
+    if let Some(movement_type) = filters
         .movement_type
         .as_deref()
         .filter(|value| matches!(*value, "in" | "out"))
@@ -274,7 +275,7 @@ fn apply_movement_filters(query: &mut QueryBuilder<Sqlite>, filters: &MovementFi
         query
             .push(separator)
             .push("type=")
-            .push_bind(kind.to_string());
+            .push_bind(movement_type.to_string());
         separator = " AND ";
     }
     if let Some(product) = filters.product {
@@ -373,11 +374,11 @@ pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, CommandError
 
 pub(crate) async fn find_duplicate_db(
     db: &Db,
-    kind: &str,
+    entity_type: &str,
     name: &str,
     current_id: Option<i64>,
 ) -> Result<Option<DuplicateRow>, CommandError> {
-    let table = match kind {
+    let table = match entity_type {
         "product" => "products",
         "supplier" => "suppliers",
         _ => {
@@ -404,10 +405,10 @@ pub(crate) async fn find_duplicate_db(
 #[tauri::command]
 pub async fn list_products(
     state: State<'_, DbState>,
-    archived: bool,
+    archived_only: bool,
 ) -> Result<Vec<ProductRow>, CommandError> {
     let pool = state.pool().read().await;
-    list_products_db(&pool, archived).await
+    list_products_db(&pool, archived_only).await
 }
 
 #[tauri::command]
@@ -422,10 +423,10 @@ pub async fn list_presentations(
 #[tauri::command]
 pub async fn list_suppliers(
     state: State<'_, DbState>,
-    archived: bool,
+    archived_only: bool,
 ) -> Result<Vec<SupplierRow>, CommandError> {
     let pool = state.pool().read().await;
-    list_suppliers_db(&pool, archived).await
+    list_suppliers_db(&pool, archived_only).await
 }
 
 #[tauri::command]
@@ -435,12 +436,12 @@ pub async fn list_categories(state: State<'_, DbState>) -> Result<Vec<CategoryRo
 }
 
 #[tauri::command]
-pub async fn page_movements(
+pub async fn list_movements_page(
     state: State<'_, DbState>,
     filters: MovementFilters,
-) -> Result<MovementsPage, CommandError> {
+) -> Result<MovementPage, CommandError> {
     let pool = state.pool().read().await;
-    page_movements_db(&pool, &filters).await
+    list_movements_page_db(&pool, &filters).await
 }
 
 #[tauri::command]
@@ -452,10 +453,10 @@ pub async fn get_settings(state: State<'_, DbState>) -> Result<SettingsRow, Comm
 #[tauri::command]
 pub async fn find_duplicate(
     state: State<'_, DbState>,
-    kind: String,
+    entity_type: String,
     name: String,
     current_id: Option<i64>,
 ) -> Result<Option<DuplicateRow>, CommandError> {
     let pool = state.pool().read().await;
-    find_duplicate_db(&pool, &kind, &name, current_id).await
+    find_duplicate_db(&pool, &entity_type, &name, current_id).await
 }

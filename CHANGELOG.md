@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Opción para ignorar alertas de stock por producto: permite desactivar alertas de reposición para artículos bajo demanda o de stock mínimo permanente (`ignore_stock_alerts`), excluyéndolos del panel de stock bajo del Dashboard y mostrándolos con la insignia distintiva "Sin alertas" en la tabla de productos.
 - Límites de stock configurables por producto individual: cada producto puede definir opcionalmente sus propios límites (`stock_low_threshold` y `stock_medium_threshold`), respaldados por una migración SQLite automática no destructiva en el arranque; si no se personalizan, se heredan automáticamente los límites globales del sistema.
 - Tooltips informativos en las insignias de estado de stock (`StockBadge`), indicando si la clasificación responde a límites personalizados o a los límites globales por defecto.
 - Default supplier per product: products can now define an optional default supplier (`default_supplier_id`) via `SearchableSelect` in `ProductFormModal`, backed by a non-destructive automatic SQLite schema migration on startup; creating an inbound movement for the product automatically pre-selects its default supplier in `MovementFormModal` while preserving full manual editing.

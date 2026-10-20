@@ -9,14 +9,14 @@
   import { settingsService } from "$lib/services/settings.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
   import { resolveProductStockStatus } from "$lib/utils/stock";
-  import { formatNumber, formatDate } from "$lib/utils/format";
+  import { formatNumber, formatDateTime } from "$lib/utils/format";
   import ProductFormModal from "$lib/components/products/ProductFormModal.svelte";
   import MovementFormModal from "$lib/components/movements/MovementFormModal.svelte";
   import MovementDetailModal from "$lib/components/movements/MovementDetailModal.svelte";
   import SupplierFormModal from "$lib/components/suppliers/SupplierFormModal.svelte";
   import StockBadge from "$lib/components/ui/StockBadge.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
-  import ProductIcon from "$lib/components/ui/ProductIcon.svelte";
+  import CategoryIcon from "$lib/components/ui/CategoryIcon.svelte";
   import {
     Box,
     TriangleAlert,
@@ -31,9 +31,9 @@
   productsService.load();
   movementsService.load({});
 
-  const PANEL_SIZE = 10;
+  const PANEL_ITEM_LIMIT = 10;
 
-  function statusOf(product: Product) {
+  function getProductStockStatus(product: Product) {
     return resolveProductStockStatus(
       product,
       settingsService.settings.stock_low_threshold,
@@ -44,15 +44,16 @@
   const lowStockProducts = $derived(
     productsService.items
       .filter((product) => {
-        const status = statusOf(product);
+        if (product.ignore_stock_alerts) return false;
+        const status = getProductStockStatus(product);
         return status === "low" || status === "out";
       })
       .sort((a, b) => a.stock - b.stock),
   );
 
-  const lowProducts = $derived(lowStockProducts.slice(0, PANEL_SIZE));
+  const lowStockPreview = $derived(lowStockProducts.slice(0, PANEL_ITEM_LIMIT));
 
-  const recentMovements = $derived(movementsService.items.slice(0, PANEL_SIZE));
+  const recentMovements = $derived(movementsService.items.slice(0, PANEL_ITEM_LIMIT));
 
   const stats = $derived([
     {
@@ -141,14 +142,14 @@
         </button>
       </div>
 
-      {#if lowProducts.length === 0 && !productsService.loading && !productsService.error}
+      {#if lowStockPreview.length === 0 && !productsService.loading && !productsService.error}
         <p class="empty-note">No hay productos con stock bajo.</p>
       {:else}
         <div class="rows">
-          {#each lowProducts as product (product.id)}
+          {#each lowStockPreview as product (product.id)}
             <button class="row" type="button" onclick={() => goto("/products")}>
               <span class="row-icon" title={product.category_name ?? "Sin categoría"}>
-                <ProductIcon
+                <CategoryIcon
                   icon={product.category_icon}
                   color={product.category_color}
                   size={28}
@@ -156,9 +157,11 @@
               </span>
               <span class="row-name" title={product.name}>{product.name}</span>
               <span class="row-meta">
-                <span class="row-stock">{formatNumber(product.stock)} {product.base_unit}</span>
+                <span class="row-stock"
+                  >{formatNumber(product.stock)} {product.base_presentation_name}</span
+                >
                 <StockBadge
-                  status={statusOf(product)}
+                  status={getProductStockStatus(product)}
                   title={product.stock_low_threshold != null &&
                   product.stock_medium_threshold != null
                     ? `Límites personalizados: Bajo ≤ ${product.stock_low_threshold}, Medio ≤ ${product.stock_medium_threshold}`
@@ -188,14 +191,16 @@
               onclick={() => modalService.open(MovementDetailModal, { movement })}
             >
               {#if movement.cancelled_at}
-                <Badge uniform bg="var(--surface-3)" color="var(--text-muted)">Anulado</Badge>
+                <Badge fixedWidth background="var(--surface-3)" textColor="var(--text-muted)"
+                  >Anulado</Badge
+                >
               {/if}
               {#if movement.type === "in"}
-                <Badge uniform bg="var(--success)" color="#ffffff">
+                <Badge fixedWidth background="var(--success)" textColor="#ffffff">
                   <ArrowDownToLine size={13} /> Entrada
                 </Badge>
               {:else}
-                <Badge uniform bg="var(--danger)" color="#ffffff">
+                <Badge fixedWidth background="var(--danger)" textColor="#ffffff">
                   <ArrowUpFromLine size={13} /> Salida
                 </Badge>
               {/if}
@@ -206,7 +211,7 @@
                 <span class="row-stock"
                   >{formatNumber(movement.quantity)} {movement.presentation_name}</span
                 >
-                <span class="row-date">{formatDate(movement.created_at)}</span>
+                <span class="row-date">{formatDateTime(movement.created_at)}</span>
               </span>
             </button>
           {/each}

@@ -1,3 +1,8 @@
+import type { Component } from "svelte";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- el registro de modales acepta componentes heterogéneos
+export type AnyComponent = Component<any, any, any>;
+
 export interface Category {
   id: number;
   name: string;
@@ -12,8 +17,8 @@ export interface Presentation {
 }
 
 export interface Product {
-  archived: number;
-  base_unit?: string;
+  isArchived: boolean;
+  base_presentation_name?: string;
   id: number;
   name: string;
   description: string | null;
@@ -23,13 +28,14 @@ export interface Product {
   stock: number;
   stock_low_threshold?: number | null;
   stock_medium_threshold?: number | null;
+  ignore_stock_alerts?: number;
   category_name?: string | null;
   category_color?: string | null;
   category_icon?: string | null;
 }
 
 export interface Supplier {
-  archived: number;
+  isArchived: boolean;
   id: number;
   name: string;
   contacts: string[];
@@ -71,7 +77,7 @@ export type StockStatus = "out" | "low" | "medium" | "high";
 
 export interface DuplicateRecord {
   id: number;
-  archived: number;
+  isArchived: boolean;
 }
 
 export type AccentColor = "blue" | "violet" | "emerald" | "amber" | "rose" | "teal" | "slate";

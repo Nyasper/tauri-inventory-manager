@@ -24,7 +24,7 @@
 
   let { product = null }: { product?: Product | null } = $props();
 
-  const initial = untrack(() => product);
+  const initialProduct = untrack(() => product);
 
   interface DraftPresentation extends PresentationInput {
     key: number;
@@ -37,32 +37,35 @@
 
   suppliersService.load();
 
-  let name = $state(initial?.name ?? "");
-  let description = $state(initial?.description ?? "");
-  let categoryId = $state(initial?.category_id != null ? String(initial.category_id) : "");
+  let name = $state(initialProduct?.name ?? "");
+  let description = $state(initialProduct?.description ?? "");
+  let categoryId = $state(
+    initialProduct?.category_id != null ? String(initialProduct.category_id) : "",
+  );
   let defaultSupplierId = $state(
-    initial?.default_supplier_id != null ? String(initial.default_supplier_id) : "",
+    initialProduct?.default_supplier_id != null ? String(initialProduct.default_supplier_id) : "",
   );
   let presentations = $state<DraftPresentation[]>([newPresentation("Unidad", 1)]);
-  const hasCustomInitial =
-    initial?.stock_low_threshold != null && initial?.stock_medium_threshold != null;
-  let useCustomThresholds = $state(hasCustomInitial);
-  let customLow = $state(
-    initial?.stock_low_threshold != null
-      ? String(initial.stock_low_threshold)
+  const hasCustomThresholds =
+    initialProduct?.stock_low_threshold != null && initialProduct?.stock_medium_threshold != null;
+  let useCustomThresholds = $state(hasCustomThresholds);
+  let customLowThreshold = $state(
+    initialProduct?.stock_low_threshold != null
+      ? String(initialProduct.stock_low_threshold)
       : String(settingsService.settings.stock_low_threshold),
   );
-  let customMedium = $state(
-    initial?.stock_medium_threshold != null
-      ? String(initial.stock_medium_threshold)
+  let customMediumThreshold = $state(
+    initialProduct?.stock_medium_threshold != null
+      ? String(initialProduct.stock_medium_threshold)
       : String(settingsService.settings.stock_medium_threshold),
   );
+  let ignoreStockAlerts = $state(Boolean(initialProduct?.ignore_stock_alerts));
   let saving = $state(false);
-  let loading = $state(!!initial?.id);
+  let loading = $state(!!initialProduct?.id);
   let loadFailed = $state(false);
   let error = $state<AppError | null>(null);
 
-  const snapshot = () =>
+  const formSnapshot = () =>
     JSON.stringify({
       name,
       description,
@@ -70,24 +73,25 @@
       defaultSupplierId,
       presentations,
       useCustomThresholds,
-      customLow: useCustomThresholds ? customLow : null,
-      customMedium: useCustomThresholds ? customMedium : null,
+      customLowThreshold: useCustomThresholds ? customLowThreshold : null,
+      customMediumThreshold: useCustomThresholds ? customMediumThreshold : null,
+      ignoreStockAlerts,
     });
-  let baseline = $state<string | null>(initial?.id ? null : snapshot());
-  const dirty = $derived(baseline !== null && snapshot() !== baseline);
+  let initialSnapshot = $state<string | null>(initialProduct?.id ? null : formSnapshot());
+  const dirty = $derived(initialSnapshot !== null && formSnapshot() !== initialSnapshot);
 
-  if (initial?.id) {
-    getPresentations(initial.id)
+  if (initialProduct?.id) {
+    getPresentations(initialProduct.id)
       .then((rows) => {
         presentations = rows.length
           ? rows.map((r) => ({ ...newPresentation(r.name, r.factor), id: r.id }))
           : [newPresentation("Unidad", 1)];
-        baseline = snapshot();
+        initialSnapshot = formSnapshot();
       })
       .catch((e) => {
         loadFailed = true;
         error = toAppError(e);
-        baseline = snapshot();
+        initialSnapshot = formSnapshot();
       })
       .finally(() => {
         loading = false;
@@ -132,8 +136,8 @@
       return "Debe haber exactamente una presentación base con factor 1.";
     }
     if (useCustomThresholds) {
-      const lowNum = Number(customLow);
-      const medNum = Number(customMedium);
+      const lowNum = Number(customLowThreshold);
+      const medNum = Number(customMediumThreshold);
       if (
         !Number.isFinite(lowNum) ||
         !Number.isFinite(medNum) ||
@@ -162,13 +166,14 @@
     if (!canSave) return;
 
     const input: ProductInput = {
-      id: initial?.id ?? null,
+      id: initialProduct?.id ?? null,
       name: name.trim(),
       description: description.trim() || null,
       category_id: categoryId ? Number(categoryId) : null,
       default_supplier_id: defaultSupplierId ? Number(defaultSupplierId) : null,
-      stock_low_threshold: useCustomThresholds ? Number(customLow) : null,
-      stock_medium_threshold: useCustomThresholds ? Number(customMedium) : null,
+      stock_low_threshold: useCustomThresholds ? Number(customLowThreshold) : null,
+      stock_medium_threshold: useCustomThresholds ? Number(customMediumThreshold) : null,
+      ignore_stock_alerts: ignoreStockAlerts,
       presentations: presentations.map(({ id, name: presentationName, factor }) => ({
         id,
         name: presentationName.trim(),
@@ -190,10 +195,10 @@
 </script>
 
 <Modal
-  title={initial ? "Editar producto" : "Nuevo producto"}
+  title={initialProduct ? "Editar producto" : "Nuevo producto"}
   onClose={() => modalService.close()}
-  {dirty}
-  busy={saving}
+  hasUnsavedChanges={dirty}
+  isBusy={saving}
   width="lg"
 >
   <div class="form">
@@ -256,7 +261,7 @@
             <Input
               label="Límite bajo"
               type="number"
-              bind:value={customLow}
+              bind:value={customLowThreshold}
               placeholder={`Por defecto global: ${settingsService.settings.stock_low_threshold}`}
               disabled={loading}
             />
@@ -265,7 +270,7 @@
             <Input
               label="Límite medio"
               type="number"
-              bind:value={customMedium}
+              bind:value={customMediumThreshold}
               placeholder={`Por defecto global: ${settingsService.settings.stock_medium_threshold}`}
               disabled={loading}
             />
@@ -279,6 +284,19 @@
         <p class="hint">
           Usa los límites globales por defecto: Bajo &le; {settingsService.settings
             .stock_low_threshold}, Medio &le; {settingsService.settings.stock_medium_threshold}.
+        </p>
+      {/if}
+
+      <div class="threshold-divider"></div>
+
+      <label class="checkbox-label">
+        <input type="checkbox" bind:checked={ignoreStockAlerts} disabled={loading} />
+        <span>Ignorar alertas de stock para este producto</span>
+      </label>
+      {#if ignoreStockAlerts}
+        <p class="hint">
+          El producto no se considerará en estado crítico ni aparecerá en el panel de stock bajo del
+          Dashboard.
         </p>
       {/if}
     </div>
@@ -345,7 +363,7 @@
 
     {#if error}
       <p class="error" role="alert">{error.message}</p>
-      <DuplicateHint {name} {error} kind="product" currentId={initial?.id} />
+      <DuplicateHint {name} {error} recordType="product" currentId={initialProduct?.id} />
     {/if}
   </div>
 
@@ -354,7 +372,7 @@
       Cancelar
     </Button>
     <Button disabled={!canSave} onclick={save}>
-      {saving ? "Guardando…" : initial ? "Guardar" : "Crear"}
+      {saving ? "Guardando…" : initialProduct ? "Guardar" : "Crear"}
     </Button>
   {/snippet}
 </Modal>
@@ -487,6 +505,12 @@
 
   .thresholds-grid {
     margin-top: 0.25rem;
+  }
+
+  .threshold-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.25rem 0;
   }
 
   .validation {

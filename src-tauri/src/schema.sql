@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS products (
  stock REAL NOT NULL DEFAULT 0 CHECK(stock >= 0 AND stock <= 1000000000),
  stock_low_threshold REAL CHECK(stock_low_threshold IS NULL OR (stock_low_threshold >= 0 AND stock_low_threshold <= 1000000000)),
  stock_medium_threshold REAL CHECK(stock_medium_threshold IS NULL OR (stock_medium_threshold >= 0 AND stock_medium_threshold <= 1000000000)),
+ ignore_stock_alerts INTEGER NOT NULL DEFAULT 0 CHECK(ignore_stock_alerts IN (0,1)),
  archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
  created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')),
  FOREIGN KEY(id, base_presentation_id) REFERENCES presentations(product_id,id) DEFERRABLE INITIALLY DEFERRED,
