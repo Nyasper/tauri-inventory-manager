@@ -166,6 +166,10 @@ export function createMovement(input: MovementInput): Promise<void> {
   return invoke("create_movement", { input }, "Movimiento registrado.");
 }
 
+export function updateMovementSupplier(id: number, supplierId: number | null): Promise<void> {
+  return invoke("update_movement_supplier", { id, supplierId }, "Proveedor actualizado.");
+}
+
 export function cancelMovement(id: number, reason: string): Promise<void> {
   return invoke("cancel_movement", { id, reason }, "Movimiento anulado.");
 }

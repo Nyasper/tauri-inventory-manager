@@ -5,6 +5,7 @@ import {
   createMovement,
   deleteMovements,
   getMovements,
+  updateMovementSupplier,
   type MovementDeleteFilter,
   type MovementFilters,
   type MovementInput,
@@ -42,6 +43,11 @@ class MovementsService {
 
   async remove(id: number, reason: string): Promise<void> {
     await cancelMovement(id, reason);
+    await this.load();
+  }
+
+  async updateSupplier(id: number, supplierId: number | null): Promise<void> {
+    await updateMovementSupplier(id, supplierId);
     await this.load();
   }
 

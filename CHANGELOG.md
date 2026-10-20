@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and inline action in `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.
+- English demo dataset (`src-tauri/src/seed_en.sql`) selectable with `bun run seed -- --lang en`: 8 categories, 15 suppliers, 50 products with 122 presentations and 121 movements, including adjustments, cancelled movements and a mix of zero, low and healthy stock levels; covered by a Rust test that validates counts, foreign keys, the single active base presentation per product and stock coherence against the movement history.
+
 ## [1.0.0] - 2026-09-16
 
 ### Added

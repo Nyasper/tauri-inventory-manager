@@ -22,6 +22,7 @@ pub fn run() {
             inventory::delete_product,
             inventory::delete_supplier,
             inventory::create_movement,
+            inventory::update_movement_supplier,
             inventory::cancel_movement,
             inventory::delete_movements,
             inventory::count_movements,

@@ -2,16 +2,64 @@
   import { goto } from "$app/navigation";
   import type { Movement } from "$lib/types";
   import { productsService } from "$lib/services/products.service.svelte";
+  import { suppliersService } from "$lib/services/suppliers.service.svelte";
+  import { movementsService } from "$lib/services/movements.service.svelte";
   import { modalService } from "$lib/services/modal.service.svelte";
+  import { errorMessage } from "$lib/utils/errors";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
   import MovementTypeCell from "$lib/components/movements/MovementTypeCell.svelte";
   import CancelMovementModal from "$lib/components/movements/CancelMovementModal.svelte";
   import { formatDate, formatNumber } from "$lib/utils/format";
-  import { ArrowLeftRight, Undo2 } from "@lucide/svelte";
+  import { ArrowLeftRight, Undo2, Pencil, Check, X } from "@lucide/svelte";
 
   let { movement }: { movement: Movement } = $props();
+
+  const supplierId = $derived(movement.supplier_id);
+  const supplierName = $derived(movement.supplier_name);
+  let isEditingSupplier = $state(false);
+  let selectedSupplierId = $state<string>("");
+  let isSavingSupplier = $state(false);
+  let supplierError = $state("");
+
+  const supplierOptions = $derived([
+    { value: "", label: "— Sin proveedor —" },
+    ...suppliersService.items.map((s) => ({ value: String(s.id), label: s.name })),
+  ]);
+
+  function startEditSupplier() {
+    suppliersService.load();
+    selectedSupplierId = supplierId !== null ? String(supplierId) : "";
+    supplierError = "";
+    isEditingSupplier = true;
+  }
+
+  function cancelEditSupplier() {
+    isEditingSupplier = false;
+    supplierError = "";
+  }
+
+  async function handleSaveSupplier() {
+    isSavingSupplier = true;
+    supplierError = "";
+    try {
+      const nextId = selectedSupplierId ? Number(selectedSupplierId) : null;
+      await movementsService.updateSupplier(movement.id, nextId);
+      movement.supplier_id = nextId;
+      if (nextId === null) {
+        movement.supplier_name = null;
+      } else {
+        const found = suppliersService.items.find((s) => s.id === nextId);
+        movement.supplier_name = found ? found.name : movement.supplier_name;
+      }
+      isEditingSupplier = false;
+    } catch (e) {
+      supplierError = errorMessage(e);
+    } finally {
+      isSavingSupplier = false;
+    }
+  }
 
   const isCancelled = $derived(movement.cancelled_at !== null);
   const isAdjustment = $derived(movement.kind === "adjustment");
@@ -74,13 +122,69 @@
 
       <dt>Proveedor</dt>
       <dd>
-        {#if movement.supplier_name}
-          {movement.supplier_name}
-          {#if movement.supplier_id === null}
-            <span class="deleted">Proveedor eliminado</span>
-          {/if}
+        {#if isEditingSupplier}
+          <div class="supplier-edit-box">
+            <div class="supplier-edit-row">
+              <select
+                bind:value={selectedSupplierId}
+                class="supplier-select"
+                disabled={isSavingSupplier}
+                aria-label="Seleccionar proveedor"
+              >
+                {#each supplierOptions as opt}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+              <button
+                type="button"
+                class="action-btn save"
+                title="Guardar proveedor"
+                aria-label="Guardar proveedor"
+                disabled={isSavingSupplier}
+                onclick={handleSaveSupplier}
+              >
+                <Check size={14} />
+              </button>
+              <button
+                type="button"
+                class="action-btn cancel"
+                title="Cancelar edición"
+                aria-label="Cancelar edición"
+                disabled={isSavingSupplier}
+                onclick={cancelEditSupplier}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {#if supplierError}
+              <span class="supplier-error">{supplierError}</span>
+            {/if}
+          </div>
         {:else}
-          —
+          <div class="supplier-view-row">
+            <span>
+              {#if supplierName}
+                {supplierName}
+                {#if supplierId === null}
+                  <span class="deleted">Proveedor eliminado</span>
+                {/if}
+              {:else}
+                —
+              {/if}
+            </span>
+            {#if movement.type === "in" && !isCancelled}
+              <button
+                type="button"
+                class="edit-supplier-btn"
+                title={supplierId !== null ? "Editar proveedor" : "Agregar proveedor"}
+                aria-label={supplierId !== null ? "Editar proveedor" : "Agregar proveedor"}
+                onclick={startEditSupplier}
+              >
+                <Pencil size={12} />
+                <span>{supplierId !== null ? "Editar" : "Agregar"}</span>
+              </button>
+            {/if}
+          </div>
         {/if}
       </dd>
 
@@ -178,6 +282,98 @@
     color: var(--danger);
     font-size: 0.6875rem;
     font-weight: 500;
+  }
+
+  .supplier-view-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .edit-supplier-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .edit-supplier-btn:hover {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+
+  .supplier-edit-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .supplier-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .supplier-select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.8125rem;
+    outline: none;
+    max-width: 220px;
+  }
+
+  .supplier-select:focus {
+    border-color: var(--primary);
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .action-btn.save:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .action-btn.cancel:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .supplier-error {
+    font-size: 0.75rem;
+    color: var(--danger);
   }
 
   @media (max-width: 520px) {

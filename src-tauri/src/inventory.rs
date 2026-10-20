@@ -835,6 +835,72 @@ async fn cancel_movement_db(db: &Db, id: i64, reason: String) -> Result<(), Comm
     }
     tx.commit().await.map_err(error)
 }
+#[tauri::command]
+pub async fn update_movement_supplier(
+    db: State<'_, DbState>,
+    id: i64,
+    supplier_id: Option<i64>,
+) -> Result<(), CommandError> {
+    let db = db.0.read().await;
+    update_movement_supplier_db(&db, id, supplier_id).await
+}
+pub(crate) async fn update_movement_supplier_db(
+    db: &Db,
+    id: i64,
+    supplier_id: Option<i64>,
+) -> Result<(), CommandError> {
+    let mut tx = db.begin().await.map_err(error)?;
+    let row = sqlx::query("SELECT type, cancelled_at FROM movements WHERE id=?")
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(error)?
+        .ok_or_else(|| CommandError::new("not_found", "El movimiento no existe."))?;
+
+    let m_type: String = row.get("type");
+    let cancelled_at: Option<String> = row.get("cancelled_at");
+
+    if cancelled_at.is_some() {
+        return Err(CommandError::new(
+            "cancelled_movement",
+            "No se puede modificar el proveedor de un movimiento anulado.",
+        ));
+    }
+
+    if m_type != "in" {
+        return Err(CommandError::new(
+            "supplier_not_allowed",
+            "Solo los movimientos de entrada pueden tener proveedor asociado.",
+        ));
+    }
+
+    let supplier_name = if let Some(sid) = supplier_id {
+        Some(
+            sqlx::query_scalar::<_, String>(
+                "SELECT name FROM suppliers WHERE id=? AND archived=0",
+            )
+            .bind(sid)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(error)?
+            .ok_or_else(|| {
+                CommandError::new("unavailable", "El proveedor no está disponible.")
+            })?,
+        )
+    } else {
+        None
+    };
+
+    sqlx::query("UPDATE movements SET supplier_id=?, supplier_name=? WHERE id=?")
+        .bind(supplier_id)
+        .bind(&supplier_name)
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(error)?;
+
+    tx.commit().await.map_err(error)
+}
 /// Contraseña en texto plano que protege las eliminaciones: movimientos en
 /// lote y borrado definitivo de productos y proveedores archivados.
 const DEFAULT_DELETE_PASSWORD: &str = "admin";
@@ -3214,6 +3280,97 @@ mod tests {
             .unwrap();
             assert!(page.items.is_empty());
             assert_eq!(page.total, 3);
+        });
+    }
+
+    #[test]
+    fn registered_movement_supplier_can_be_added_updated_and_cleared() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let a = fixture(&db, "Agua").await;
+            let supplier_1 = save_catalog_db(&db, catalog("supplier", None, "Proveedor 1"))
+                .await
+                .unwrap();
+            let supplier_2 = save_catalog_db(&db, catalog("supplier", None, "Proveedor 2"))
+                .await
+                .unwrap();
+
+            // Crear movimiento sin proveedor
+            let input = movement(a, "in", 3.0);
+            create_movement_db(&db, input).await.unwrap();
+
+            let mov_id: i64 = sqlx::query_scalar("SELECT id FROM movements WHERE type='in'")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+
+            // Asignar proveedor 1
+            update_movement_supplier_db(&db, mov_id, Some(supplier_1))
+                .await
+                .unwrap();
+            let (sid, sname): (Option<i64>, Option<String>) =
+                sqlx::query_as("SELECT supplier_id, supplier_name FROM movements WHERE id=?")
+                    .bind(mov_id)
+                    .fetch_one(&db)
+                    .await
+                    .unwrap();
+            assert_eq!(sid, Some(supplier_1));
+            assert_eq!(sname.as_deref(), Some("Proveedor 1"));
+
+            // Cambiar a proveedor 2
+            update_movement_supplier_db(&db, mov_id, Some(supplier_2))
+                .await
+                .unwrap();
+            let (sid, sname): (Option<i64>, Option<String>) =
+                sqlx::query_as("SELECT supplier_id, supplier_name FROM movements WHERE id=?")
+                    .bind(mov_id)
+                    .fetch_one(&db)
+                    .await
+                    .unwrap();
+            assert_eq!(sid, Some(supplier_2));
+            assert_eq!(sname.as_deref(), Some("Proveedor 2"));
+
+            // Quitar proveedor
+            update_movement_supplier_db(&db, mov_id, None)
+                .await
+                .unwrap();
+            let (sid, sname): (Option<i64>, Option<String>) =
+                sqlx::query_as("SELECT supplier_id, supplier_name FROM movements WHERE id=?")
+                    .bind(mov_id)
+                    .fetch_one(&db)
+                    .await
+                    .unwrap();
+            assert_eq!(sid, None);
+            assert_eq!(sname, None);
+
+            // Rechaza movimientos anulados
+            cancel_movement_db(&db, mov_id, "anulación".into())
+                .await
+                .unwrap();
+            assert_eq!(
+                update_movement_supplier_db(&db, mov_id, Some(supplier_1))
+                    .await
+                    .unwrap_err()
+                    .code,
+                "cancelled_movement"
+            );
+
+            // Rechaza movimientos de salida
+            let in_for_out = movement(a, "in", 2.0);
+            create_movement_db(&db, in_for_out).await.unwrap();
+            let out_input = movement(a, "out", 1.0);
+            create_movement_db(&db, out_input).await.unwrap();
+            let out_id: i64 = sqlx::query_scalar("SELECT id FROM movements WHERE type='out'")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+            assert_eq!(
+                update_movement_supplier_db(&db, out_id, Some(supplier_1))
+                    .await
+                    .unwrap_err()
+                    .code,
+                "supplier_not_allowed"
+            );
         });
     }
 }
