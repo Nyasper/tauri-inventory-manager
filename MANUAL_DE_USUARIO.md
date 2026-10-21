@@ -535,7 +535,7 @@ La contraseña de administrador protege las **eliminaciones permanentes**: la **
 > **Sugerencia de seguridad**: Cambie la contraseña inicial `admin` y tenga presente que, al viajar dentro del archivo `inventory.db`, la clave también se incluye en los respaldos.
 
 ### Versión de la Aplicación
-Al final de la ventana de **Configuración** se muestra la versión instalada (por ejemplo, `Gestor de Inventario v1.0.0`). El dato se lee dinámicamente del propio ejecutable, por lo que siempre refleja la versión real en uso y sirve de referencia al reportar problemas o verificar actualizaciones.
+Al final de la ventana de **Configuración** se muestra la versión instalada (por ejemplo, `Gestor de Inventario v2.0.0`). El dato se lee dinámicamente del propio ejecutable, por lo que siempre refleja la versión real en uso y sirve de referencia al reportar problemas o verificar actualizaciones.
 
 ---
 
@@ -593,4 +593,4 @@ Esto ocurre porque anular una Entrada implica restar ese stock, y si ya consumi�
 
 ---
 
-*Manual elaborado para Inventory Manager v1.0.0 o superior.*
+*Manual elaborado para Inventory Manager v2.0.0 o superior.*
