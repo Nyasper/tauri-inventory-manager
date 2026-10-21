@@ -46,8 +46,13 @@
 
   const availableUnits = $derived(
     selectedProduct && selectedPresentation && selectedPresentation.factor > 0
-      ? Math.floor((selectedProduct.stock + 1e-9) / selectedPresentation.factor)
+      ? Math.round(((selectedProduct.stock + 1e-9) / selectedPresentation.factor) * 1e6) / 1e6
       : null,
+  );
+  const minQuantity = $derived(
+    movementType === "out" && availableUnits !== null && availableUnits > 0 && availableUnits < 1
+      ? availableUnits
+      : 1,
   );
   const maxQuantity = $derived(
     movementType === "out" && availableUnits !== null ? availableUnits : undefined,
@@ -96,8 +101,10 @@
     if (!Number.isFinite(clampedQuantity) || clampedQuantity <= 0)
       return "La cantidad debe ser mayor que cero.";
     if (movementType === "out") {
-      if (availableUnits !== null && availableUnits < 1)
-        return `Stock insuficiente: no alcanza para 1 ${selectedPresentation?.name ?? "unidad"}.`;
+      if (selectedProduct && selectedProduct.stock <= 0)
+        return "Stock insuficiente: el producto no tiene stock disponible.";
+      if (availableUnits !== null && availableUnits <= 0)
+        return "Stock insuficiente: no hay unidades disponibles para esta presentación.";
       if (projectedStock < 0)
         return `Stock insuficiente: disponible ${selectedProduct?.stock ?? 0} ${selectedProduct?.base_presentation_name ?? ""}.`;
     }
@@ -146,7 +153,10 @@
       // Conserva el proveedor explícito al abrir desde la ficha de un proveedor.
       if (supplierProductId === null && initialSupplierId) {
         supplierId = initialSupplierId;
-      } else if (product.default_supplier_id) {
+      } else if (
+        product.default_supplier_id &&
+        suppliersService.items.some((s) => s.id === product.default_supplier_id)
+      ) {
         supplierId = String(product.default_supplier_id);
       } else {
         supplierId = "";
@@ -254,8 +264,9 @@
     <NumberStepper
       label="Cantidad"
       bind:value={() => clampedQuantity, setQuantity}
-      min={1}
+      min={minQuantity}
       max={maxQuantity}
+      step="any"
       showBoundaryButtons
     />
 
@@ -299,6 +310,7 @@
             options={supplierOptions}
             placeholder="Selecciona un proveedor"
             searchPlaceholder="Buscar proveedor..."
+            clearable
           />
         </div>
         <Button variant="secondary" icon={Plus} onclick={openNewSupplier}>Nuevo</Button>

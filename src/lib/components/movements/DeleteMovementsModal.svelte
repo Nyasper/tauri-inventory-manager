@@ -23,6 +23,7 @@
   let password = $state("");
   let deleting = $state(false);
   let deleteError = $state("");
+  let countError = $state("");
   let matchedMovements = $state<number | null>(null);
   let matchedMovementsLoading = $state(false);
 
@@ -64,6 +65,7 @@
 
   const canDelete = $derived(
     filterError === "" &&
+      !countError &&
       matchedMovements !== null &&
       matchedMovements > 0 &&
       password.trim() !== "" &&
@@ -73,21 +75,29 @@
   // Vista previa con retardo para no consultar en cada tecla del filtro.
   $effect(() => {
     if (filterError) {
+      countError = "";
       matchedMovements = null;
       matchedMovementsLoading = false;
       return;
     }
     const current = filter;
     let cancelled = false;
+    countError = "";
     matchedMovements = null;
     matchedMovementsLoading = true;
     const timer = setTimeout(() => {
       countMovements(current)
         .then((total) => {
-          if (!cancelled) matchedMovements = total;
+          if (!cancelled) {
+            matchedMovements = total;
+            countError = "";
+          }
         })
-        .catch(() => {
-          if (!cancelled) matchedMovements = null;
+        .catch((e) => {
+          if (!cancelled) {
+            matchedMovements = null;
+            countError = errorMessage(e);
+          }
         })
         .finally(() => {
           if (!cancelled) matchedMovementsLoading = false;
@@ -101,7 +111,9 @@
 
   const matchedMovementsText = $derived.by(() => {
     if (filterError) return "Completa los datos del filtro.";
-    if (matchedMovementsLoading || matchedMovements === null) return "Calculando coincidencias…";
+    if (countError) return countError;
+    if (matchedMovementsLoading) return "Calculando coincidencias…";
+    if (matchedMovements === null) return "No se pudo calcular la cantidad.";
     if (matchedMovements === 0) return "No hay movimientos que coincidan.";
     return `Se eliminarán ${matchedMovements} movimiento${matchedMovements === 1 ? "" : "s"}.`;
   });
@@ -176,6 +188,8 @@
   </div>
   {#if filterError}
     <p class="validation" role="status">{filterError}</p>
+  {:else if countError}
+    <p class="error" role="alert">{countError}</p>
   {:else}
     <p class="matched-movements" aria-live="polite">{matchedMovementsText}</p>
   {/if}

@@ -58,7 +58,3 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO settings(key,value) VALUES
  ('stock_low_threshold','5'),('stock_medium_threshold','20'),('default_view','dashboard'),
  ('delete_password','admin'),('movements_page_size','50');
-CREATE UNIQUE INDEX IF NOT EXISTS one_active_base ON presentations(product_id) WHERE factor=1 AND archived=0;
-CREATE TRIGGER IF NOT EXISTS validate_product_base BEFORE UPDATE OF base_presentation_id ON products
-WHEN NOT EXISTS(SELECT 1 FROM presentations WHERE id=NEW.base_presentation_id AND product_id=NEW.id AND factor=1 AND archived=0)
-BEGIN SELECT RAISE(ABORT,'La presentación base debe estar activa y tener factor 1'); END;

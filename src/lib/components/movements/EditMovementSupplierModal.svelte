@@ -20,8 +20,20 @@
   let saving = $state(false);
   let error = $state("");
 
+  const currentSupplierIsActive = $derived(
+    !movement.supplier_id || suppliersService.items.some((s) => s.id === movement.supplier_id),
+  );
+
   const supplierOptions = $derived([
     { value: "", label: "(Sin proveedor)" },
+    ...(!currentSupplierIsActive && movement.supplier_id
+      ? [
+          {
+            value: String(movement.supplier_id),
+            label: `${movement.supplier_name ?? "Proveedor"} (no disponible)`,
+          },
+        ]
+      : []),
     ...suppliersService.items.map((s) => ({
       value: String(s.id),
       label: s.name,
@@ -95,7 +107,7 @@
     <Button variant="secondary" disabled={saving} onclick={() => modalService.requestClose()}>
       Cancelar
     </Button>
-    <Button disabled={saving} onclick={saveSupplier}>
+    <Button disabled={saving || !dirty} onclick={saveSupplier}>
       {saving ? "Guardando…" : "Guardar cambios"}
     </Button>
   {/snippet}

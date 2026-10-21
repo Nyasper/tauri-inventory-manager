@@ -73,6 +73,16 @@
     });
   });
 
+  // Limpiar proveedor por defecto si ya no existe entre los proveedores activos cargados
+  $effect(() => {
+    if (!suppliersService.loading && defaultSupplierId) {
+      const exists = suppliersService.items.some((s) => String(s.id) === defaultSupplierId);
+      if (!exists) {
+        defaultSupplierId = "";
+      }
+    }
+  });
+
   const formSnapshot = () =>
     JSON.stringify({
       name,
@@ -340,7 +350,8 @@
             <NumberStepper
               label="Factor"
               bind:value={presentation.factor}
-              min={1}
+              min={0.000001}
+              step="any"
               disabled={loading}
             />
           </div>

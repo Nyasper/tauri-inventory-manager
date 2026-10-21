@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Preserved `-wal` and `-shm` journal files when quarantining damaged databases, using millisecond timestamps and preserving the `.db` extension (`.corrupt-<timestamp>.db`) so quarantined files are selectable from the database restoration dialog.
+- Explicitly prohibited selecting the temporary safety backup (`pre-restore-backup.db`) as the restore source file to prevent self-overwriting.
+- Inbound movement supplier editing now preserves the existing supplier even if it has since been archived, and catalog edits prevent modifying archived suppliers.
+- Enabled fractional step and decimal input in `NumberStepper` and presentation factor fields to support precise unit measurements.
 - Upgraded project dependencies, notably migrating to SvelteKit 3 (`@sveltejs/kit` v3.1, `svelte` v5.57, `vite` v8.3 with Rolldown, TypeScript 6): migrated configuration into `vite.config.js`, replaced `$lib` with native `#lib` subpath imports, updated `tsconfig.json` to extend `$app/tsconfig`, and adapted navigation and state APIs (`goto({ reset: false })`, `ReadonlyURLSearchParams`).
 - Improved naming of internal components, services, functions, and variables to better describe their purpose (for example, icon and selection components, navigation utilities, and category drafts), with no functional or user interface changes.
 - Renamed general threshold settings to "Límites globales de stock" in `SettingsModal`, the in-app help modal (`HelpModal`), and the user manual (`MANUAL_DE_USUARIO.md`), clarifying their role as default values inherited by products without custom thresholds.
@@ -16,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Single-instance application lock via `tauri-plugin-single-instance`: prevents concurrent processes from accessing or corrupting the same SQLite database, bringing the existing application window to the foreground if a second instance is launched.
+- Automatic database repair and sanitization on startup: automatically fixes legacy databases with duplicate or missing active presentations with conversion factor 1 and unsets invalid `default_supplier_id` references before enforcing unique constraints.
+- Staging-phase verification for database restoration: backup files are staged and verified for consistency and integrity before closing the active database pool or touching live data.
 - Option to ignore stock alerts per product: allows disabling replenishment alerts for on-demand or permanently low-stock items (`ignore_stock_alerts`), excluding them from the Dashboard low-stock panel and displaying them with the "Sin alertas" badge in the products table.
 - Configurable stock thresholds per individual product: each product can optionally define its own thresholds (`stock_low_threshold` and `stock_medium_threshold`), backed by an automatic non-destructive SQLite migration on startup; if not customized, they automatically inherit the system global thresholds.
 - Informative tooltips on stock status badges (`StockBadge`), indicating whether the classification is based on custom thresholds or the default global thresholds.
@@ -26,6 +33,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Prevented healthy databases from being quarantined during startup by restricting `should_quarantine` strictly to genuine SQLite database corruption codes (`SQLITE_CORRUPT` and `SQLITE_NOTADB`).
+- Pre-migration backups now use consistent `VACUUM INTO` snapshots (including WAL frames) prior to schema changes, and migration steps execute atomically within a transaction.
+- Archiving a supplier now automatically clears `products.default_supplier_id` in a single transaction, preventing subsequent product edits and inbound movements from failing with unavailable supplier errors.
+- Corrected batch movements deletion preview in `DeleteMovementsModal` to respect the configured limit in `recent` and `oldest` modes, and displayed error messages if the preview count fails instead of freezing indefinitely.
+- Fixed fractional stock withdrawal locking in `MovementFormModal` and `NumberStepper`, allowing items with fractional remaining stock (e.g., 0.5) to be withdrawn and reduced to exact zero so they can be archived or deleted.
+- Safeguarded `recover_previous_database` during failed restores by removing residual `-wal`/`-shm` files and verifying the file copy result before reopening the database.
+- Cross-validated global stock thresholds on read in `get_settings_db`, falling back to safe defaults if manually edited with `low >= medium`.
 - Prevented `SearchableSelect` from closing parent modals on `Escape`: keydown events are now stopped when the dropdown is open so `Escape` exclusively closes the select dropdown and restores focus to the trigger button.
 - Preserved the selected supplier when opening the inbound movement form from a supplier and choosing the first product.
 - Stopped reapplying a product's default supplier after the user clears it, and prevented saving the movement form while its presentations are loading.

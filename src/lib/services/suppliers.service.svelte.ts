@@ -1,5 +1,6 @@
 import type { Supplier } from "#lib/types.js";
 import { errorMessage } from "#lib/utils/errors.js";
+import { productsService } from "#lib/services/products.service.svelte.js";
 import {
   archiveSupplier,
   deleteSupplier,
@@ -40,16 +41,19 @@ class SuppliersService {
   async archive(id: number): Promise<void> {
     await archiveSupplier(id);
     await this.load();
+    await productsService.load();
   }
 
   async restore(id: number): Promise<void> {
     await restoreSupplier(id);
     await this.load();
+    await productsService.load();
   }
 
   async deletePermanently(id: number, password: string): Promise<void> {
     await deleteSupplier(id, password);
     await this.load();
+    await productsService.load();
   }
 }
 

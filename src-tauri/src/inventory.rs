@@ -89,18 +89,39 @@ pub async fn connect(path: &Path) -> Result<Db, sqlx::Error> {
     Ok(pool)
 }
 
+const BASE_PRESENTATION_CONSTRAINTS: &str = r#"
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_base ON presentations(product_id) WHERE factor=1 AND archived=0;
+CREATE TRIGGER IF NOT EXISTS validate_product_base BEFORE UPDATE OF base_presentation_id ON products
+WHEN NOT EXISTS(SELECT 1 FROM presentations WHERE id=NEW.base_presentation_id AND product_id=NEW.id AND factor=1 AND archived=0)
+BEGIN SELECT RAISE(ABORT,'La presentación base debe estar activa y tener factor 1'); END;
+"#;
+
 /// Aplica el esquema y las migraciones necesarias sobre el pool.
 async fn initialize(pool: &Db, path: &Path) -> Result<(), sqlx::Error> {
-    sqlx::raw_sql(SCHEMA).execute(pool).await?;
-    let legacy = inspect_legacy_schema(pool).await?;
-    if legacy.needs_migration() {
-        // Copia previa a migrar, para poder recuperar los datos originales.
-        if path.exists() {
+    // Si la base ya existe en disco y tiene tablas, creamos un snapshot consistente
+    // antes de alterar el esquema o migrar.
+    if path.exists() {
+        let table_count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM sqlite_master WHERE type='table'")
+                .fetch_one(pool)
+                .await
+                .unwrap_or(0);
+        if table_count > 0 {
             let safety = with_suffix(path, ".pre-migrate");
-            if let Err(e) = std::fs::copy(path, &safety) {
+            let _ = std::fs::remove_file(&safety);
+            if let Err(e) = sqlx::query("VACUUM INTO ?")
+                .bind(safety.to_string_lossy().as_ref())
+                .execute(pool)
+                .await
+            {
                 eprintln!("Pre-migration backup error: {e}");
             }
         }
+    }
+
+    sqlx::raw_sql(SCHEMA).execute(pool).await?;
+    let legacy = inspect_legacy_schema(pool).await?;
+    if legacy.needs_migration() {
         // El rebuild de tablas de SQLite exige desactivar las claves foráneas
         // fuera de cualquier transacción y comprobarlas al terminar.
         sqlx::query("PRAGMA foreign_keys=OFF").execute(pool).await?;
@@ -111,9 +132,16 @@ async fn initialize(pool: &Db, path: &Path) -> Result<(), sqlx::Error> {
             .await?
             .len();
         if violations > 0 {
-            eprintln!("Migration left {violations} foreign key violations");
+            return Err(sqlx::Error::Configuration(
+                format!("La migración dejó {violations} violaciones de claves foráneas.").into(),
+            ));
         }
     }
+
+    sanitize_database_state(pool).await?;
+    sqlx::raw_sql(BASE_PRESENTATION_CONSTRAINTS)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -136,33 +164,6 @@ CREATE TABLE movements_new (
 )"#;
 
 const MOVEMENTS_COLUMNS: &str = "id,product_id,type,quantity,presentation_id,presentation_name,product_name,factor,base_quantity,supplier_id,supplier_name,notes,reason,kind,created_at,cancelled_at,cancellation_reason";
-
-/// Reconstruye `movements` con la definición actual, incluidas las claves
-/// foráneas opcionales que permiten conservar movimientos de productos
-/// eliminados.
-async fn replace_movements_table(db: &Db) -> Result<(), sqlx::Error> {
-    let mut tx = db.begin().await?;
-    sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
-    sqlx::query(&format!(
-        "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
-    ))
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query("DROP TABLE movements")
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query("ALTER TABLE movements_new RENAME TO movements")
-        .execute(&mut *tx)
-        .await?;
-    for index in [
-        "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
-        "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
-        "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
-    ] {
-        sqlx::query(index).execute(&mut *tx).await?;
-    }
-    tx.commit().await
-}
 
 /// Estado del esquema heredado que determina si hace falta reconstruir
 /// `movements` o eliminar el catálogo de responsables.
@@ -238,37 +239,159 @@ async fn inspect_legacy_schema(db: &Db) -> Result<LegacySchema, sqlx::Error> {
 }
 
 /// Reconstruye `movements` (responsables, producto/proveedor opcionales) y
-/// elimina el catálogo de responsables. Debe ejecutarse con las claves
-/// foráneas desactivadas.
+/// elimina el catálogo de responsables dentro de una transacción atómica.
+/// Debe ejecutarse con las claves foráneas desactivadas.
 async fn migrate_legacy_schema(db: &Db, legacy: &LegacySchema) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
     if legacy.person_columns || legacy.product_required || !legacy.supplier_set_null {
-        replace_movements_table(db).await?;
+        sqlx::query(MOVEMENTS_TABLE).execute(&mut *tx).await?;
+        sqlx::query(&format!(
+            "INSERT INTO movements_new ({MOVEMENTS_COLUMNS}) SELECT {MOVEMENTS_COLUMNS} FROM movements"
+        ))
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("DROP TABLE movements")
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("ALTER TABLE movements_new RENAME TO movements")
+            .execute(&mut *tx)
+            .await?;
+        for index in [
+            "CREATE INDEX IF NOT EXISTS movements_date ON movements(created_at DESC,id DESC)",
+            "CREATE INDEX IF NOT EXISTS movements_product ON movements(product_id,created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS movements_supplier ON movements(supplier_id)",
+        ] {
+            sqlx::query(index).execute(&mut *tx).await?;
+        }
     }
     if legacy.persons_table {
         sqlx::query("DROP TABLE IF EXISTS responsible_persons")
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
     }
     if legacy.missing_default_supplier {
         sqlx::query("ALTER TABLE products ADD COLUMN default_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL")
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
     }
     if legacy.missing_stock_thresholds {
         sqlx::query("ALTER TABLE products ADD COLUMN stock_low_threshold REAL")
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
         sqlx::query("ALTER TABLE products ADD COLUMN stock_medium_threshold REAL")
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
     }
     if legacy.missing_ignore_stock_alerts {
         sqlx::query(
             "ALTER TABLE products ADD COLUMN ignore_stock_alerts INTEGER NOT NULL DEFAULT 0",
         )
-        .execute(db)
+        .execute(&mut *tx)
         .await?;
     }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Sanea inconsistencias históricas o de bases restauradas (proveedores por defecto
+/// archivados, presentaciones base duplicadas o ausentes) antes de imponer índices únicos.
+async fn sanitize_database_state(db: &Db) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+
+    // 1. Limpiar default_supplier_id que apunten a proveedores inexistentes o archivados
+    sqlx::query(
+        "UPDATE products SET default_supplier_id = NULL
+         WHERE default_supplier_id IS NOT NULL
+           AND default_supplier_id NOT IN (SELECT id FROM suppliers WHERE archived = 0)",
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    // 2. Corregir productos con múltiples presentaciones activas con factor = 1
+    let duplicate_products: Vec<i64> = sqlx::query_scalar(
+        "SELECT product_id FROM presentations WHERE factor = 1 AND archived = 0
+         GROUP BY product_id HAVING count(*) > 1",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    for pid in duplicate_products {
+        let base_id: Option<i64> =
+            sqlx::query_scalar("SELECT base_presentation_id FROM products WHERE id = ?")
+                .bind(pid)
+                .fetch_optional(&mut *tx)
+                .await?;
+
+        let pres_ids: Vec<i64> = sqlx::query_scalar(
+            "SELECT id FROM presentations WHERE product_id = ? AND factor = 1 AND archived = 0 ORDER BY id ASC",
+        )
+        .bind(pid)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        let keep_id = match base_id {
+            Some(bid) if pres_ids.contains(&bid) => bid,
+            _ => pres_ids[0],
+        };
+
+        for id in pres_ids {
+            if id != keep_id {
+                sqlx::query("UPDATE presentations SET archived = 1 WHERE id = ?")
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+        }
+
+        sqlx::query("UPDATE products SET base_presentation_id = ? WHERE id = ?")
+            .bind(keep_id)
+            .bind(pid)
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    // 3. Corregir productos sin ninguna presentación activa con factor = 1
+    let missing_base_products: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM products p
+         WHERE NOT EXISTS (
+             SELECT 1 FROM presentations pr WHERE pr.product_id = p.id AND pr.factor = 1 AND pr.archived = 0
+         )",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    for pid in missing_base_products {
+        let archived_base: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM presentations WHERE product_id = ? AND factor = 1 ORDER BY id ASC LIMIT 1",
+        )
+        .bind(pid)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let base_id = if let Some(ab_id) = archived_base {
+            sqlx::query("UPDATE presentations SET archived = 0 WHERE id = ?")
+                .bind(ab_id)
+                .execute(&mut *tx)
+                .await?;
+            ab_id
+        } else {
+            sqlx::query(
+                "INSERT INTO presentations(product_id, name, name_key, factor, archived) VALUES(?, 'Unidad', 'unidad', 1.0, 0)",
+            )
+            .bind(pid)
+            .execute(&mut *tx)
+            .await?
+            .last_insert_rowid()
+        };
+
+        sqlx::query("UPDATE products SET base_presentation_id = ? WHERE id = ?")
+            .bind(base_id)
+            .bind(pid)
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    tx.commit().await?;
     Ok(())
 }
 
@@ -573,13 +696,20 @@ async fn save_catalog_db(db: &Db, input: CatalogInput) -> Result<i64, CommandErr
     let id = match input.record_type.as_str() {
         "supplier" => {
             if let Some(id) = input.id {
-                let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM suppliers WHERE id=?")
+                let row = sqlx::query("SELECT archived FROM suppliers WHERE id=?")
                     .bind(id)
                     .fetch_optional(&mut *tx)
                     .await
                     .map_err(sqlx_error)?;
-                if exists.is_none() {
-                    return Err(CommandError::new("not_found", "El proveedor no existe."));
+                let archived: i64 = match row {
+                    Some(r) => r.get("archived"),
+                    None => return Err(CommandError::new("not_found", "El proveedor no existe.")),
+                };
+                if archived == 1 {
+                    return Err(CommandError::new(
+                        "unavailable",
+                        "No se puede modificar un proveedor archivado.",
+                    ));
                 }
                 sqlx::query("UPDATE suppliers SET name=?,name_key=?,contact=?,notes=? WHERE id=?")
                     .bind(&display)
@@ -673,6 +803,25 @@ async fn archive_record_db(
             ))
         }
     };
+    if record_type == "supplier" && !restore {
+        let mut tx = db.begin().await.map_err(sqlx_error)?;
+        let affected = sqlx::query("UPDATE suppliers SET archived=1 WHERE id=?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(sqlx_error)?
+            .rows_affected();
+        if affected == 0 {
+            return Err(CommandError::new("not_found", "El proveedor no existe."));
+        }
+        sqlx::query("UPDATE products SET default_supplier_id=NULL, updated_at=datetime('now') WHERE default_supplier_id=?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(sqlx_error)?;
+        tx.commit().await.map_err(sqlx_error)?;
+        return Ok(());
+    }
     let sql = match (record_type.as_str(), restore) {
         ("product", false) => "UPDATE products SET archived=1 WHERE id=? AND stock=0",
         ("product", true) => "UPDATE products SET archived=0 WHERE id=?",
@@ -928,15 +1077,19 @@ pub(crate) async fn update_movement_supplier_db(
     supplier_id: Option<i64>,
 ) -> Result<(), CommandError> {
     let mut tx = db.begin().await.map_err(sqlx_error)?;
-    let row = sqlx::query("SELECT type, cancelled_at FROM movements WHERE id=?")
-        .bind(id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(sqlx_error)?
-        .ok_or_else(|| CommandError::new("not_found", "El movimiento no existe."))?;
+    let row = sqlx::query(
+        "SELECT type, cancelled_at, supplier_id, supplier_name FROM movements WHERE id=?",
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(sqlx_error)?
+    .ok_or_else(|| CommandError::new("not_found", "El movimiento no existe."))?;
 
     let m_type: String = row.get("type");
     let cancelled_at: Option<String> = row.get("cancelled_at");
+    let current_supplier_id: Option<i64> = row.get("supplier_id");
+    let current_supplier_name: Option<String> = row.get("supplier_name");
 
     if cancelled_at.is_some() {
         return Err(CommandError::new(
@@ -953,8 +1106,13 @@ pub(crate) async fn update_movement_supplier_db(
     }
 
     let supplier_name = if let Some(sid) = supplier_id {
-        Some(
-            sqlx::query_scalar::<_, String>("SELECT name FROM suppliers WHERE id=? AND archived=0")
+        if Some(sid) == current_supplier_id {
+            current_supplier_name
+        } else {
+            Some(
+                sqlx::query_scalar::<_, String>(
+                    "SELECT name FROM suppliers WHERE id=? AND archived=0",
+                )
                 .bind(sid)
                 .fetch_optional(&mut *tx)
                 .await
@@ -962,7 +1120,8 @@ pub(crate) async fn update_movement_supplier_db(
                 .ok_or_else(|| {
                     CommandError::new("unavailable", "El proveedor no está disponible.")
                 })?,
-        )
+            )
+        }
     } else {
         None
     };
@@ -1128,7 +1287,12 @@ async fn count_movements_db(db: &Db, filter: &MovementDeleteFilter) -> Result<i6
     let mut query = QueryBuilder::<Sqlite>::new("SELECT count(*) FROM movements");
     apply_delete_filter(&mut query, &filter);
     let row = query.build().fetch_one(db).await.map_err(sqlx_error)?;
-    row.try_get::<i64, _>(0).map_err(sqlx_error)
+    let total: i64 = row.try_get::<i64, _>(0).map_err(sqlx_error)?;
+    if let Some(limit) = filter.limit {
+        Ok(total.min(limit))
+    } else {
+        Ok(total)
+    }
 }
 
 /// Borra en lote los movimientos que coincidan con el filtro (por cantidad o
@@ -1332,12 +1496,16 @@ pub(crate) fn quarantine_database(path: &Path) -> Result<PathBuf, std::io::Error
     }
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
+        .map(|duration| duration.as_millis())
         .unwrap_or(0);
-    let quarantined = with_suffix(path, &format!(".corrupt-{stamp}"));
+    let quarantined = with_suffix(path, &format!(".corrupt-{stamp}.db"));
     std::fs::rename(path, &quarantined)?;
     for suffix in ["-wal", "-shm"] {
-        let _ = std::fs::remove_file(with_suffix(path, suffix));
+        let src = with_suffix(path, suffix);
+        if src.exists() {
+            let dest = with_suffix(&quarantined, suffix);
+            let _ = std::fs::rename(src, dest);
+        }
     }
     Ok(quarantined)
 }
@@ -1349,20 +1517,19 @@ pub(crate) fn quarantine_database(path: &Path) -> Result<PathBuf, std::io::Error
 fn should_quarantine(error: &sqlx::Error) -> bool {
     match error {
         sqlx::Error::Database(db) => {
-            // 5 BUSY, 6 LOCKED -> transitorio; 14 CANTOPEN por directorio
-            // faltante no es corrupción.
-            if matches!(db.code().as_deref(), Some("5") | Some("6")) {
-                return false;
-            }
-            if db.code().as_deref() == Some("14") {
-                let msg = db.message().to_ascii_lowercase();
-                if msg.contains("unable to open database file") {
-                    return false;
+            if let Some(code) = db.code() {
+                if let Ok(num) = code.parse::<i32>() {
+                    let primary = num & 0xFF;
+                    if primary == 11 || primary == 26 {
+                        return true;
+                    }
                 }
             }
-            true
+            let msg = db.message().to_ascii_lowercase();
+            msg.contains("malformed")
+                || msg.contains("file is not a database")
+                || msg.contains("database disk image is malformed")
         }
-        sqlx::Error::Io(_) => false,
         _ => false,
     }
 }
@@ -1571,6 +1738,30 @@ async fn inspect_backup(conn: &mut SqliteConnection) -> Result<(), CommandError>
             "El respaldo tiene referencias inconsistentes.",
         ));
     }
+    let duplicate_base: Option<i64> = sqlx::query_scalar(
+        "SELECT count(*) FROM presentations WHERE archived=0 AND factor=1 GROUP BY product_id HAVING count(*)>1 LIMIT 1",
+    )
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(|_| damaged_backup_error())?;
+    if duplicate_base.unwrap_or(0) > 0 {
+        return Err(CommandError::new(
+            "invalid_backup",
+            "El archivo de respaldo contiene presentaciones base duplicadas.",
+        ));
+    }
+    let missing_base: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM products p WHERE NOT EXISTS (SELECT 1 FROM presentations pr WHERE pr.id=p.base_presentation_id AND pr.product_id=p.id AND pr.factor=1 AND pr.archived=0)",
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(|_| damaged_backup_error())?;
+    if missing_base > 0 {
+        return Err(CommandError::new(
+            "invalid_backup",
+            "El archivo de respaldo tiene productos sin una presentación base activa válida.",
+        ));
+    }
     Ok(())
 }
 
@@ -1651,7 +1842,16 @@ async fn recover_previous_database(
     safety: &Path,
     message: CommandError,
 ) -> Result<(), CommandError> {
-    let _ = std::fs::copy(safety, dest);
+    for suffix in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(with_suffix(dest, suffix));
+    }
+    if let Err(e) = std::fs::copy(safety, dest) {
+        eprintln!("Failed to copy safety file during recovery: {e}");
+        return Err(CommandError::new(
+            "restore_failed",
+            "No se pudo restaurar la base de datos anterior. Reinicia la aplicación.",
+        ));
+    }
     match connect(dest).await {
         Ok(recovered) => {
             *pool = recovered;
@@ -1672,28 +1872,85 @@ async fn restore_database_db(
     src: &Path,
     safety: &Path,
 ) -> Result<(), CommandError> {
-    validate_backup(src).await?;
     if same_path(src, dest) {
         return Err(CommandError::new(
             "restore_same_file",
             "Selecciona un archivo distinto de la base de datos actual.",
         ));
     }
+    if same_path(src, safety) {
+        return Err(CommandError::new(
+            "restore_same_file",
+            "No se puede restaurar el archivo de seguridad temporal.",
+        ));
+    }
+    validate_backup(src).await?;
+
+    let staging = with_suffix(dest, ".restore-staging.db");
+    let _ = std::fs::remove_file(&staging);
+    let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
+    let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
+
+    if let Err(e) = std::fs::copy(src, &staging) {
+        eprintln!("Restore staging copy error: {e}");
+        return Err(CommandError::new(
+            "restore_failed",
+            "No se pudo preparar el archivo de respaldo para su restauración.",
+        ));
+    }
+
+    let staging_check = async {
+        let test_db = connect(&staging).await.map_err(|e| {
+            eprintln!("Staging connect error: {e}");
+            CommandError::new(
+                "invalid_backup",
+                "El archivo de respaldo no se pudo abrir correctamente.",
+            )
+        })?;
+        let violations = sqlx::query("PRAGMA foreign_key_check")
+            .fetch_all(&test_db)
+            .await
+            .map(|rows| rows.len())
+            .unwrap_or(0);
+        test_db.close().await;
+        if violations > 0 {
+            return Err(CommandError::new(
+                "invalid_backup",
+                "El respaldo tiene referencias inconsistentes.",
+            ));
+        }
+        Ok(())
+    }
+    .await;
+
+    if let Err(err) = staging_check {
+        let _ = std::fs::remove_file(&staging);
+        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
+        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
+        return Err(err);
+    }
+
     let mut pool = db.write().await;
     backup_database_db(&pool, safety, dest).await.map_err(|_| {
+        let _ = std::fs::remove_file(&staging);
+        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
+        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
         CommandError::new(
             "restore_safety_failed",
             "No se pudo guardar una copia de seguridad antes de restaurar.",
         )
     })?;
     pool.close().await;
+
     for suffix in ["-wal", "-shm"] {
-        let mut journal = dest.as_os_str().to_os_string();
-        journal.push(suffix);
-        let _ = std::fs::remove_file(journal);
+        let _ = std::fs::remove_file(with_suffix(dest, suffix));
     }
-    if let Err(e) = std::fs::copy(src, dest) {
+
+    if let Err(e) = std::fs::copy(&staging, dest) {
         eprintln!("Restore copy error: {e}");
+        let _ = std::fs::remove_file(&staging);
+        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
+        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
         return recover_previous_database(
             &mut pool,
             dest,
@@ -1702,32 +1959,18 @@ async fn restore_database_db(
         )
         .await;
     }
+
+    let _ = std::fs::remove_file(&staging);
+    let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
+    let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
+
     match connect(dest).await {
         Ok(reopened) => {
-            let violations = sqlx::query("PRAGMA foreign_key_check")
-                .fetch_all(&reopened)
-                .await
-                .map(|rows| rows.len())
-                .unwrap_or(0);
-            if violations == 0 {
-                *pool = reopened;
-                return Ok(());
-            }
-            eprintln!("Restore left {violations} foreign key violations");
-            reopened.close().await;
-            recover_previous_database(
-                &mut pool,
-                dest,
-                safety,
-                CommandError::new(
-                    "restore_failed",
-                    "El respaldo tiene referencias inconsistentes; se restauraron los datos anteriores.",
-                ),
-            )
-            .await
+            *pool = reopened;
+            Ok(())
         }
         Err(e) => {
-            eprintln!("Restore error: {e}");
+            eprintln!("Restore error on reopen: {e}");
             recover_previous_database(
                 &mut pool,
                 dest,
@@ -3639,6 +3882,191 @@ mod tests {
             assert_eq!(harina.stock_low_threshold, None);
             assert_eq!(harina.stock_medium_threshold, None);
             assert_eq!(harina.ignore_stock_alerts, 0);
+        });
+    }
+
+    #[test]
+    fn archiving_supplier_clears_product_default_supplier() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::list_products_db;
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let supplier = save_catalog_db(&db, catalog("supplier", None, "Proveedor Principal"))
+                .await
+                .unwrap();
+
+            let mut prod = product(None, "Azúcar", None);
+            prod.default_supplier_id = Some(supplier);
+            let prod_id = save_product_db(&db, prod).await.unwrap();
+
+            // Verificar que inicialmente tiene el proveedor asignado
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.default_supplier_id, Some(supplier));
+
+            // Archivar el proveedor
+            archive_record_db(&db, "supplier".into(), supplier, false)
+                .await
+                .unwrap();
+
+            // Verificar que el producto quedó sin proveedor por defecto
+            let rows = list_products_db(&db, false).await.unwrap();
+            let found = rows.into_iter().find(|p| p.id == prod_id).unwrap();
+            assert_eq!(found.default_supplier_id, None);
+            assert_eq!(found.default_supplier_name, None);
+
+            // El producto se puede editar normalmente sin error de proveedor no disponible
+            let update_prod = product(Some(prod_id), "Azúcar Blanco", None);
+            save_product_db(&db, update_prod).await.unwrap();
+        });
+    }
+
+    #[test]
+    fn count_movements_respects_recent_and_oldest_limit() {
+        tauri::async_runtime::block_on(async {
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            let water = fixture(&db, "Agua").await;
+
+            for _ in 0..10 {
+                create_movement_db(&db, movement(water, "in", 1.0))
+                    .await
+                    .unwrap();
+            }
+
+            let recent_filter = MovementDeleteFilter {
+                mode: "recent".into(),
+                count: Some(3),
+                from: None,
+                to: None,
+            };
+            let count_recent = count_movements_db(&db, &recent_filter).await.unwrap();
+            assert_eq!(count_recent, 3);
+
+            let oldest_filter = MovementDeleteFilter {
+                mode: "oldest".into(),
+                count: Some(5),
+                from: None,
+                to: None,
+            };
+            let count_oldest = count_movements_db(&db, &oldest_filter).await.unwrap();
+            assert_eq!(count_oldest, 5);
+
+            let excess_filter = MovementDeleteFilter {
+                mode: "recent".into(),
+                count: Some(50),
+                from: None,
+                to: None,
+            };
+            let count_excess = count_movements_db(&db, &excess_filter).await.unwrap();
+            assert_eq!(count_excess, 10);
+        });
+    }
+
+    #[test]
+    fn restore_rejects_safety_backup_path() {
+        tauri::async_runtime::block_on(async {
+            let dir = temp_dir("restore-safety-path");
+            let dest = dir.join("inventory.db");
+            let db = connect(&dest).await.unwrap();
+            fixture(&db, "Agua").await;
+            let safety = dir.join("pre-restore-backup.db");
+            std::fs::write(&safety, b"dummy").unwrap();
+
+            let rw = RwLock::new(db);
+            let err = restore_database_db(&rw, &dest, &safety, &safety)
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, "restore_same_file");
+            let pool = rw.into_inner();
+            pool.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    #[test]
+    fn duplicate_factor_1_presentations_are_repaired_on_startup() {
+        let dir = temp_dir("repair-duplicate-bases");
+        let file = dir.join("inventory.db");
+
+        // Crear base con producto que tiene dos presentaciones activas con factor = 1
+        let raw_sql = r#"
+            CREATE TABLE products (
+                id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE,
+                description TEXT, category_id INTEGER, default_supplier_id INTEGER,
+                base_presentation_id INTEGER NOT NULL, stock REAL NOT NULL DEFAULT 0,
+                stock_low_threshold REAL, stock_medium_threshold REAL, ignore_stock_alerts INTEGER NOT NULL DEFAULT 0,
+                archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE TABLE presentations (
+                id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id),
+                name TEXT NOT NULL, name_key TEXT NOT NULL, factor REAL NOT NULL,
+                archived INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(product_id, id)
+            );
+            CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, color TEXT, icon TEXT);
+            CREATE TABLE suppliers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, contact TEXT, notes TEXT, archived INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE movements (
+                id INTEGER PRIMARY KEY, product_id INTEGER REFERENCES products(id), type TEXT NOT NULL,
+                quantity REAL NOT NULL, presentation_id INTEGER, presentation_name TEXT NOT NULL,
+                product_name TEXT NOT NULL, factor REAL NOT NULL, base_quantity REAL NOT NULL,
+                supplier_id INTEGER REFERENCES suppliers(id), supplier_name TEXT, notes TEXT,
+                reason TEXT, kind TEXT NOT NULL DEFAULT 'regular', created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                cancelled_at TEXT, cancellation_reason TEXT
+            );
+            CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO products(id, name, name_key, base_presentation_id, stock) VALUES(1, 'Aceite', 'aceite', 1, 5);
+            INSERT INTO presentations(id, product_id, name, name_key, factor, archived) VALUES(1, 1, 'Litro', 'litro', 1.0, 0);
+            INSERT INTO presentations(id, product_id, name, name_key, factor, archived) VALUES(2, 1, 'Botella 1L', 'botella 1l', 1.0, 0);
+        "#;
+        tauri::async_runtime::block_on(async {
+            let options = SqliteConnectOptions::new()
+                .filename(&file)
+                .create_if_missing(true);
+            let raw = SqlitePoolOptions::new()
+                .connect_with(options)
+                .await
+                .unwrap();
+            sqlx::raw_sql(raw_sql).execute(&raw).await.unwrap();
+            raw.close().await;
+        });
+
+        // connect / open_with_recovery debe sanear las duplicadas sin fallar y sin activar cuarentena
+        let (db, notice) = open_with_recovery(&file).unwrap();
+        assert!(notice.is_none());
+
+        tauri::async_runtime::block_on(async {
+            let active_bases: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM presentations WHERE product_id = 1 AND factor = 1 AND archived = 0"
+            )
+            .fetch_one(&db)
+            .await
+            .unwrap();
+            assert_eq!(active_bases, 1);
+
+            db.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    #[test]
+    fn get_settings_resets_inverted_thresholds() {
+        tauri::async_runtime::block_on(async {
+            use crate::queries::get_settings_db;
+
+            let db = connect(Path::new(":memory:")).await.unwrap();
+            sqlx::query("UPDATE settings SET value='30' WHERE key='stock_low_threshold'")
+                .execute(&db)
+                .await
+                .unwrap();
+            sqlx::query("UPDATE settings SET value='10' WHERE key='stock_medium_threshold'")
+                .execute(&db)
+                .await
+                .unwrap();
+
+            let settings = get_settings_db(&db).await.unwrap();
+            assert_eq!(settings.stock_low_threshold, 5.0);
+            assert_eq!(settings.stock_medium_threshold, 20.0);
         });
     }
 }

@@ -369,6 +369,12 @@ pub(crate) async fn get_settings_db(db: &Db) -> Result<SettingsRow, CommandError
             _ => {}
         }
     }
+    if settings.stock_low_threshold >= settings.stock_medium_threshold
+        || settings.stock_medium_threshold > 1_000_000_000.0
+    {
+        settings.stock_low_threshold = 5.0;
+        settings.stock_medium_threshold = 20.0;
+    }
     Ok(settings)
 }
 

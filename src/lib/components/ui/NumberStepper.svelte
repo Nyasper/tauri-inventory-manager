@@ -5,6 +5,7 @@
     value = $bindable(1),
     min = 1,
     max = undefined,
+    step = "any",
     label,
     disabled = false,
     showBoundaryButtons = false,
@@ -12,6 +13,7 @@
     value?: number;
     min?: number;
     max?: number;
+    step?: number | "any";
     label?: string;
     disabled?: boolean;
     showBoundaryButtons?: boolean;
@@ -23,15 +25,17 @@
   const atMax = $derived(disabled || (max !== undefined && Number.isFinite(value) && value >= max));
 
   function clamp(next: number): number {
-    if (next < min) next = min;
-    if (max !== undefined && next > max) next = max;
-    return next;
+    const rounded = Math.round(next * 1e6) / 1e6;
+    if (rounded < min) return min;
+    if (max !== undefined && rounded > max) return max;
+    return rounded;
   }
 
   function adjustBy(delta: number) {
     if (disabled) return;
-    const current = Number.isFinite(value) ? Math.round(value) : min;
-    value = clamp(current + delta);
+    const current = Number.isFinite(value) ? value : min;
+    const stepDelta = typeof step === "number" ? delta * step : delta;
+    value = clamp(current + stepDelta);
   }
 
   function jumpToBoundary(bound: number) {
@@ -73,7 +77,7 @@
     {min}
     {max}
     {disabled}
-    step="1"
+    {step}
     autocomplete="off"
   />
   <button
