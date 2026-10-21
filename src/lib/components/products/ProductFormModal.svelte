@@ -7,7 +7,7 @@
     type PresentationInput,
     type ProductInput,
   } from "#lib/services/db.service.js";
-  import { toAppError, type AppError } from "#lib/utils/errors.js";
+  import { isDuplicateError, toAppError, type AppError } from "#lib/utils/errors.js";
   import { productsService } from "#lib/services/products.service.svelte.js";
   import { categoriesService } from "#lib/services/categories.service.svelte.js";
   import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
@@ -64,6 +64,14 @@
   let loading = $state(!!initialProduct?.id);
   let loadFailed = $state(false);
   let error = $state<AppError | null>(null);
+
+  // El error de duplicado deja de ser válido en cuanto cambia el nombre.
+  $effect(() => {
+    void name;
+    untrack(() => {
+      if (error && isDuplicateError(error)) error = null;
+    });
+  });
 
   const formSnapshot = () =>
     JSON.stringify({
@@ -154,7 +162,7 @@
   const canSave = $derived(validation === "" && !saving && !loading && !loadFailed);
 
   function addPresentation() {
-    presentations.push(newPresentation("", 1));
+    presentations.push(newPresentation("", 10));
   }
 
   function removePresentation(index: number) {

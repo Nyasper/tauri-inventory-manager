@@ -208,7 +208,6 @@
           class="search-input"
           placeholder={searchPlaceholder}
           bind:value={searchQuery}
-          onkeydown={handleKeydown}
           autocomplete="off"
         />
         {#if searchQuery}

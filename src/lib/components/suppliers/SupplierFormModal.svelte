@@ -5,7 +5,7 @@
   import type { Supplier } from "#lib/types.js";
   import { suppliersService } from "#lib/services/suppliers.service.svelte.js";
   import { modalService } from "#lib/services/modal.service.svelte.js";
-  import { toAppError, type AppError } from "#lib/utils/errors.js";
+  import { isDuplicateError, toAppError, type AppError } from "#lib/utils/errors.js";
   import Modal from "#lib/components/ui/Modal.svelte";
   import Input from "#lib/components/ui/Input.svelte";
   import Textarea from "#lib/components/ui/Textarea.svelte";
@@ -40,6 +40,14 @@
   let notes = $state(initialSupplier?.notes ?? "");
   let saving = $state(false);
   let error = $state<AppError | null>(null);
+
+  // El error de duplicado deja de ser válido en cuanto cambia el nombre.
+  $effect(() => {
+    void name;
+    untrack(() => {
+      if (error && isDuplicateError(error)) error = null;
+    });
+  });
 
   const formSnapshot = () => JSON.stringify({ name, contactDrafts, notes });
   const initialSnapshot = $state(formSnapshot());

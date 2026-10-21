@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Upgraded project dependencies, notably migrating to SvelteKit 3 (`@sveltejs/kit` v3.1, `svelte` v5.57, `vite` v8.3 with Rolldown, TypeScript 6): migrated configuration into `vite.config.js`, replaced `$lib` with native `#lib` subpath imports, updated `tsconfig.json` to extend `$app/tsconfig`, and adapted navigation and state APIs (`goto({ reset: false })`, `ReadonlyURLSearchParams`).
 - Improved naming of internal components, services, functions, and variables to better describe their purpose (for example, icon and selection components, navigation utilities, and category drafts), with no functional or user interface changes.
 - Renamed general threshold settings to "Límites globales de stock" in `SettingsModal`, the in-app help modal (`HelpModal`), and the user manual (`MANUAL_DE_USUARIO.md`), clarifying their role as default values inherited by products without custom thresholds.
+- New presentations in `ProductFormModal` now default to a conversion factor of 10.
+- Removed the outdated `--lang en` seed option and its references to a nonexistent English demo dataset from the seed script and documentation.
 
 ### Added
 
@@ -21,11 +23,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Navigation history controls: Back and Forward buttons added next to the view title in the top layout header (`Header.svelte`) with history state detection.
 - `SearchableSelect` component: dedicated searchable select / combobox primitive in `src/lib/components/ui/SearchableSelect.svelte` with text filtering, accent-tolerant search, keyboard navigation and option highlighting; applied to product and supplier selections in `MovementFormModal`, categories in `ProductFormModal`, and inline supplier editing in `MovementDetailModal`.
 - Edit and assign suppliers on registered movements: `update_movement_supplier` command in Rust and dedicated `EditMovementSupplierModal` accessible directly from the movements table actions as well as `MovementDetailModal` allowing users to assign, change, or clear the supplier on active inbound movements.
-- English demo dataset (`src-tauri/src/seed_en.sql`) selectable with `bun run seed -- --lang en`: 8 categories, 15 suppliers, 50 products with 122 presentations and 121 movements, including adjustments, cancelled movements and a mix of zero, low and healthy stock levels; covered by a Rust test that validates counts, foreign keys, the single active base presentation per product and stock coherence against the movement history.
 
 ### Fixed
 
 - Prevented `SearchableSelect` from closing parent modals on `Escape`: keydown events are now stopped when the dropdown is open so `Escape` exclusively closes the select dropdown and restores focus to the trigger button.
+- Preserved the selected supplier when opening the inbound movement form from a supplier and choosing the first product.
+- Stopped reapplying a product's default supplier after the user clears it, and prevented saving the movement form while its presentations are loading.
+- Removed duplicated keyboard handling in `SearchableSelect` so navigation keys and `Enter`/`Escape` are processed only once.
+- Restored the previous database and reopened the connection when copying the backup fails during a restore.
+- Cleared stale duplicate-name errors in the product and supplier forms as soon as the name is edited.
 
 ## [1.0.0] - 2026-09-16
 

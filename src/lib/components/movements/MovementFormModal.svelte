@@ -38,6 +38,8 @@
   let notes = $state("");
   let saving = $state(false);
   let error = $state("");
+  // Último producto para el que se aplicó el proveedor por defecto.
+  let supplierProductId: number | null = null;
 
   const selectedProduct = $derived(productsService.items.find((p) => p.id === Number(productId)));
   const selectedPresentation = $derived(presentations.find((p) => p.id === Number(presentationId)));
@@ -103,7 +105,7 @@
     return "";
   });
 
-  const canSave = $derived(validation === "" && !saving);
+  const canSave = $derived(validation === "" && !saving && !loading);
 
   let presentationOptions = $derived(
     presentations.map((presentation) => ({
@@ -135,16 +137,21 @@
     if (!pid) {
       presentationId = "";
       presentations = [];
+      supplierProductId = null;
       return;
     }
 
     const product = productsService.items.find((p) => p.id === pid);
-    if (movementType === "in") {
-      if (product?.default_supplier_id) {
+    if (movementType === "in" && product && pid !== supplierProductId) {
+      // Conserva el proveedor explícito al abrir desde la ficha de un proveedor.
+      if (supplierProductId === null && initialSupplierId) {
+        supplierId = initialSupplierId;
+      } else if (product.default_supplier_id) {
         supplierId = String(product.default_supplier_id);
-      } else if (!initialSupplierId || pid !== Number(initialProductId)) {
+      } else {
         supplierId = "";
       }
+      supplierProductId = pid;
     }
 
     let cancelled = false;
@@ -177,12 +184,6 @@
     return () => {
       cancelled = true;
     };
-  });
-
-  $effect(() => {
-    if (movementType === "in" && !supplierId && selectedProduct?.default_supplier_id) {
-      supplierId = String(selectedProduct.default_supplier_id);
-    }
   });
 
   function openNewSupplier() {

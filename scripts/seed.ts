@@ -31,19 +31,11 @@ if (process.argv.includes("--db") && !databasePathOverride) {
   throw new Error("Provide a path after --db.");
 }
 
-const language = readArgument("--lang") ?? "es";
-if (language !== "es" && language !== "en") {
-  throw new Error(`Unsupported language "${language}". Use "es" or "en".`);
-}
-
 const databasePath = resolve(databasePathOverride ?? defaultDatabasePath());
 mkdirSync(dirname(databasePath), { recursive: true });
 
 const schemaPath = resolve(import.meta.dir, "../src-tauri/src/schema.sql");
-const seedPath = resolve(
-  import.meta.dir,
-  language === "en" ? "../src-tauri/src/seed_en.sql" : "../src-tauri/src/seed.sql",
-);
+const seedPath = resolve(import.meta.dir, "../src-tauri/src/seed.sql");
 if (!existsSync(schemaPath) || !existsSync(seedPath)) {
   throw new Error("Schema or seed SQL file not found.");
 }
@@ -87,7 +79,7 @@ try {
       throw new Error("Seed failed foreign-key validation.");
     }
 
-    console.log(`Demo data (${language}) inserted successfully.\n${databasePath}`);
+    console.log(`Demo data inserted successfully.\n${databasePath}`);
   }
 } finally {
   db.close();

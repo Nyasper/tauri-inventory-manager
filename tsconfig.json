@@ -4,14 +4,6 @@
     "sourceMap": true,
     "strict": true
   },
-  "include": [
-    "src",
-    "src/**/*.svelte",
-    "vite.config.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "build",
-    ".svelte-kit"
-  ]
+  "include": ["src", "src/**/*.svelte", "vite.config.js"],
+  "exclude": ["node_modules", "build", ".svelte-kit"]
 }

@@ -50,7 +50,7 @@ Windows, with release notes taken from `CHANGELOG.md`.
 
 The application uses **inventory.db** in Tauri's application configuration directory. It does not use the old test **app.db**, copy its data, create backups or run migrations. A new installation starts without products or movements.
 
-Demo data is opt-in. Close the application and run `bun run seed` to populate the normal local database. The command creates the schema when needed, refuses to alter a database that already contains inventory data, and prints the exact database path. For isolated development or testing, use `bun run seed -- --db ./path/to/inventory.db`. An English demo dataset (50 products, 122 presentations, 15 suppliers and 121 movements) is available with `bun run seed -- --lang en`.
+Demo data is opt-in. Close the application and run `bun run seed` to populate the normal local database. The command creates the schema when needed, refuses to alter a database that already contains inventory data, and prints the exact database path. For isolated development or testing, use `bun run seed -- --db ./path/to/inventory.db`.
 
 All writes go through Rust commands and SQLite transactions with foreign keys enabled. Names are normalized with Unicode NFC, lowercase and collapsed whitespace. Accents and ñ remain significant. Names reserved by archived records cannot be reused; restore the existing record instead. Categories and presentation names are also unique (presentations within their product).
 

@@ -1692,10 +1692,16 @@ async fn restore_database_db(
         journal.push(suffix);
         let _ = std::fs::remove_file(journal);
     }
-    std::fs::copy(src, dest).map_err(|e| {
+    if let Err(e) = std::fs::copy(src, dest) {
         eprintln!("Restore copy error: {e}");
-        CommandError::new("restore_failed", "No se pudo reemplazar la base de datos.")
-    })?;
+        return recover_previous_database(
+            &mut pool,
+            dest,
+            safety,
+            CommandError::new("restore_failed", "No se pudo reemplazar la base de datos."),
+        )
+        .await;
+    }
     match connect(dest).await {
         Ok(reopened) => {
             let violations = sqlx::query("PRAGMA foreign_key_check")
