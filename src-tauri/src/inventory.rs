@@ -98,15 +98,11 @@ BEGIN SELECT RAISE(ABORT,'La presentación base debe estar activa y tener factor
 
 /// Aplica el esquema y las migraciones necesarias sobre el pool.
 async fn initialize(pool: &Db, path: &Path) -> Result<(), sqlx::Error> {
-    // Si la base ya existe en disco y tiene tablas, creamos un snapshot consistente
-    // antes de alterar el esquema o migrar.
-    if path.exists() {
-        let table_count: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM sqlite_master WHERE type='table'")
-                .fetch_one(pool)
-                .await
-                .unwrap_or(0);
-        if table_count > 0 {
+    sqlx::raw_sql(SCHEMA).execute(pool).await?;
+    let legacy = inspect_legacy_schema(pool).await?;
+    if legacy.needs_migration() {
+        // Copia previa a migrar con VACUUM INTO para capturar también transacciones del WAL.
+        if path.exists() {
             let safety = with_suffix(path, ".pre-migrate");
             let _ = std::fs::remove_file(&safety);
             if let Err(e) = sqlx::query("VACUUM INTO ?")
@@ -117,11 +113,6 @@ async fn initialize(pool: &Db, path: &Path) -> Result<(), sqlx::Error> {
                 eprintln!("Pre-migration backup error: {e}");
             }
         }
-    }
-
-    sqlx::raw_sql(SCHEMA).execute(pool).await?;
-    let legacy = inspect_legacy_schema(pool).await?;
-    if legacy.needs_migration() {
         // El rebuild de tablas de SQLite exige desactivar las claves foráneas
         // fuera de cualquier transacción y comprobarlas al terminar.
         sqlx::query("PRAGMA foreign_keys=OFF").execute(pool).await?;
@@ -1886,55 +1877,8 @@ async fn restore_database_db(
     }
     validate_backup(src).await?;
 
-    let staging = with_suffix(dest, ".restore-staging.db");
-    let _ = std::fs::remove_file(&staging);
-    let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
-    let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
-
-    if let Err(e) = std::fs::copy(src, &staging) {
-        eprintln!("Restore staging copy error: {e}");
-        return Err(CommandError::new(
-            "restore_failed",
-            "No se pudo preparar el archivo de respaldo para su restauración.",
-        ));
-    }
-
-    let staging_check = async {
-        let test_db = connect(&staging).await.map_err(|e| {
-            eprintln!("Staging connect error: {e}");
-            CommandError::new(
-                "invalid_backup",
-                "El archivo de respaldo no se pudo abrir correctamente.",
-            )
-        })?;
-        let violations = sqlx::query("PRAGMA foreign_key_check")
-            .fetch_all(&test_db)
-            .await
-            .map(|rows| rows.len())
-            .unwrap_or(0);
-        test_db.close().await;
-        if violations > 0 {
-            return Err(CommandError::new(
-                "invalid_backup",
-                "El respaldo tiene referencias inconsistentes.",
-            ));
-        }
-        Ok(())
-    }
-    .await;
-
-    if let Err(err) = staging_check {
-        let _ = std::fs::remove_file(&staging);
-        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
-        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
-        return Err(err);
-    }
-
     let mut pool = db.write().await;
     backup_database_db(&pool, safety, dest).await.map_err(|_| {
-        let _ = std::fs::remove_file(&staging);
-        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
-        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
         CommandError::new(
             "restore_safety_failed",
             "No se pudo guardar una copia de seguridad antes de restaurar.",
@@ -1946,11 +1890,8 @@ async fn restore_database_db(
         let _ = std::fs::remove_file(with_suffix(dest, suffix));
     }
 
-    if let Err(e) = std::fs::copy(&staging, dest) {
+    if let Err(e) = std::fs::copy(src, dest) {
         eprintln!("Restore copy error: {e}");
-        let _ = std::fs::remove_file(&staging);
-        let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
-        let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
         return recover_previous_database(
             &mut pool,
             dest,
@@ -1959,10 +1900,6 @@ async fn restore_database_db(
         )
         .await;
     }
-
-    let _ = std::fs::remove_file(&staging);
-    let _ = std::fs::remove_file(with_suffix(&staging, "-wal"));
-    let _ = std::fs::remove_file(with_suffix(&staging, "-shm"));
 
     match connect(dest).await {
         Ok(reopened) => {
